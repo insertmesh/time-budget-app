@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget Overviews v2</title>
+<!--
+  Overviews mockup v2 (step 02c_overviews_design, 2026-11-13). New in v2 (Samuel on v1): red 16 h line on overtime days only; every category row opens to its details (shades of the category colour); goal stamps grow = green, reduce = red, keep = blue, tap = goes to the Goals page.
+  v1:
+  Day / Week / Month: planned vs tapped per main category, untapped, overtime, Stuck, sleep vs bedtime, goals (reduce / grow), trends.
+  Open: double-click this file. Tile images load from ..\v6\assets\ (keep the folders together).
+  Mockup only: fake data (today = Sun 9 Nov 2026), no saving, no app logic. Every number comes from the arrays at the top of the script.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap">
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A4F36; --warn-soft: #F5E4DC; --good: #2F7A4F;
+  --under: #3F78A8; --under-soft: #E0EBF4; --neutral: #8F9A96; --ot: #D9822B; --red: #C93A30; --red-soft: #F8E1DE;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif; --font-head: "Literata", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+  --under: #8DB8DE; --under-soft: #1E2C38; --neutral: #7A8682; --ot: #F0A04F; --red: #F07468; --red-soft: #3D2321; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+  --under: #8DB8DE; --under-soft: #1E2C38; --neutral: #7A8682; --ot: #F0A04F; --red: #F07468; --red-soft: #3D2321; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); padding: 0 16px 56px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+h1, h2, h3 { font-family: var(--font-head); margin: 0; }
+h2 { font-size: 20px; margin: 26px 0 4px; } h3 { font-size: 16px; }
+.wrap { max-width: 920px; margin: 0 auto; }
+
+.controls { margin: 14px auto 16px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; background: var(--surface);
+  display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; font-size: 14px; }
+.controls .tag { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 100%; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; padding: 7px 20px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+
+.top { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.period { display: flex; align-items: center; gap: 8px; }
+.period .btn { padding: 4px 12px; } .period .btn[disabled] { opacity: .4; cursor: default; }
+.period b { font-family: var(--font-head); font-size: 19px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin-top: 12px; }
+.lead { font-size: 16px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 6px 12px; min-width: 112px; }
+.chip b { display: block; font-size: 19px; line-height: 1.2; }
+.chip span { font-size: 12.5px; color: var(--muted); }
+.chip.ot { border-color: var(--ot); } .chip.ut { border-style: dashed; }
+.note { font-size: 14px; color: var(--muted); margin-top: 6px; }
+
+/* tile badge */
+.tb { position: relative; flex: none; overflow: hidden; border-radius: 10px; }
+.tb img { position: absolute; max-width: none; display: block; user-select: none; }
+.tb .glyph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #FFF4E2; font-weight: 800; text-shadow: 0 1px 0 rgba(70,30,10,.5); }
+
+/* timeline bars */
+.axis { position: relative; height: 18px; font-size: 11.5px; color: var(--muted); margin-left: 74px; }
+.axis span { position: absolute; transform: translateX(-50%); }
+.tl { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.tl .lab { width: 66px; flex: none; font-weight: 700; font-size: 13px; }
+.tl .bar { position: relative; flex: 1; height: 34px; background: color-mix(in srgb, var(--line) 50%, transparent); border-radius: 8px; overflow: hidden; }
+.seg-b { position: absolute; top: 0; bottom: 0; border: 0; padding: 0; border-right: 1px solid var(--surface); }
+.seg-b:hover, .seg-b.sel { outline: 2px solid var(--ink); outline-offset: -2px; z-index: 2; }
+.hatch { background-image: repeating-linear-gradient(135deg, var(--neutral) 0 2px, transparent 2px 7px) !important; background-color: color-mix(in srgb, var(--line) 70%, var(--surface)) !important; }
+.otmark { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; background: repeating-linear-gradient(90deg, var(--ot) 0 6px, transparent 6px 9px); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0 74px; font-size: 13px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -1px; margin-right: 5px; }
+.pick { margin: 8px 0 0 74px; min-height: 24px; font-size: 14px; }
+
+/* category rows */
+.row { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.rowx { border-top: 1px solid var(--line); } .rowx:first-child { border-top: 0; }
+.rowbtn { width: 100%; background: none; border: 0; text-align: left; border-radius: 10px; display: grid; grid-template-columns: 52px 1fr 18px; gap: 10px; align-items: center; padding: 8px 0; }
+.rowbtn:hover { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.chev { color: var(--muted); font-size: 14px; }
+.subs { margin: 0 0 10px 62px; padding: 10px 12px; background: var(--bg); border-radius: 12px; }
+.sb { height: 14px; display: flex; overflow: hidden; margin: 0 0 8px; }
+.sb div { height: 100%; border-right: 1px solid var(--surface); }
+.subs ul { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.subs li { display: flex; align-items: center; gap: 8px; padding: 2px 0; } .subs li b { margin-left: auto; font-weight: 600; }
+.subs li i { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.row .nm, .rowbtn .nm { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 14.5px; }
+.row .nm b, .rowbtn .nm b { font-size: 15.5px; }
+.rb { position: relative; height: 16px; border-radius: 8px; background: color-mix(in srgb, var(--line) 55%, transparent); margin-top: 5px; }
+.rb .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; }
+.rb .plan { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--ink); border-radius: 2px; }
+.rb .ghost { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; border: 2px dashed var(--ink); opacity: .55; }
+.diff { font-size: 13.5px; color: var(--muted); }
+.diff .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+.dot.more { background: var(--warn); } .dot.less { background: var(--under); } .dot.same { background: var(--good); }
+.key { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+/* split two columns */
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 720px) { .two { grid-template-columns: 1fr; } .tl .lab { width: 50px; } .axis, .legend, .pick { margin-left: 58px; } }
+
+/* week columns */
+.cols { padding-top: 22px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; margin-top: 10px; }
+.col { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; padding: 4px 0; border-radius: 10px; }
+.col.sel { background: var(--accent-soft); }
+.stackw { position: relative; width: 100%; max-width: 74px; }
+.stackw .redline { position: absolute; left: -6px; right: -6px; height: 3px; background: var(--red); border-radius: 2px; z-index: 3; }
+.stackw .redline span { position: absolute; left: 50%; transform: translateX(-50%); top: -17px; font-size: 11px; font-weight: 700; color: var(--red); white-space: nowrap; }
+.stack { position: relative; width: 100%; height: 210px; background: color-mix(in srgb, var(--line) 50%, transparent); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column-reverse; }
+.stack div { flex: none; border-top: 1px solid var(--surface); }
+.stack .awake16 { position: absolute; left: -2px; right: -2px; border-top: 2px dashed var(--ink); opacity: .5; z-index: 3; height: 0; }
+.col .d { font-weight: 700; font-size: 13.5px; } .col .t { font-size: 12px; color: var(--muted); }
+
+/* goals */
+.goals { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+.goal { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.goal .hd { display: flex; align-items: center; gap: 10px; }
+.tagk.grow { background: color-mix(in srgb, var(--good) 16%, var(--surface)); border-color: var(--good) !important; color: var(--good) !important; }
+.tagk.reduce { background: var(--red-soft); border-color: var(--red) !important; color: var(--red) !important; }
+.tagk.keep { background: var(--under-soft); border-color: var(--under) !important; color: var(--under) !important; }
+.tagk:hover { filter: brightness(.95); text-decoration: underline; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 20; max-width: 90vw; }
+.goal .tagk { margin-left: auto; font-weight: 700; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--muted); white-space: nowrap; }
+.gb { position: relative; height: 14px; border-radius: 8px; background: color-mix(in srgb, var(--line) 55%, transparent); margin: 12px 0 4px; }
+.gb .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; }
+.gb .pace { position: absolute; top: -5px; bottom: -5px; width: 3px; background: var(--ink); border-radius: 2px; }
+.gb .capline { position: absolute; top: -5px; bottom: -5px; right: 0; width: 3px; background: var(--ot); border-radius: 2px; }
+.gl { font-size: 13.5px; }
+
+/* sparklines + sleep */
+.sparks { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
+.spark { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.spark .hd { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+.spark svg { width: 100%; height: 46px; display: block; margin-top: 4px; }
+.spark .tx { font-size: 12.5px; color: var(--muted); }
+svg text { font-family: var(--font-ui); fill: var(--muted); font-size: 11px; }
+
+/* month calendar */
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
+.cal .h { font-size: 12px; color: var(--muted); text-align: center; }
+.cd { aspect-ratio: 1 / 1; border-radius: 10px; border: 1px solid var(--line); position: relative; padding: 4px 6px; font-size: 12px; display: flex; flex-direction: column; justify-content: space-between; background: var(--bg); }
+.cd.fut { opacity: .45; border-style: dashed; }
+.cd .dots { display: flex; gap: 3px; } .cd .dots i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.cd.sel { outline: 2px solid var(--accent); }
+
+.obs { margin: 6px 0 0; padding-left: 20px; } .obs li { margin: 5px 0; }
+.foot { font-style: italic; color: var(--muted); margin-top: 8px; }
+.scorepill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; background: var(--bg); font-weight: 700; }
+.scorepill .tr { width: 90px; height: 9px; border-radius: 9px; background: var(--line); overflow: hidden; }
+.scorepill .tr i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--good)); }
+@media (prefers-reduced-motion: no-preference) { .f, .gb .f { transition: width .5s ease; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="controls">
+  <div class="tag">Mockup controls (not part of the app)</div>
+  <label>Chart words:
+    <select id="words"><option value="plain">plain ("30 min more than planned")</option><option value="num">numbers only</option></select></label>
+  <label>Sleep + Stuck in the category list:
+    <select id="sleepin"><option value="in">shown in the list</option><option value="out">only in their own boxes</option></select></label>
+  <label>Theme: <select id="theme"><option value="auto">system</option><option value="light">light</option><option value="dark">dark</option></select></label>
+  <span class="muted small">Fake data. Today = Sun 9 Nov. Click bars, columns and calendar days.</span>
+</div>
+
+<div class="top">
+  <h1 style="font-size:26px">Overview</h1>
+  <div class="seg" role="group" aria-label="Period"><button data-v="day" aria-pressed="true">Day</button><button data-v="week" aria-pressed="false">Week</button><button data-v="month" aria-pressed="false">Month</button></div>
+</div>
+<div class="period"><button class="btn" disabled aria-label="Previous">‹</button><b id="ptitle"></b><button class="btn" disabled aria-label="Next">›</button><span class="muted small" id="pnote"></span></div>
+
+<main id="main"></main>
+</div>
+
+<script>
+(function () {
+const $ = id => document.getElementById(id);
+const A = '../v6/assets/';
+
+/* ===== categories ===== */
+const CATS = [
+  { id: 'work',    name: 'Work',    tile: 'a09', col: '#4F7CAC' },
+  { id: 'commute', name: 'Commute', tile: 'a08', col: '#7E8A92' },
+  { id: 'chores',  name: 'Chores',  tile: 'a05', col: '#A87C4F' },
+  { id: 'food',    name: 'Food',    tile: 'a06', col: '#D1A93C' },
+  { id: 'family',  name: 'Family',  tile: 'a01', col: '#C8627A' },
+  { id: 'friends', name: 'Friends', tile: 'a02', col: '#E08D4A' },
+  { id: 'hobby',   name: 'Hobby',   tile: 'a04', col: '#7B5EA7' },
+  { id: 'chill',   name: 'Chill',   tile: 'a03', col: '#4FA38F' },
+  { id: 'stuck',   name: 'Stuck',   tile: 'stuck', col: '#5C5C6E' },
+  { id: 'sleep',   name: 'Sleep',   tile: 'sleep', col: '#2E3B6B' }
+];
+const C = Object.fromEntries(CATS.map(c => [c.id, c]));
+const MAIN8 = CATS.slice(0, 8);
+// e1 box (px of 512) per tile + background variant, copied from the v9.2 mockup
+const BOX1 = { a09:[44,35,490,482], a08:[99,57,399,456], a05:[118,32,391,487], a06:[32,47,479,453], a01:[102,29,405,481], a02:[22,23,489,489], a04:[92,29,386,477], a03:[77,43,434,376] };
+const BGSC = { 1: 1, 2: 1.037, 3: 1.22 };
+function tile(id, S) {
+  const c = C[id], t = c.tile;
+  let bg, inner = '';
+  if (t === 'stuck') { bg = 2; inner = `<div class="glyph" style="font-size:${S * .6}px">?</div>`; }
+  else if (t === 'sleep') { bg = 3; inner = `<div class="glyph" style="font-size:${S * .6}px">☾</div>`; }
+  else {
+    bg = ((parseInt(t.slice(1), 10) - 1) % 3) + 1;
+    const b = BOX1[t];
+    const s = (S * .64) / Math.max(b[2] - b[0], b[3] - b[1]);
+    inner = `<img src="${A}${t}_e1_00001_.png" alt="" style="width:${512 * s}px;left:${S / 2 - s * (b[0] + b[2]) / 2}px;top:${S * .52 - s * (b[1] + b[3]) / 2}px">`;
+  }
+  const w = S * BGSC[bg];
+  return `<span class="tb" style="width:${S}px;height:${S}px" title="${c.name}"><img src="${A}background_rgba_0000${bg}_.png" alt="" style="width:${w}px;left:${(S - w) / 2}px;top:${(S - w) / 2}px">${inner}</span>`;
+}
+
+/* ===== helpers ===== */
+const hm = m => { m = Math.round(m); const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h} h ${r} min` : h ? `${h} h` : `${r} min`; };
+const clock = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const T = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };   // minutes since midnight; > 24:00 allowed
+const words = () => $('words').value === 'plain';
+function diffTxt(d, goodWord) {
+  if (Math.abs(d) < 10) return { cls: 'same', t: 'right on plan' };
+  return d > 0 ? { cls: 'more', t: words() ? `${hm(d)} more than planned` : `+${hm(d)}` }
+               : { cls: 'less', t: words() ? `${hm(-d)} less than planned` : `−${hm(-d)}` };
+}
+const sleepOn = () => $('sleepin').value === 'in';
+const listCats = () => sleepOn() ? CATS : MAIN8;
+function bar(cid, val, plan, max) {
+  const c = C[cid];
+  return `<div class="rb"><div class="f" style="width:${Math.min(100, val / max * 100)}%;background:${c.col}"></div>${plan != null ? `<div class="plan" style="left:calc(${Math.min(100, plan / max * 100)}% - 1px)" title="Plan: ${hm(plan)}"></div>` : ''}</div>`;
+}
+
+/* ===== fake data ===== */
+// DAY: Thu 6 Nov. [start, end, category, flags]. ot = ran past the plan / past bedtime. un = untapped.
+const DAY = {
+  title: 'Thu 6 Nov', wake: '07:10', bed: '23:00', score: 78, slept: 400, sleptPlan: 480, bedActual: '00:20',
+  plan: [['07:00','07:30','food'],['07:30','12:00','work'],['12:00','12:30','food'],['12:30','16:30','work'],['16:30','17:00','commute'],['17:00','18:00','chores'],['18:00','18:45','food'],['18:45','20:30','family'],['20:30','22:30','hobby'],['22:30','23:00','chill']],
+  act: [['07:10','07:40','food'],['07:40','12:20','work'],['12:20','12:50','food'],['12:50','13:30','stuck'],['13:30','16:30','work'],['16:30','16:50','work','ot'],['16:50','17:20','commute'],['17:20','18:10','chores'],['18:10','18:55','food'],['18:55','20:15','family'],['20:15','20:45','un'],['20:45','22:50','hobby'],['22:50','23:00','chill'],['23:00','24:20','chill','ot']]
+};
+const sumSegs = (segs, cid) => segs.filter(s => s[2] === cid).reduce((a, s) => a + T(s[1]) - T(s[0]), 0);
+const otSegs = segs => segs.filter(s => s[3] === 'ot').reduce((a, s) => a + T(s[1]) - T(s[0]), 0);
+
+// WEEK: Mon 3 – Sun 9 Nov. Minutes per category per day. Thu comes from DAY.
+const WD = ['Mon 3','Tue 4','Wed 5','Thu 6','Fri 7','Sat 8','Sun 9'];
+const W = {
+  work:    [470,500,400,null,450,0,0],   commute: [40,30,40,null,45,60,0],  chores: [80,60,100,null,70,120,90],
+  food:    [100,95,100,null,90,120,100], family:  [120,110,100,null,90,240,300], friends: [0,0,60,null,150,0,0],
+  hobby:   [90,80,70,null,0,240,150],    chill:   [40,55,30,null,70,150,260],  stuck:   [0,20,60,null,0,0,40],
+  un:      [20,10,20,null,15,30,20],     ot:      [15,30,0,null,60,0,0]
+};
+DAY.cat = {}; MAIN8.concat([C.stuck]).forEach(c => DAY.cat[c.id] = sumSegs(DAY.act, c.id));
+DAY.un = sumSegs(DAY.act, 'un'); DAY.ot = otSegs(DAY.act);
+Object.keys(W).forEach(k => { W[k][3] = k === 'un' ? DAY.un : k === 'ot' ? DAY.ot : (DAY.cat[k] || 0); });
+const WPLAN = { work: 2400, commute: 240, chores: 540, food: 700, family: 1200, friends: 120, hobby: 600, chill: 700, stuck: 0 };
+const WSLEEP = { plan: 23 * 60, bed: ['23:20','23:05','24:10','24:20','25:30','24:40','23:10'], slept: [420,450,360,400,330,510,468], plan8: 480 };
+const wTot = k => W[k].reduce((a, b) => a + b, 0);
+
+// MONTH: Nov 2026, today = day 9 of 30. Goals: g = grow (target), r = reduce (cap). minutes so far / month amount.
+const MGOALS = [
+  { id: 'hobby',   kind: 'grow',   so: 14 * 60,  amt: 50 * 60 },
+  { id: 'family',  kind: 'grow',   so: 22 * 60,  amt: 70 * 60 },
+  { id: 'friends', kind: 'grow',   so: 150,      amt: 12 * 60 },
+  { id: 'stuck',   kind: 'reduce', so: 6.5 * 60, amt: 20 * 60 },
+  { id: 'commute', kind: 'reduce', so: 5 * 60,   amt: 20 * 60 },
+  { id: 'chill',   kind: 'reduce', so: 11 * 60,  amt: 45 * 60 },
+  { id: 'chores',  kind: 'keep',   so: 15 * 60,  amt: 45 * 60 }
+];
+const MPLAN9 = { work: 41*60, commute: 6*60, chores: 14*60, food: 33*60, family: 21*60, friends: 3.6*60, hobby: 15*60, chill: 13.5*60, stuck: 0 };   // plan to date
+const MTOT = { work: 40*60+30, commute: 5*60, chores: 15*60, food: 32*60, family: 22*60, friends: 150, hobby: 14*60, chill: 11*60, stuck: 6.5*60 };
+const TR = { // hours per week, last 8 weeks (oldest → newest)
+  work: [41,40,42,39,41,40,43,40], commute: [5,4.5,4,4.5,4,4.5,4,4], chores: [8,9,8,9,10,9,9,9], food: [11,11.5,11,12,11,11.5,11,11.5],
+  family: [16,17,18,17,19,20,19,20], friends: [1,.5,2,1,1.5,2,1,2.5], hobby: [6,5,7,8,9,8,10,9], chill: [14,13,12,13,11,12,11.5,11],
+  stuck: [6,5,4,3,2.5,2,1.5,1.2], un: [6,5,4,4,3,3,2.5,2.2], bed: [24.6,24.3,24.5,24.2,24.0,23.9,24.1,24.0]
+};
+const MCAL = [ // days 1–9: top category, flags
+  ['work','ot'],['work'],['work','un'],['work'],['work','ot'],['work','ot'],['family'],['family','un'],['chill']
+];
+
+/* ===== views ===== */
+const state = { view: 'day', sel: null, open: new Set() };
+const SUBS = {
+  work: [['Client work',.55],['Emails and admin',.2],['Meetings',.15],['No detail',.1]],
+  commute: [['Picking up kids',.6],['Other drives',.3],['No detail',.1]],
+  chores: [['Dishes',.35],['Laundry',.25],['Cleaning',.25],['No detail',.15]],
+  food: [['Breakfast',.25],['Lunch',.25],['Dinner',.35],['Coffee and snacks',.15]],
+  family: [['Kids',.5],['TV together',.3],['No detail',.2]],
+  friends: [['Meet-up',.6],['Calls',.3],['No detail',.1]],
+  hobby: [['Music',.6],['Games',.25],['No detail',.15]],
+  chill: [['TV',.5],['Phone',.25],['No detail',.25]],
+  stuck: [['Shutdown',.45],['Relationship issue',.25],['Meltdown',.15],['No reason given',.15]]
+};
+const shade = (col, i) => [col, `color-mix(in srgb, ${col} 68%, #000)`, `color-mix(in srgb, ${col} 62%, #fff)`, `color-mix(in srgb, ${col} 38%, #fff)`, `color-mix(in srgb, ${col} 50%, #000)`][i % 5];
+function subsHtml(id, total) {
+  const list = SUBS[id]; if (!list) return '';
+  if (!total) return '<div class="subs small muted">Nothing tapped here.</div>';
+  let used = 0;
+  const parts = list.map(([n, sh], i) => { const m = i === list.length - 1 ? total - used : Math.round(total * sh / 5) * 5; used += m; return [n, m]; }).filter(x => x[1] > 0);
+  return `<div class="subs"><div class="rb sb">${parts.map(([n, m], i) => `<div style="width:${m / total * 100}%;background:${shade(C[id].col, i)}" title="${n}"></div>`).join('')}</div>
+    <ul>${parts.map(([n, m], i) => `<li><i style="background:${shade(C[id].col, i)}"></i>${n}<b>${hm(m)}</b></li>`).join('')}</ul>
+    <div class="small muted" style="margin-top:4px">${id === 'stuck' ? 'The reasons you picked. "No reason given" can still be sorted in the checkout.' : 'Details you tapped. Time without a detail is listed as "No detail".'}</div></div>`;
+}
+function catRow(key, id, v, p, max, diffHtml, extra) {
+  const open = state.open.has(key), c = C[id];
+  return `<div class="rowx"><button class="rowbtn" data-open="${key}" aria-expanded="${open}">${tile(id, 52)}<div><div class="nm"><b>${c.name}</b><span>${hm(v)}${p === undefined ? '' : ` <span class="muted">· plan ${p ? hm(p) : 'none'}</span>`}</span></div>${bar(id, v, p || null, max)}${diffHtml}${extra || ''}</div><span class="chev" aria-hidden="true">${open ? '▾' : '▸'}</span></button>${open ? subsHtml(id, v) : ''}</div>`;
+}
+function toast(t) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
+function render() {
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.view));
+  const v = { day: vDay, week: vWeek, month: vMonth }[state.view];
+  $('main').innerHTML = v();
+  bind();
+}
+
+function legend(ids) {
+  return `<div class="legend">${ids.map(id => `<span><i style="background:${C[id].col}"></i>${C[id].name}</span>`).join('')}<span><i class="hatch"></i>Untapped</span><span><i style="background:repeating-linear-gradient(90deg,var(--ot) 0 3px,transparent 3px 5px)"></i>Overtime</span></div>`;
+}
+
+/* ---------- DAY ---------- */
+function vDay() {
+  $('ptitle').textContent = DAY.title; $('pnote').textContent = '· a workday';
+  const D = DAY, wake = T(D.wake), end = T('24:20'), a0 = 6 * 60, a1 = 25 * 60;      // axis 06:00 → 01:00
+  const pos = m => ((m - a0) / (a1 - a0) * 100);
+  const seg = (s, isPlan) => {
+    const l = pos(T(s[0])), w = pos(T(s[1])) - l, un = s[2] === 'un';
+    const nm = un ? 'Untapped' : C[s[2]].name, ot = s[3] === 'ot';
+    return `<button class="seg-b ${un ? 'hatch' : ''}" style="left:${l}%;width:${w}%;${un ? '' : `background:${C[s[2]].col}`}" data-p="${isPlan ? 'Plan' : 'Happened'}: ${nm} ${s[0]}–${clock(T(s[1]))} · ${hm(T(s[1]) - T(s[0]))}${ot ? ' · overtime' : ''}" aria-label="${nm} ${s[0]} to ${s[1]}">${ot ? '<span class="otmark"></span>' : ''}</button>`;
+  };
+  const ticks = [6,9,12,15,18,21,24].map(h => `<span style="left:${pos(h * 60)}%">${String(h % 24).padStart(2,'0')}</span>`).join('');
+  const tapped = Object.values(D.cat).reduce((a, b) => a + b, 0);
+  const awake = end - wake;
+  const rows = listCats().filter(c => c.id !== 'sleep').map(c => {
+    const v = D.cat[c.id] || 0, p = sumSegs(D.plan, c.id), d = diffTxt(v - p);
+    return catRow('day:' + c.id, c.id, v, p, 600, `<div class="diff"><span class="dot ${d.cls}"></span>${p || v ? d.t : 'not planned, not tapped'}</div>`);
+  }).join('');
+  return `
+  <div class="card"><p class="lead" style="margin:0">You were up from <b>${D.wake}</b> to <b>00:20</b> (${hm(awake)}). <b>${hm(tapped)}</b> was tapped${D.un ? `, <b>${hm(D.un)}</b> was left untapped` : ''}.</p>
+    <div class="chips">
+      <div class="chip"><b>${hm(tapped)}</b><span>tapped</span></div>
+      <div class="chip ut"><b>${hm(D.un)}</b><span>untapped</span></div>
+      <div class="chip ot"><b>${hm(D.ot)}</b><span>overtime (past plan or bedtime)</span></div>
+      <div class="chip"><b>${hm(D.cat.stuck)}</b><span>Stuck</span></div>
+      <div class="chip"><b><span class="scorepill" style="border:0;padding:0;background:none">${D.score}%</span></b><span>checkout score</span></div>
+    </div>
+  </div>
+
+  <h2>Your day, hour by hour</h2>
+  <div class="card">
+    <div class="axis">${ticks}</div>
+    <div class="tl"><span class="lab">Plan</span><div class="bar">${D.plan.map(s => seg(s, true)).join('')}</div></div>
+    <div class="tl"><span class="lab">Happened</span><div class="bar">${D.act.map(s => seg(s, false)).join('')}</div></div>
+    ${legend(['work','commute','chores','food','family','friends','hobby','chill','stuck'])}
+    <div class="pick muted" id="pick">Tap a block to see its times.</div>
+  </div>
+
+  <h2>Planned vs tapped</h2>
+  <div class="card">${rows}<div class="key"><b style="display:inline-block;width:3px;height:12px;background:var(--ink);vertical-align:-2px;margin-right:6px"></b>= what you planned. The coloured bar = what you tapped. Neither is "right". Tap a row to see its details.</div></div>
+
+  <div class="two">
+    <div><h2>Untapped and overtime</h2><div class="card">
+      <div class="row"><span class="tb hatch" style="width:52px;height:52px"></span><div><div class="nm"><b>Untapped</b><span>${hm(D.un)}</span></div><div class="diff">20:15 – 20:45 · nothing was tapped, shown in your Plan as a gap. You can still sort it in the checkout.</div></div></div>
+      <div class="row"><span class="tb" style="width:52px;height:52px;background:repeating-linear-gradient(90deg,var(--ot) 0 6px,transparent 6px 9px)"></span><div><div class="nm"><b>Overtime</b><span>${hm(D.ot)}</span></div><div class="diff">Work ran 20 min past 16:30 · Chill ran 1 h 20 min past the 23:00 bedtime.</div></div></div>
+      ${catRow('day:stuckbox', 'stuck', D.cat.stuck, undefined, 600, '<div class="diff">12:50 – 13:30 · tap to see the reason you gave.</div>')}
+    </div></div>
+    <div><h2>Sleep and bedtime</h2><div class="card">
+      <div class="row">${tile('sleep', 52)}<div>
+        <div class="nm"><b>Bedtime</b><span>planned ${D.bed} · actual ${D.bedActual}</span></div>
+        ${sleepBar(T('23:00'), T('24:20'))}
+        <div class="diff">${words() ? '1 h 20 min later than planned' : '+1 h 20 min'}</div>
+        <div class="nm" style="margin-top:8px"><b>Slept (last night)</b><span>${hm(D.slept)} <span class="muted">· plan ${hm(D.sleptPlan)}</span></span></div>
+        ${bar('sleep', D.slept, D.sleptPlan, 600)}<div class="diff"><span class="dot more"></span>${words() ? hm(D.sleptPlan - D.slept) + ' less than planned' : '−' + hm(D.sleptPlan - D.slept)}</div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <h2>What the data says</h2>
+  <div class="card"><ul class="obs">
+    <li>Work started 10 min after planned and ended 20 min after planned. Total work: ${hm(D.cat.work)} (plan ${hm(sumSegs(D.plan,'work'))}).</li>
+    <li>Family time was 25 min shorter than planned (the afternoon ran late).</li>
+    <li>The evening ran past your bedtime by 1 h 20 min. Chill took it.</li>
+  </ul><div class="foot">It's just data. What you do with it is your choice.</div></div>`;
+}
+function sleepBar(p, a) {                                 // small bar: planned bedtime vs actual, 22:00 → 02:00
+  const x0 = 22 * 60, x1 = 26 * 60, pos = m => (m - x0) / (x1 - x0) * 100;
+  return `<div class="rb" style="height:14px"><div class="f" style="left:${pos(p)}%;width:${pos(a) - pos(p)}%;background:${C.sleep.col};opacity:.8"></div><div class="plan" style="left:${pos(p)}%"></div></div>
+          <div class="axis" style="margin:2px 0 0;height:14px"><span style="left:0%;transform:none">22:00</span><span style="left:50%">00:00</span><span style="left:100%;transform:translateX(-100%)">02:00</span></div>`;
+}
+
+/* ---------- WEEK ---------- */
+function vWeek() {
+  $('ptitle').textContent = '3 – 9 Nov'; $('pnote').textContent = '· a full week';
+  const ids = MAIN8.map(c => c.id).concat(['stuck']);
+  const tots = WD.map((d, i) => ids.reduce((a, id) => a + W[id][i], 0) + W.un[i]);
+  const maxMin = Math.max(1000, ...tots) * 1.04;
+  const cols = WD.map((d, i) => {
+    const parts = ids.map(id => `<div style="height:${W[id][i] / maxMin * 100}%;background:${C[id].col}"></div>`).join('') +
+                  `<div class="hatch" style="height:${W.un[i] / maxMin * 100}%"></div>`;
+    const tapped = ids.reduce((a, id) => a + W[id][i], 0);
+    return `<button class="col ${state.sel === i ? 'sel' : ''}" data-i="${i}" aria-label="${d}"><div class="stackw"><div class="stack">${parts}</div>${tots[i] > 960 ? `<div class="redline" style="bottom:${960 / maxMin * 100}%"><span>+${hm(tots[i] - 960)}</span></div>` : ''}</div><span class="d">${d.split(' ')[0]}</span><span class="t">${(tapped / 60).toFixed(1)} h</span></button>`;
+  }).join('');
+  const sel = state.sel;
+  const selTxt = sel == null ? 'Tap a day to see its numbers.' :
+    `<b>${WD[sel]}</b>: ` + ids.filter(id => W[id][sel]).map(id => `${C[id].name} ${hm(W[id][sel])}`).join(' · ') + (W.un[sel] ? ` · untapped ${hm(W.un[sel])}` : '') + (W.ot[sel] ? ` · overtime ${hm(W.ot[sel])}` : '') + (sel === 3 ? ` · <button class="btn" data-go="day" style="padding:1px 10px">Open this day</button>` : '');
+  const rows = listCats().filter(c => c.id !== 'sleep').map(c => {
+    const v = wTot(c.id), p = WPLAN[c.id], d = diffTxt(v - p);
+    const hobbyNote = c.id === 'hobby' ? '<div class="diff muted">adds 9 h to your November Hobby goal</div>' : '';
+    return catRow('week:' + c.id, c.id, v, p, 2700, `<div class="diff"><span class="dot ${d.cls}"></span>${p || v ? d.t : ''}</div>`, hobbyNote);
+  }).join('');
+  const totU = wTot('un'), totO = wTot('ot'), totT = ids.reduce((a, id) => a + wTot(id), 0);
+  const days = WD.map((d, i) => `<div style="text-align:center"><div style="height:60px;display:flex;align-items:flex-end;justify-content:center;gap:3px"><div title="Untapped" class="hatch" style="width:14px;height:${W.un[i] / 40 * 100}%;border-radius:4px 4px 0 0"></div><div title="Overtime" style="width:14px;height:${Math.max(2, W.ot[i] / 40 * 100)}%;background:var(--ot);border-radius:4px 4px 0 0;${W.ot[i] ? '' : 'opacity:.25'}"></div></div><div class="small muted">${d.split(' ')[0]}</div><div class="small">${W.un[i]}·${W.ot[i]}</div></div>`).join('');
+  return `
+  <div class="card"><p class="lead" style="margin:0">This week: <b>${hm(totT)}</b> tapped, <b>${hm(totU)}</b> untapped, <b>${hm(totO)}</b> overtime. Everything adds up to your awake time.</p></div>
+
+  <h2>Each day, stacked</h2>
+  <div class="card">
+    <div class="cols">${cols}</div>
+    <div class="small muted" style="margin-top:6px">Red line = 16 h awake. It only shows on days that went past it; everything above the line is overtime. Hatched = untapped.</div>
+    ${legend(ids)}
+    <div class="pick" style="margin-left:0">${selTxt}</div>
+  </div>
+
+  <h2>Planned vs tapped this week</h2>
+  <div class="card">${rows}<div class="key">Black tick = this week's plan. The week plan is the one you set on the Plans page.</div></div>
+
+  <div class="two">
+    <div><h2>Bedtime and sleep</h2><div class="card">${sleepWeek()}</div></div>
+    <div><h2>Untapped · overtime</h2><div class="card"><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${days}</div><div class="small muted" style="margin-top:6px">Left bar: untapped minutes. Right bar: overtime minutes. Numbers = untapped · overtime.</div></div></div>
+  </div>
+
+  <h2>What the data says</h2>
+  <div class="card"><ul class="obs">
+    <li>Work ran past its planned end on 4 of 5 workdays (+15, +30, +20 and +60 min).</li>
+    <li>Bedtime was more than 30 min later than planned on 4 of 7 nights (Wed to Sat).</li>
+    <li>Friends time: 3 h 30 min, 1 h 30 min above the plan, all on Wed and Fri.</li>
+    <li>Stuck: 2 h 40 min in total, 1 h of it on Wed.</li>
+  </ul><div class="foot">An unbalanced week is allowed. You can catch up next week, or not.</div></div>`;
+}
+function sleepWeek() {
+  const wid = 300, hgt = 150, x0 = 20, y = h => 14 + (h - 22) / 5 * (hgt - 28);            // bedtime axis: 22:00 (top) → 03:00 (bottom)
+  const px = i => 30 + i * (wid - 40) / 6;
+  const bedH = WSLEEP.bed.map(s => T(s) / 60);
+  const pts = bedH.map((h, i) => `${px(i)},${y(h)}`).join(' ');
+  const grid = [22, 24, 26].map(h => `<line x1="24" x2="${wid}" y1="${y(h)}" y2="${y(h)}" stroke="var(--line)"/><text x="0" y="${y(h) + 4}">${clock(h * 60)}</text>`).join('');
+  const dots = bedH.map((h, i) => `<circle cx="${px(i)}" cy="${y(h)}" r="${h > 23.01 ? 5 : 5}" fill="${h > 23.5 ? 'var(--ot)' : C.sleep.col}"><title>${WD[i]}: bed ${WSLEEP.bed[i]}</title></circle><text x="${px(i) - 9}" y="${hgt + 6}">${WD[i].split(' ')[0]}</text>`).join('');
+  return `<svg viewBox="0 0 ${wid} ${hgt + 12}" style="width:100%" role="img" aria-label="Bedtime per night">${grid}<line x1="24" x2="${wid}" y1="${y(23)}" y2="${y(23)}" stroke="var(--ink)" stroke-width="2.5" stroke-dasharray="6 4"/><text x="${wid - 70}" y="${y(23) - 6}" style="fill:var(--ink)">planned 23:00</text><polyline points="${pts}" fill="none" stroke="${C.sleep.col}" stroke-width="2" opacity=".45"/>${dots}</svg>
+  <div class="small" style="margin-top:4px">Slept per night: ${WSLEEP.slept.map(m => (m / 60).toFixed(1) + ' h').join(' · ')}</div>
+  <div class="small muted">Average ${hm(WSLEEP.slept.reduce((a, b) => a + b, 0) / 7)} (plan 8 h). Orange dot = more than 30 min after planned bedtime.</div>`;
+}
+
+/* ---------- MONTH ---------- */
+function vMonth() {
+  $('ptitle').textContent = 'November 2026'; $('pnote').textContent = '· day 9 of 30';
+  const goalCards = MGOALS.map(g => {
+    const c = C[g.id], pace = g.amt * 9 / 30, pct = g.so / g.amt * 100, pacePct = pace / g.amt * 100;
+    const gap = g.so - pace;
+    let line;
+    if (g.kind === 'grow') line = Math.abs(gap) < 30 ? 'right on pace' : gap > 0 ? `${hm(gap)} ahead of an even pace` : `${hm(-gap)} behind an even pace · ${hm(g.amt - g.so)} to go, 21 days left`;
+    else if (g.kind === 'keep') line = Math.abs(gap) < 30 ? 'right on pace' : gap > 0 ? `${hm(gap)} above an even pace` : `${hm(-gap)} below an even pace`;
+    else line = Math.abs(gap) < 30 ? 'right on pace' : gap < 0 ? `${hm(-gap)} under an even pace` : `${hm(gap)} above an even pace · ${hm(g.amt - g.so)} left before the cap`;
+    return `<div class="goal"><div class="hd">${tile(g.id, 44)}<div><b>${c.name}</b><div class="small muted">${{ grow: 'grow to', reduce: 'keep under', keep: 'keep around' }[g.kind]} ${hm(g.amt)} this month</div></div><button class="tagk ${g.kind}" data-goal="${c.name}" title="Open the Goals page">${g.kind}</button></div>
+      <div class="gb"><div class="f" style="width:${Math.min(100, pct)}%;background:${c.col}"></div><div class="pace" style="left:calc(${pacePct}% - 1px)" title="Even pace today: ${hm(pace)}"></div>${g.kind === 'reduce' ? '<div class="capline" title="Cap"></div>' : ''}</div>
+      <div class="gl"><b>${hm(g.so)}</b> so far <span class="muted">· tick = where an even pace would be (${hm(pace)})</span></div><div class="diff">${line}</div></div>`;
+  }).join('') + `<div class="goal"><div class="hd">${tile('sleep', 44)}<div><b>Bedtime by 23:30</b><div class="small muted">on 20 of 30 nights</div></div><button class="tagk grow" data-goal="Bedtime" title="Open the Goals page">grow</button></div>
+      <div class="gb"><div class="f" style="width:${4 / 20 * 100}%;background:${C.sleep.col}"></div><div class="pace" style="left:calc(${9 / 30 * 100}% - 1px)"></div></div>
+      <div class="gl"><b>4 of 9</b> nights so far <span class="muted">· even pace = 6</span></div><div class="diff">2 nights behind an even pace · 16 needed from 21 nights left</div></div>`;
+  const rows = MAIN8.map(c => {
+    const v = MTOT[c.id], p = MPLAN9[c.id], d = diffTxt(v - p);
+    return catRow('month:' + c.id, c.id, v, p, 45 * 60, `<div class="diff"><span class="dot ${d.cls}"></span>${d.t}</div>`);
+  }).join('');
+  const spark = (id, label, unit, col, data, lo, hi) => {
+    const w = 190, h = 46, pts = data.map((v, i) => [4 + i * (w - 8) / 7, h - 4 - (v - lo) / (hi - lo) * (h - 8)]);
+    const first = data[0], last = data[7], tx = `${first}${unit} → ${last}${unit} in 8 weeks`;
+    return `<div class="spark"><div class="hd">${id ? tile(id, 28) : ''}${label}</div><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${label}: ${tx}"><polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${pts[7][0]}" cy="${pts[7][1]}" r="4" fill="${col}"/></svg><div class="tx">${tx}</div></div>`;
+  };
+  const sp = MAIN8.concat([C.stuck]).map(c => { const d = TR[c.id], lo = Math.min(...d) * .85, hi = Math.max(...d) * 1.1; return spark(c.id, c.name, ' h/wk', c.col, d, lo, hi); }).join('') +
+    spark('sleep', 'Bedtime', '', C.sleep.col, TR.bed.map(h => +(h - 24).toFixed(1)).map(v => -v), -1, 1).replace(/(-?\d+(\.\d+)?) → (-?\d+(\.\d+)?) in 8 weeks/, 'avg 00:36 → 00:00 in 8 weeks') +
+    spark(null, 'Untapped', ' h/wk', 'var(--neutral)', TR.un, 1, 7);
+  const cal = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<div class="h">${d}</div>`).join('') + Array.from({ length: 30 }, (_, i) => {
+    const day = i + 1, off = i === 0 ? 6 : 0, fut = day > 9, m = MCAL[i];
+    const pad = i === 0 ? '<div></div>'.repeat(6) : '';
+    return pad + `<div class="cd ${fut ? 'fut' : ''}" title="Nov ${day}"><span>${day}</span><span class="dots">${m ? `<i style="background:${C[m[0]].col}" title="Most time: ${C[m[0]].name}"></i>${m[1] === 'ot' ? '<i style="background:var(--ot)" title="Overtime"></i>' : m[1] === 'un' ? '<i class="hatch" title="Untapped time"></i>' : ''}` : ''}</span></div>`;
+  }).join('');
+  return `
+  <div class="card"><p class="lead" style="margin:0">Nine days in. most goals are close to an even pace. Hobby, Friends and Bedtime are a bit behind, Stuck and Chores a bit above. A goal can catch up later in the month, or not.</p></div>
+
+  <h2>Goals</h2>
+  <div class="goals">${goalCards}</div>
+  <div class="key">Grow (green) = an amount you want more of. Reduce (red) = a cap you set for yourself. Keep (blue) = stay around an amount. Tap a stamp to open that goal on the Goals page. The tick is an even pace: where you'd be if each day were the same.</div>
+
+  <h2>Planned vs tapped so far</h2>
+  <div class="card">${rows}<div class="key">Black tick = plan up to today (from the day plans). Tap a row to see its details.</div></div>
+
+  <h2>Trends, last 8 weeks</h2>
+  <div class="sparks">${sp}</div>
+  <div class="key">Each line is scaled to itself, so you see the shape, not a score. Up is not good and down is not bad: it is just the direction.</div>
+
+  <h2>The month at a glance</h2>
+  <div class="card"><div class="cal">${cal}</div>
+    <div class="legend" style="margin-left:0"><span><i style="background:${C.work.col}"></i>colour = category with the most time that day</span><span><i style="background:var(--ot)"></i>overtime</span><span><i class="hatch"></i>untapped time</span><span>dashed = still to come</span></div></div>
+
+  <h2>What the data says</h2>
+  <div class="card"><ul class="obs">
+    <li>Stuck time is down from 6 h a week to 1 h 12 min over 8 weeks.</li>
+    <li>Hobby time is up from 6 h to 9 h a week, still 1 h behind this month's pace.</li>
+    <li>Average bedtime moved from 00:36 to 00:00.</li>
+  </ul><div class="foot">It's just data and we make it visible. What you do with it is your choice.</div></div>`;
+}
+
+/* ===== events ===== */
+function bind() {
+  document.querySelectorAll('.seg-b').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.seg-b.sel').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); $('pick').textContent = b.dataset.p;
+  });
+  document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const k = b.dataset.open; state.open.has(k) ? state.open.delete(k) : state.open.add(k); const y = scrollY; render(); scrollTo(0, y); });
+  document.querySelectorAll('[data-goal]').forEach(b => b.onclick = () => toast('→ Goals page, goal "' + b.dataset.goal + '" (designed in step 02b Categories)'));
+  document.querySelectorAll('.col').forEach(b => b.onclick = () => { state.sel = +b.dataset.i; render(); });
+  document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { state.view = 'day'; render(); });
+}
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { state.view = b.dataset.v; render(); });
+$('words').onchange = $('sleepin').onchange = render;
+$('theme').onchange = () => { const v = $('theme').value; if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v); };
+render();
+})();
+</script>
+</body>
+</html>

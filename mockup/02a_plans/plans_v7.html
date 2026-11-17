@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget Plans v7</title>
+<!--
+  Plans mockup v2 (step 02a_plans_design, 2026-11-12). New in v2 (Samuel's feedback on v1):
+  calendar dates = always fixed start + planned length; day types (weekday / weekend, weekend can become Work) + themes;
+  Templates tab (base days, Empty = always-do, own themes with name + colour); month rework (bigger cells, theme per day,
+  one "Plan this day" button, subcategories, calendar resync); week sliders with two behaviours (auto-adjust / only show).
+  Open: double-click this file. Images load from ..\v6\assets\ (keep the folders together).
+  Mockup only: fake November 2026, simulated clock, no saving.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap">
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A4F36; --warn-soft: #F5E4DC; --good: #2F7A4F;
+  --under: #3F78A8; --under-soft: #E0EBF4; --neutral: #8F9A96; --wkend: #A8507C;
+  --tint: transparent;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif;
+  --font-head: "Literata", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+    --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+    --under: #8DB8DE; --under-soft: #1E2C38; --neutral: #7A8682; --wkend: #E29BC0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+  --under: #8DB8DE; --under-soft: #1E2C38; --neutral: #7A8682; --wkend: #E29BC0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: color-mix(in srgb, var(--tint) 6%, var(--bg)); color: var(--ink); font: 15px/1.5 var(--font-ui); padding: 0 16px 48px; transition: background-color 1.2s ease; }
+button { font: inherit; color: inherit; cursor: pointer; }
+input[type="text"] { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* mockup controls */
+.controls { max-width: 920px; margin: 14px auto 16px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; background: var(--surface);
+  display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; font-size: 14px; }
+.controls .tag { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 100%; }
+select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+.btn.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.layout-note { max-width: 920px; margin: 0 auto 12px; font-size: 14px; color: var(--muted); }
+
+/* phone */
+.phone { position: relative; max-width: 420px; margin: 0 auto; background: color-mix(in srgb, var(--tint) 6%, var(--surface)); border: 1px solid var(--line); border-radius: 28px;
+  padding: 16px 16px 76px; min-height: 760px; overflow: clip; transition: background-color 1.2s ease; }
+.nav { position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid var(--line); background: var(--surface); z-index: 6; }
+.nav button { flex: 1; border: 0; background: none; padding: 12px 0 14px; font-weight: 700; color: var(--muted); }
+.nav button[aria-pressed="true"] { color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+h2.page { font: 600 20px/1.3 var(--font-head); margin: 0 0 8px; }
+.tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.tabs button { flex: 1; border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 6px 0; font-weight: 700; font-size: 14px; }
+.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+
+/* hero (tap preview) */
+.hero { height: 300px; display: flex; flex-direction: column; align-items: center; }
+.hero .label { height: 22px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.hero .stage { position: relative; width: 180px; height: 180px; }
+.hero .stage > .art { width: 180px; height: 180px; position: absolute; inset: 0; }
+.hero .name { font-weight: 800; font-size: 19px; line-height: 1.2; margin-top: 4px; text-align: center; min-height: 24px; }
+.hero .clock { font: 700 42px/1 var(--font-ui); font-variant-numeric: tabular-nums; height: 46px; margin-top: 2px; }
+.hero .clock.off { color: var(--muted); opacity: .5; }
+.planline { width: 100%; max-width: 300px; font-size: 13px; color: var(--muted); text-align: center; }
+.planline .track { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 4px 0 2px; }
+.planline .fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .3s; }
+.planline.ot { color: var(--warn); font-weight: 600; } .planline.ot .fill { background: var(--warn); }
+.reward { min-height: 20px; font-size: 14px; color: var(--accent); text-align: center; margin-top: 6px; }
+.nextrow { display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; }
+.nextbtn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+.textlink { border: 0; background: none; color: var(--muted); text-decoration: underline; font-size: 15px; padding: 6px 8px; }
+.card { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 14px; padding: 10px 12px; margin: 10px 0; }
+.card b { display: block; }
+.card .nextrow { justify-content: flex-start; margin-top: 6px; gap: 8px; }
+
+/* tiles */
+.tile { border: 0; background: none; padding: 4px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 2px; -webkit-tap-highlight-color: transparent; }
+.tile.on { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.tile .title { font-size: 13px; font-weight: 700; line-height: 1.2; text-align: center; }
+.art { position: relative; display: block; flex: none; }
+.art .press, .layer, .tap, .place, .idle, .layer img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.place { transform-origin: 0 0; }
+.layer img { display: block; pointer-events: none; user-select: none; }
+.bgwrap { filter: drop-shadow(0 3px 4px rgba(60, 40, 10, .35)); }
+.patchclip { clip-path: inset(12.3% 11.5% 12.9% 11.7% round 7%); }
+.tile-text { position: absolute; inset: 14%; display: flex; align-items: center; justify-content: center; text-align: center;
+  color: #FFF4E2; font: 700 22px/1.15 var(--font-ui); text-shadow: 0 1px 0 rgba(70, 30, 10, .5); }
+.grid8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 2px; }
+.grid8 .art { width: 72px; height: 72px; }
+.art.sm { width: 46px; height: 46px; }
+.art.xs { width: 30px; height: 30px; }
+.art.cal { width: 30px; height: 30px; margin: 1px auto 0; }
+.shadow-on .art:not(.xs):not(.sm):not(.cal)::before { content: ""; position: absolute; left: 14%; right: 14%; bottom: 6%; height: 12%;
+  background: radial-gradient(closest-side, rgba(40, 25, 10, .38), rgba(40, 25, 10, 0)); transform: translateY(45%); filter: blur(2px); }
+.shadow-drop .bgwrap { filter: drop-shadow(3px 7px 8px rgba(40, 25, 10, .42)); }
+.shadow-drop .art.sm .bgwrap, .shadow-drop .art.xs .bgwrap, .shadow-drop .art.cal .bgwrap { filter: drop-shadow(1px 2px 2px rgba(40, 25, 10, .35)); }
+.shadow-drop .hero .bgwrap { filter: drop-shadow(5px 12px 13px rgba(40, 25, 10, .42)); }
+@keyframes breathe1 { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.012); } }
+@keyframes sway1    { 0%,100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes breathe2 { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.015, 1.03); } }
+@keyframes sway2    { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes breathe3 { 0%,100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-1.5%) scale(1.02, 1.045); } }
+@keyframes sway3    { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.idle-1 .hero .idle.breathe { animation: breathe1 2.4s ease-in-out infinite; } .idle-1 .hero .idle.sway { animation: sway1 3.2s ease-in-out infinite; }
+.idle-2 .hero .idle.breathe { animation: breathe2 2.2s ease-in-out infinite; } .idle-2 .hero .idle.sway { animation: sway2 3s ease-in-out infinite; }
+.idle-3 .hero .idle.breathe { animation: breathe3 2s ease-in-out infinite; }   .idle-3 .hero .idle.sway { animation: sway3 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .idle { animation: none !important; } }
+
+/* plan: shared */
+.daychips { display: flex; gap: 4px; margin-bottom: 10px; }
+.daychips button { flex: 1; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 4px 0; font-size: 12px; font-weight: 700; line-height: 1.2; }
+.daychips button small { display: block; font-weight: 500; color: var(--muted); }
+.daychips button.we { color: var(--wkend); }
+.daychips button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.daychips button.today { text-decoration: underline; text-underline-offset: 3px; }
+.daychips button:disabled { opacity: .3; }
+.budget { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; background: var(--bg); }
+.budget .big { font: 800 26px/1.1 var(--font-ui); }
+.budget .big.zero { color: var(--good); } .budget .big.left { color: var(--under); } .budget .big.over { color: var(--warn); }
+.budget .cap { font-weight: 600; }
+.daytype { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; font-size: 13px; flex-wrap: wrap; }
+.pill { font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: #fff; }
+.bar { display: flex; height: 16px; border-radius: 6px; overflow: hidden; margin: 8px 0 2px; background: var(--line); }
+.bar span { height: 100%; }
+.bar .gap { background: repeating-linear-gradient(135deg, var(--line) 0 4px, var(--surface) 4px 8px); }
+.barlbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600; }
+.chip.on { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.chip .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+.flowbar { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; }
+.flowbar b { display: block; margin-bottom: 4px; }
+
+/* plan: day rows */
+.edge { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.edge .ico { width: 46px; text-align: center; font-size: 24px; }
+.edge .txt { flex: 1; } .edge .txt b { display: block; }
+.stepper { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.stepper button { width: 28px; height: 28px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; font-weight: 800; padding: 0; }
+.stepper span { min-width: 54px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.blk { border-bottom: 1px solid var(--line); }
+.blk .row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; }
+.blk .main { flex: 1; display: flex; align-items: center; gap: 10px; border: 0; background: none; text-align: left; padding: 0; min-width: 0; }
+.blk .main .txt b { display: block; line-height: 1.25; }
+.blk.sel { background: var(--accent-soft); border-radius: 12px; border-bottom-color: transparent; }
+.blk.bad .row { box-shadow: inset 3px 0 0 var(--warn); }
+.blk.calb .row { box-shadow: inset 3px 0 0 var(--under); }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 999px; margin-left: 4px; white-space: nowrap; }
+.tag.cal { background: var(--under-soft); color: var(--under); } .tag.focus { background: var(--accent-soft); color: var(--accent); } .tag.ess { background: var(--line); color: var(--muted); } .tag.pin { background: var(--warn-soft); color: var(--warn); }
+.lock { font-size: 13px; font-weight: 700; color: var(--under); border: 1px dashed var(--under); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.gaprow { font-size: 13px; color: var(--muted); padding: 5px 4px 5px 60px; border-bottom: 1px solid var(--line);
+  background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--line) 50%, transparent) 6px 12px); }
+.warnline { font-size: 13px; color: var(--warn); font-weight: 600; padding: 0 4px 6px 60px; }
+.editor { padding: 4px 10px 12px; }
+.editor .rule { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.editor .grid8 .art { width: 50px; height: 50px; }
+.editor .grid8 .title { font-size: 12px; }
+.addrow { padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.sec { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; font-weight: 600; }
+.legend { font-size: 13px; color: var(--muted); margin-top: 12px; }
+.legend li { margin-bottom: 3px; }
+.legend ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* templates */
+.tlist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tcard { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; line-height: 1.2; text-align: center; }
+.tcard.on { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.tcard .sw { width: 100%; height: 5px; border-radius: 3px; }
+.tcard small { font-weight: 500; color: var(--muted); }
+.palette { display: flex; gap: 6px; flex-wrap: wrap; }
+.palette button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; }
+.palette button.on { border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--surface); }
+.explain { font-size: 13px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
+
+/* week: sliders */
+.modebox { border: 1px dashed var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 10px; font-size: 13px; }
+.wstrip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px; }
+.wday { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 4px 2px 6px; text-align: center; font-size: 12px; line-height: 1.25; }
+.wday.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.wday .open { border: 0; background: none; padding: 0; font-weight: 800; display: block; width: 100%; }
+.wday .open.we { color: var(--wkend); }
+.wday .tpl { display: block; width: 100%; border: 0; border-radius: 6px; margin-top: 3px; padding: 2px 0; font-size: 11px; font-weight: 700; color: #fff; }
+.wday .bed { color: var(--muted); font-size: 11px; }
+.srow { border: 1px solid transparent; border-bottom-color: var(--line); padding: 6px 4px 8px; border-radius: 0; }
+.srow.flag-under { border: 1px solid var(--under); background: var(--under-soft); border-radius: 10px; margin: 3px 0; }
+.srow.flag-over { border: 1px solid var(--warn); background: var(--warn-soft); border-radius: 10px; margin: 3px 0; }
+.srow.dragged { box-shadow: inset 3px 0 0 var(--accent); }
+.srow .top { display: flex; align-items: center; gap: 8px; }
+.srow .nm { font-weight: 700; flex: 1; line-height: 1.2; }
+.srow .val { font-weight: 800; font-variant-numeric: tabular-nums; }
+.srow .sub { font-size: 12px; color: var(--muted); margin-left: 38px; }
+.srow .sl { display: flex; align-items: center; gap: 6px; margin: 4px 0 0 38px; }
+.slider { -webkit-appearance: none; appearance: none; flex: 1; height: 16px; border-radius: 999px; margin: 0; cursor: grab;
+  background: linear-gradient(90deg, var(--sc) var(--p), transparent var(--p)), repeating-linear-gradient(90deg, var(--line) 0 2px, transparent 2px 10px);
+  border: 1px solid var(--sc); }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 3px solid var(--sc);
+  box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: grab; }
+.slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 3px solid var(--sc); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.slider.ok { --sc: var(--neutral); } .slider.under { --sc: var(--under); } .slider.over { --sc: var(--warn); }
+.drag { width: 22px; flex: none; border: 0; background: none; padding: 0; font-size: 18px; color: var(--muted); cursor: grab; touch-action: none; line-height: 1; }
+.drag.fixed { cursor: default; font-size: 14px; }
+.blk.dragging { opacity: .45; }
+.blk.drop-before { box-shadow: 0 -3px 0 var(--accent); } .blk.drop-after { box-shadow: 0 3px 0 var(--accent); }
+.linkbtn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin: 4px 0 0 56px; }
+.linkbtn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.tag.new { background: #FFE9B8; color: #7A5300; }
+.tag.chg { background: var(--warn-soft); color: var(--warn); }
+.cal button .newd { position: absolute; top: 2px; left: 3px; font-size: 8px; font-weight: 800; color: #7A5300; background: #FFE9B8; border-radius: 4px; padding: 0 2px; }
+.fixbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-radius: 12px; padding: 8px 10px; margin: 6px 0 8px; font-size: 13px; }
+.fixbar.over { background: var(--warn-soft); border: 1px solid var(--warn); } .fixbar.under { background: var(--under-soft); border: 1px solid var(--under); }
+.mini-stamp { position: absolute; left: 50%; top: 120px; z-index: 9; transform: translateX(-50%) rotate(-8deg); padding: 8px 14px; border: 4px solid var(--good); color: var(--good); background: var(--surface);
+  border-radius: 14px; font: 800 20px/1.15 var(--font-ui); text-align: center; animation: stamp .45s cubic-bezier(.2,1.6,.4,1), fadeaway .5s ease-in 1.8s forwards; pointer-events: none; }
+.mini-stamp small { display: block; font-size: 12px; }
+@keyframes fadeaway { to { opacity: 0; transform: translateX(-50%) rotate(-8deg) translateY(-20px); } }
+.pm { width: 28px; height: 28px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; font-weight: 800; padding: 0; }
+
+/* month */
+.syncbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 8px; }
+.cal .h { font-size: 11px; color: var(--muted); text-align: center; font-weight: 700; }
+.cal .h.we { color: var(--wkend); }
+.cal button { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 2px 0 3px; min-height: 64px; background: var(--bg); line-height: 1.05; display: flex; flex-direction: column; align-items: center; }
+.cal button .dn { font-size: 13px; font-weight: 800; }
+.cal button.we .dn { color: var(--wkend); }
+.cal button .th { font-size: 9px; font-weight: 700; margin-top: 1px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+.cal button .evd { position: absolute; top: 2px; right: 3px; font-size: 9px; color: var(--under); font-weight: 800; }
+.cal button.past { opacity: .55; }
+.cal button.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cal button.selday { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.daypanel { border: 1px solid var(--accent); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; background: var(--surface); }
+.daypanel h3 { margin: 0 0 4px; font-size: 16px; }
+.crow { display: grid; grid-template-columns: 34px 1fr auto; gap: 4px 8px; align-items: center; padding: 6px 2px 4px; border-bottom: 1px solid var(--line); }
+.crow .nm { font-weight: 700; line-height: 1.2; }
+.crow .nums { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.crow .cbar { grid-column: 2 / 4; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.crow .cbar span { display: block; height: 100%; border-radius: 999px; }
+.crow .subs { grid-column: 2 / 4; font-size: 12px; color: var(--muted); }
+.crow .subs div { display: flex; justify-content: space-between; gap: 6px; border-top: 1px dotted var(--line); padding: 1px 0; }
+.goal { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.goal.ok { background: var(--accent-soft); color: var(--good); } .goal.short { background: var(--warn-soft); color: var(--warn); } .goal.none { background: var(--line); color: var(--muted); }
+.thead { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0 2px; }
+
+/* sheet */
+.sheet { position: absolute; inset: 0; background: var(--surface); padding: 16px; overflow-y: auto; z-index: 8; animation: rpop .25s ease-out; }
+.sheet h2 { font: 600 20px/1.3 var(--font-head); margin: 0 0 4px; }
+@keyframes rpop { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
+.stamp { margin: 18px auto 10px; width: 210px; padding: 10px; border: 4px solid var(--good); color: var(--good); border-radius: 14px; text-align: center;
+  font: 800 21px/1.15 var(--font-ui); transform: rotate(-8deg); animation: stamp .45s cubic-bezier(.2,1.6,.4,1); }
+.stamp small { display: block; font-size: 13px; font-weight: 700; }
+@keyframes stamp { from { transform: rotate(-8deg) scale(2.2); opacity: 0; } to { transform: rotate(-8deg) scale(1); opacity: 1; } }
+
+.notes { max-width: 920px; margin: 24px auto 0; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.notes h2 { font-size: 15px; margin: 0 0 6px; }
+.notes ul, .notes ol { margin: 0 0 10px; padding-left: 20px; }
+.stickyhead { position: sticky; top: 0; z-index: 7; background: var(--surface); padding-top: 4px; margin: 0 -4px; padding: 4px 4px 0; }
+.stickyhead .budget { box-shadow: 0 4px 8px rgba(0,0,0,.06); }
+.draftbar { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+.draftbar.dirty { border-color: var(--warn); background: var(--warn-soft); box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+.draftbar .btn:disabled { opacity: .4; cursor: default; }
+.draftbar .q { font-size: 12px; color: var(--muted); }
+.toast button { margin-left: 12px; border: 1px solid currentColor; background: none; color: inherit; border-radius: 999px; padding: 2px 12px; font-weight: 700; }
+.stepchips .chip { padding: 2px 9px; font-size: 12px; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; max-width: calc(100vw - 32px); z-index: 50; }
+@media (max-width: 440px) { .phone { border-radius: 18px; padding: 12px 10px 76px; } .grid8 .art { width: 64px; height: 64px; } .cal button { min-height: 58px; } .art.cal { width: 24px; height: 24px; } }
+</style>
+</head>
+<body class="idle-2 shadow-drop">
+  <div class="controls">
+    <span class="tag">Mockup controls (not part of the app)</span>
+    <label>Plan-ahead moment
+      <select id="moment">
+        <option value="evening" selected>A · evening, right after the checkout</option>
+        <option value="before">B · morning, before the first tap</option>
+        <option value="after">C · morning, after the first tap</option>
+      </select>
+    </label>
+    <button class="btn" type="button" id="startFlow">Play this moment</button>
+    <button class="btn" type="button" id="ff">Clock +15 min</button>
+    <button class="btn" type="button" id="closeapp">Close the app with unsaved plan changes</button>
+    <button class="btn" type="button" id="tmrw">Adjust tomorrow's plan (from the Sleep tile) → Plans</button>
+    <button class="btn" type="button" id="late">Late start (09:30) → adjust in Plans</button>
+    <label>Calendar sync (later in Settings)
+      <select id="sync">
+        <option value="daily">sync daily</option>
+        <option value="monthly" selected>sync first day of month (+ Resync button)</option>
+        <option value="oneway">one way: app → calendar only</option>
+        <option value="off">off</option>
+      </select>
+    </label>
+    <label>Idle motion <select id="idle"><option value="0">off</option><option value="1">subtle</option><option value="2" selected>medium</option><option value="3">strong</option></select></label>
+    <label>Shadow <select id="shadow"><option value="">standard</option><option value="shadow-on">soft oval under tile</option><option value="shadow-drop" selected>drop shadow (Photoshop style)</option></select></label>
+    <label><input type="checkbox" id="tint"> Background tint per tile</label>
+    <button class="btn" type="button" id="reset">Reset</button>
+  </div>
+  <p class="layout-note" id="momentNote"></p>
+
+  <div class="phone" id="phone">
+    <div id="view"></div>
+    <div class="sheet" id="sheet" hidden></div>
+    <nav class="nav"><button type="button" data-nav="tap" aria-pressed="false">Tap</button><button type="button" data-nav="plan" aria-pressed="true">Plan</button></nav>
+  </div>
+
+  <div class="notes">
+    <h2>New in Plans v7</h2>
+    <ul>
+      <li><b>Save check when leaving Plans:</b> tapping "Tap" (bottom bar or "see it in the Tap tab") with unsaved changes opens "Save your plan?": <b>Save changes now</b> · <b>Review changes</b> (opens the first changed day) · <b>Revert</b> (back to the last saved plan).</li>
+      <li><b>App closed with unsaved changes:</b> the same check comes first at the next planning moment (evening "Plan tomorrow", morning prompt). Try it: "Close the app with unsaved plan changes", then "Play this moment".</li>
+      <li>The orange save bar now lists the changed days; each one opens that day.</li>
+    </ul>
+    <h2>Earlier (v6)</h2>
+    <ul>
+      <li><b>Undo last Plan done:</b> after saving, the bar shows "↶ Undo last Plan done (+ N calendar changes)". One click takes the plan back AND takes those calendar changes back. Only the last save, no history. It disappears as soon as you edit again (then "Undo changes" is back).</li>
+      <li><b>The time bar stays on screen</b> (Day + Templates): the save bar and the "left to plan" box with the coloured day bar stick to the top while you scroll and change blocks.</li>
+    </ul>
+    <h2>Earlier (v5)</h2>
+    <ul>
+      <li><b>Plan edits are a draft.</b> Nothing is saved while you edit, calendar changes included. A bar sticks to the top of every Plan page: <b>Undo changes</b> (back to the last saved plan), <b>Reset defaults</b> (back to the templates; themes and calendar dates stay) and <b>Plan done ✓</b> (saves everything and sends all calendar changes at once). The bar turns orange and lists the waiting calendar changes as soon as something is unsaved.</li>
+      <li>"Push change to calendar" is now "Done changing"; "Add to calendar" only queues. The month's separate "Sync cal" button is gone: Plan done sends. "⟳ Resync" (pulling new dates) stays.</li>
+      <li>The 7-second Undo messages are gone. "Plan ready" (plan ahead) and the late-start "Plan done → back to tapping" also save.</li>
+      <li><b>Tomorrow entry point</b> (button in the controls, = v9.2's "Adjust tomorrow's plan" on the Sleep tile): opens tomorrow's day plan with the same "Start from" chips and "Plan ready ✓" as planning ahead after the checkout.</li>
+      <li>Late start: you can switch between Auto-adjust, Shift and Keep freely before saving.</li>
+    </ul>
+    <h2>Earlier (v4)</h2>
+    <ul>
+      <li>Exact week + / − with step choice (auto · 15 min · 30 min · 1 h), Auto-fix only spreads what is left over the tiles you did not touch, late-start entry point.</li>
+    </ul>
+    <h2>Earlier (v3)</h2>
+    <ul>
+      <li>Drag to reorder (⠿), fixed = order locked (📌), linked wake-up / bedtime (🔗), two-way calendar buttons, approve new dates, week Auto-fix, Plan ready → straight back to tapping.</li>
+    </ul>
+    <h2>Decided</h2>
+    <ul><li>"Revert" = back to the last saved plan (Samuel, 13 Nov). "Reset defaults" stays the way back to the templates.</li></ul>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+const $ = id => document.getElementById(id);
+const A = '../v6/assets/';
+const D = 750;                                   // every clip: 750 ms
+const EIN = 'cubic-bezier(.5,0,.8,.4)';          // ease-in on the fall
+const CROUCH = 'cubic-bezier(.2,.7,.3,1)';
+const T = (x, y, sx = 1, sy = 1, r = 0) => `translate(${x}%, ${y}%) rotate(${r}deg) scale(${sx}, ${sy})`;
+
+// K = keyframes from rows [ms, x, y, sx, sy, rotate, easing]. delay shifts the start and squeezes the rest into 750 ms.
+function K(rows, delay = 0) {
+  return rows.map(([ms, x = 0, y = 0, sx = 1, sy = 1, r = 0, e]) => {
+    const t = delay + ms * (D - delay) / D;
+    const f = { offset: t / D, transform: T(x, y, sx, sy, r) };
+    if (e) f.easing = e;
+    return f;
+  });
+}
+const hop = (up, lean = 0, d = 0) => K([[0], [95, 0, 0, 1.04, .92, 0, CROUCH], [315, 0, -up, .97, 1.05, lean, EIN], [525], [585, 0, 0, 1.06, .90, 0, 'ease-out'], [675, 0, -.5, .99, 1.02], [750]], d);
+const pop = (up, d = 0) => K([[0], [130, 0, 3, .6, 1.1, 0, 'cubic-bezier(.2,1.4,.4,1)'], [345, 0, -up, 1.15, .92], [450, 0, -2, .97, 1.03, -6], [555, 0, 0, 1.02, .99, 4], [650, 0, 0, 1, 1, -2], [750]], d);
+const swing = (a, b, c, d = 0) => K([[0], [200, 0, 0, 1, 1, a], [400, 0, 0, 1, 1, b], [580, 0, 0, 1, 1, c], [750]], d);
+const PRESS = [{ offset: 0, transform: 'scale(1)' }, { offset: .1, transform: 'scale(0.95)', easing: 'cubic-bezier(.3,1.6,.5,1)' }, { offset: .3, transform: 'scale(1)' }, { offset: 1, transform: 'scale(1)' }];
+
+// Element boxes in px of 512 (from measure.py): [x0, y0, x1, y1]
+const BOX = {
+  a01: [[102,29,405,481],[55,119,376,440],[303,168,453,355]],
+  a02: [[22,23,489,489],[33,117,341,464],[266,167,470,370]],
+  a03: [[77,43,434,376],[102,39,409,337],[240,163,488,347]],
+  a04: [[92,29,386,477],[56,29,477,487],[412,76,452,433]],
+  a05: [[118,32,391,487],[57,29,264,460],[263,151,485,357]],
+  a06: [[32,47,479,453],[122,284,391,486],[246,71,485,327]],
+  a07: [[57,62,453,450],[52,18,208,489],[305,157,472,352]],
+  a08: [[99,57,399,456],[252,173,464,346],[164,11,344,155]],
+  a09: [[44,35,490,482],[35,99,482,437],[310,165,474,405]],
+  a10: [[31,35,472,460],[56,110,455,318],[27,105,210,287]],
+  a11: [[161,20,354,492],[23,30,492,482],[60,141,463,370]],
+  a12: [[181,33,330,476],[273,175,471,355],[27,182,260,319]],
+  a13: [[110,32,425,478],[100,287,411,480],[274,169,479,360]],
+  a14: [[71,47,440,472],[57,28,205,475],[248,0,481,448]],
+  a15: [[22,23,493,478],[43,124,255,393],[51,41,458,467]],
+  a16: [[122,31,386,483],[138,65,472,446],[31,36,481,475]]
+};
+const BG_SCALE = { 1: 1, 2: 1.037, 3: 1.22 };    // makes the 3 patch variants the same size
+
+// Element spec: e = 1..3, r = target rect in px of 512 (patch inside ≈ 80..432), a = anchor (b = bottom centre, c = centre),
+// pv = tap pivot inside the element box (0..1, 0..1), idle = breathe / sway, clip = clip to the patch, track = tap motion.
+const TILES = {
+  a09: { title: 'Work', els: [
+    { e: 2, r: [82,230,250,400], a: 'b', pv: [.5,1], track: K([[0],[200,0,0,1.05,1.05,1.5],[280,0,0,1.05,1.05,-1.5],[360,0,0,1.03,1.03,1],[450],[750]]) },
+    { e: 1, r: [150,130,420,420], a: 'b', pv: [.5,1], idle: 'breathe', track: K([[0],[150,0,2,1.01,.98],[300,0,-1],[450],[750]]) },
+    { e: 3, r: [345,105,432,230], a: 'c', pv: [.5,1], track: K([[0],[330,0,-8,1,1,10,EIN],[520,0,0,1,1,-6],[640,0,0,1.04,.95],[750]], 120) } ] },
+  a08: { title: 'Commute', els: [
+    { e: 1, r: [110,95,410,425], a: 'b', pv: [.2,1], clip: true, track: K([[0],[95,-2,0,1,1,0,'cubic-bezier(.6,0,.9,.5)'],[280,80,0,1,1,-6],[280.1,-80,0,1,1,-3,'cubic-bezier(.15,.8,.3,1)'],[525,3],[585,0,1.2,1.02,.97,0,'ease-out'],[750]]) } ] },
+  a01: { title: 'Family', els: [
+    { e: 1, r: [170,100,385,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(4) },
+    { e: 2, r: [82,245,250,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(6, 0, 60) },
+    { e: 3, r: [350,300,428,405], a: 'b', pv: [.5,1], idle: 'sway', track: pop(6, 120) } ] },
+  a02: { title: 'Friends', els: [
+    { e: 1, r: [150,95,400,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(7) },
+    { e: 2, r: [82,210,240,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(6, -4, 60) },
+    { e: 3, r: [330,110,432,215], a: 'c', pv: [.5,.2], idle: 'sway', track: pop(8, 120) } ] },
+  a05: { title: 'Chores', els: [
+    { e: 2, r: [82,190,200,425], a: 'b', pv: [.5,1], track: K([[0],[190,-6],[380,4],[560,-2],[750]]) },
+    { e: 1, r: [160,95,350,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(5) },
+    { e: 3, r: [325,215,432,325], a: 'c', pv: [.5,0], idle: 'sway', track: K([[0],[200,0,0,1.1,.92],[380,0,0,1,1,5],[560,0,0,1,1,-3],[750]]) } ] },
+  a06: { title: 'Food', els: [
+    { e: 2, r: [165,335,345,432], a: 'b', pv: [.5,1], track: K([[0],[150,0,0,1,1.15],[300,0,0,1,.95],[450,0,0,1,1.1],[750]]) },
+    { e: 1, r: [95,85,365,370], a: 'b', pv: [.5,1], track: K([[0],[100,0,0,1.06,.9],[300,0,-5,.97,1.05,0,EIN],[525],[585,0,0,1.05,.92],[750]]) },
+    { e: 3, r: [330,215,432,330], a: 'c', pv: [.25,.8], track: swing(12, -12, 5) } ] },
+  a07: { title: 'Shopping', els: [
+    { e: 1, r: [140,170,420,420], a: 'b', pv: [.5,1], track: hop(4) },
+    { e: 2, r: [92,120,180,420], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(9, 8, 60) },
+    { e: 3, r: [355,110,422,180], a: 'c', pv: [.5,.5], idle: 'sway', track: K([[0],[330,0,-6,1,1,10],[560,0,0,1,1,-5],[750]], 120) } ] },
+  a10: { title: 'Admin', els: [
+    { e: 1, r: [120,140,400,405], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(6) },
+    { e: 2, r: [260,340,432,425], a: 'b', pv: [0,.5], track: K([[0],[230,0,0,1,1,6],[420,0,0,1,1,-4],[750]]) },
+    { e: 3, r: [98,102,160,164], a: 'c', pv: [.5,.5], track: K([[0],[200,0,-6,.15,1],[330,0,-10,1,1],[460,0,-6,.15,1],[600],[750]], 120) } ] },
+  a11: { title: 'Bureaucracy', els: [
+    { e: 2, r: [270,110,432,400], a: 'b', pv: [.5,1], track: K([[0],[200],[275,-1],[350,1],[425,-1],[500,1],[575],[750]]) },
+    { e: 1, r: [185,90,310,425], a: 'b', pv: [.5,1], idle: 'breathe', track: K([[0],[180,0,-3,.98,1.03],[300,0,0,1.04,.95],[450,0,-3,.98,1.03],[560,0,0,1.04,.95],[750]]) },
+    { e: 3, r: [82,180,235,270], a: 'c', pv: [.9,.7], track: K([[0],[300,0,-5,1,1,8],[480,0,0,1,1,-6],[750]]) } ] },
+  a12: { title: 'Health appointment', els: [
+    { e: 1, r: [200,90,300,425], a: 'b', pv: [.5,1], track: K([[0],[300,0,0,.97,1.08],[450,0,0,1.02,.96],[580,0,0,.99,1.02],[750]]) },
+    { e: 2, r: [310,190,428,300], a: 'c', pv: [.5,.5], track: K([[0],[150,0,0,1.18,1.18],[260],[370,0,0,1.12,1.12],[480],[750]]) },
+    { e: 3, r: [84,250,215,330], a: 'c', pv: [.5,.5], track: K([[0],[200,3],[320],[450,3],[570],[750]]) } ] },
+  a13: { title: 'House repairs', els: [
+    { e: 2, r: [88,345,250,432], a: 'b', pv: [.5,1], track: K([[0],[300,0,0,1.06,.9],[420,0,-1,.98,1.03],[550],[750]]) },
+    { e: 1, r: [140,95,370,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(5) },
+    { e: 3, r: [330,285,432,385], a: 'c', pv: [.1,.9], track: K([[0],[150,0,0,1,1,-25],[300,0,0,1,1,8],[450,0,0,1,1,-15],[560,0,0,1,1,5],[750]]) } ] },
+  a15: { title: 'Car repairs', els: [
+    { e: 1, r: [95,110,430,425], a: 'b', pv: [.5,1], track: K([[0],[300,0,-4,1,1,-3,EIN],[525],[585,0,0,1.04,.95],[750]]) },
+    { e: 2, r: [84,290,165,425], a: 'b', pv: [.5,1], track: K([[0],[95,0,0,1.04,.92],[315,0,-6,1,1,6,EIN],[525,0,0,1,1,-6],[600,0,0,1.05,.93],[750]], 60) } ] },
+  a16: { title: 'Maintenance', els: [
+    { e: 3, r: [175,74,430,250], a: 'c', pv: [.5,.5], track: K([[0],[150,-1],[225,1],[300,-1],[375,1],[450],[750]]) },
+    { e: 1, r: [140,130,320,425], a: 'b', pv: [.5,1], idle: 'breathe', track: K([[0],[95,0,0,1.03,.94],[315,0,-5,.98,1.04],[525],[585,0,0,1.05,.92],[750]]) },
+    { e: 2, r: [300,215,432,425], a: 'b', pv: [.5,1], idle: 'breathe', track: K([[0],[200,0,0,1,1,8],[400,0,0,1,1,-8],[580,0,0,1,1,3],[750]]) } ] },
+  a04: { title: 'Hobbies', els: [
+    { e: 2, r: [82,120,225,425], a: 'b', pv: [.5,0], idle: 'sway', track: K([[0],[230,0,0,1,1,6],[420,0,0,1,1,-4],[600,0,0,1,1,2],[750]]) },
+    { e: 1, r: [160,95,375,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(4) },
+    { e: 3, r: [380,130,425,410], a: 'b', pv: [.5,1], track: K([[0],[300,0,-8,1,1,-15],[480,0,0,1,1,8],[750]]) } ] },
+  a03: { title: 'Chilling', els: [
+    { e: 2, r: [95,90,200,190], a: 'c', pv: [.5,.5], track: K([[0],[300,0,0,1.12,1.12,15],[550,0,0,1,1,-4],[750]]) },
+    { e: 1, r: [120,200,395,420], a: 'b', pv: [.5,.8], idle: 'breathe', track: K([[0],[150,0,2,1,1,3],[400,0,-3,1,1,-2],[600,0,1],[750]]) },
+    { e: 3, r: [320,240,432,330], a: 'c', pv: [.5,.5], track: K([[0],[330,0,-8,1,1,-20,EIN],[560,0,0,1,1,15],[630,0,0,1.08,.9],[750]], 120) } ] },
+  a14: { title: 'Problem solving', els: [
+    { e: 2, r: [84,140,180,425], a: 'b', pv: [.5,1], track: K([[0],[250,0,0,1,1,2],[375,0,0,1,1,-2],[500],[750]]) },
+    { e: 1, r: [165,140,365,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(8) },
+    { e: 3, r: [355,85,432,300], a: 'b', pv: [.5,0], idle: 'sway', track: swing(14, -8, 3) } ] }
+};
+
+// Tile order for backgrounds: same as the contact sheet (a01 = 1, a02 = 2, a03 = 3, a04 = 1, ...)
+const bgOf = id => TILES[id] ? ((parseInt(id.slice(1), 10) - 1) % 3) + 1 : 1;
+const groupOf = tid => GROUPS.find(g => g.tiles.includes(tid));
+
+function bgLayer(n) {
+  return `<div class="layer bgwrap" style="transform:scale(${BG_SCALE[n]})"><img src="${A}background_rgba_0000${n}_.png" alt=""></div>`;
+}
+function placeOf(box, r, a) {
+  const bw = box[2] - box[0], bh = box[3] - box[1];
+  const s = Math.min((r[2] - r[0]) / bw, (r[3] - r[1]) / bh);
+  const tx = (r[0] + r[2]) / 2 - s * (box[0] + box[2]) / 2;
+  const ty = a === 'c' ? (r[1] + r[3]) / 2 - s * (box[1] + box[3]) / 2 : r[3] - s * box[3];
+  return { s, tx, ty };
+}
+const pct = px => (px / 512 * 100).toFixed(2) + '%';
+
+function tileArt(tid) {
+  if (TEXT_TILES[tid]) return bgLayer(1) + `<div class="tile-text">${TEXT_TILES[tid]}</div>`;
+  const t = TILES[tid], boxes = BOX[tid];
+  let h = bgLayer(bgOf(tid));
+  t.els.forEach(el => {
+    const box = boxes[el.e - 1], p = placeOf(box, el.r, el.a);
+    const pvx = p.tx + p.s * (box[0] + el.pv[0] * (box[2] - box[0]));
+    const pvy = p.ty + p.s * (box[1] + el.pv[1] * (box[3] - box[1]));
+    const ipx = box[0] + el.pv[0] * (box[2] - box[0]), ipy = box[1] + el.pv[1] * (box[3] - box[1]);
+    h += `<div class="layer${el.clip ? ' patchclip' : ''}">
+      <div class="tap" data-el="${tid}-${el.e}" style="transform-origin:${pct(pvx)} ${pct(pvy)}">
+        <div class="place" style="transform:translate(${pct(p.tx)}, ${pct(p.ty)}) scale(${p.s.toFixed(4)})">
+          <div class="idle ${el.idle || ''}" style="transform-origin:${pct(ipx)} ${pct(ipy)}"><img src="${A}${tid}_e${el.e}_00001_.png" alt=""></div>
+        </div>
+      </div>
+    </div>`;
+  });
+  return h;
+}
+
+// ================= Plans v2 =================
+const TEXT_TILES = {};
+const TITLE = { a09: 'Work', a08: 'Commute', a05: 'Chores', a06: 'Food', a01: 'Family', a02: 'Friends', a04: 'Hobby', a03: 'Chill' };
+const TINT = { a09: '#7E9BB6', a08: '#4FA3A0', a05: '#C9A98A', a06: '#E0A25A', a01: '#C77FA3', a02: '#D88A72', a04: '#9C88CC', a03: '#E0B45F' };
+const ALL8 = ['a09', 'a08', 'a05', 'a06', 'a01', 'a02', 'a04', 'a03'];
+const DETAIL = {
+  a09: ['Client work', 'Production', 'Emails & calls', 'Problem solving'],
+  a08: ['Picking up kids', 'Drive to friends', 'Drive to family', 'Appointments'],
+  a05: ['Cleaning, dishes', 'Laundry', 'Admin & paperwork', 'Shopping', 'Repairs', 'Appointments'],
+  a06: ['Coffee / breakfast', 'Lunch break', 'Dinner', 'Cooking'],
+  a01: ['Watching TV', 'Kids', 'Partner', 'Outing'],
+  a02: ['Meeting', 'Call', 'Helping out', 'Party'],
+  a04: ['Making music', 'Synths', 'Problem solving'],
+  a03: ['TV', 'Games', 'Sofa', 'Walk']
+};
+const PALETTE = ['#6E8CA8', '#B77393', '#8A77BC', '#B08D6C', '#4FA3A0', '#D0904A', '#C9765E', '#6F9A5C'];
+const b = (k, d, dur, f = {}) => Object.assign({ k, d, dur, pin: null }, f);
+const ESS = () => [b('a06', 'Coffee / breakfast', 30, { ess: 1 }), b('a06', 'Lunch break', 45, { ess: 1 }), b('a05', 'Cleaning, dishes', 45, { ess: 1 }), b('a06', 'Dinner', 45, { ess: 1 })];
+let TPLS;
+function initTpls() {
+  const e = ESS();
+  TPLS = {
+    work: { kind: 'base', name: 'Workday', color: '#6E8CA8', icon: 'a09', wake: 420, bed: 1350, blocks: [e[0], b('a09', null, 270), e[1], e[2], b('a09', 'Client work', 180), b('a08', 'Picking up kids', 30, { pin: 840 }), e[3], b('a01', 'Watching TV', 90), b('a04', 'Making music', 60), b('a03', 'TV', 135)] },
+    weekend: { kind: 'base', name: 'Weekend', color: '#B77393', icon: 'a01', wake: 480, bed: 1380, blocks: [b('a06', 'Coffee / breakfast', 45, { ess: 1 }), b('a01', 'Outing', 180), b('a06', 'Lunch break', 60, { ess: 1 }), b('a05', 'Cleaning, dishes', 45, { ess: 1 }), b('a05', 'Shopping', 45), b('a08', 'Drive to friends', 45), b('a02', 'Meeting', 150), b('a06', 'Dinner', 60, { ess: 1 }), b('a03', 'Games', 270)] },
+    empty: { kind: 'starter', name: 'Empty', color: '#8F9A96', icon: null, wake: 420, bed: 1350, blocks: ESS() },
+    hobby: { kind: 'theme', name: 'Hobby day', color: '#8A77BC', icon: 'a04', keepWork: false, wake: 420, bed: 1350, blocks: (x => [x[0], b('a04', 'Making music', 240, { focus: 1 }), x[1], b('a04', 'Synths', 120, { focus: 1 }), x[2], b('a02', 'Call', 60), x[3]])(ESS()) },
+    chores: { kind: 'theme', name: 'Chores day', color: '#B08D6C', icon: 'a05', keepWork: false, wake: 420, bed: 1350, blocks: (x => [x[0], b('a05', 'Laundry', 120, { focus: 1 }), b('a05', 'Repairs', 120, { focus: 1 }), x[1], b('a05', 'Shopping', 90, { focus: 1 }), x[2], x[3]])(ESS()) },
+    vacation: { kind: 'theme', name: 'Vacation', color: '#4FA3A0', icon: 'a01', keepWork: false, wake: 420, bed: 1350, blocks: (x => [x[0], b('a01', 'Outing', 300, { focus: 1 }), x[1], x[2], b('a02', 'Meeting', 120), x[3]])(ESS()) }
+  };
+}
+const themeIds = () => Object.keys(TPLS).filter(id => TPLS[id].kind === 'theme');
+const cp = x => Object.assign({}, x);
+const r5 = m => Math.max(5, Math.round(m / 5) * 5);
+
+// November 2026: the 1st is a Sunday. wd: Mon = 0 … Sun = 6. Today = Thu 12.
+const TODAY = 12, DAYS = 30;
+const wdOf = d => (d + 5) % 7;
+const isWE = d => wdOf(d) >= 5;
+const DAYN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const dname = d => `${DAYN[wdOf(d)]} ${d} Nov`;
+// calendar dates: always fixed start + planned length
+const EV_FIRST = { 11: [{ k: 'a09', d: 'Client call', start: 600, dur: 60 }], 12: [{ k: 'a05', d: 'Dentist', start: 900, dur: 60 }], 19: [{ k: 'a01', d: "Parents' evening", start: 1110, dur: 90 }], 25: [{ k: 'a09', d: 'Client call', start: 840, dur: 60 }] };
+const EV_NEW = { 14: [{ k: 'a02', d: 'Birthday party', start: 900, dur: 180 }], 20: [{ k: 'a08', d: 'Car service', start: 480, dur: 60 }] };
+const DONE_F = { a09: 1.08, a08: 1.3, a05: .7, a06: 1, a01: .85, a02: .6, a04: 1.5, a03: 1.2 };
+const GOALS = { a09: ['about', 150], a05: ['min', 25], a01: ['min', 40], a02: ['min', 12], a04: ['min', 30], a03: ['max', 95] };
+const RW = { a09: 'Work logged.', a08: 'Commute logged.', a05: 'Chores logged.', a06: 'Food logged. Mmm.', a01: 'Family time logged.', a02: 'Friend time logged.', a04: 'Hobby time logged. Protect it.', a03: 'Chilling logged. No guilt.' };
+const NOTES = {
+  evening: 'A: you plan tomorrow right after the evening checkout. Press "Play this moment" to see it.',
+  before: 'B: in the morning the tap screen asks first; the timer starts only after you said yes, adjusted, or skipped.',
+  after: 'C: in the morning you tap first (e.g. coffee), and the plan prompt appears below the running tile.'
+};
+
+let late = null, saved = '', calQ = new Map();
+function stateStr() { return JSON.stringify({ days, meta, approved, TPLS }); }
+function isDirty() { return stateStr() !== saved || calQ.size > 0; }
+let prevDone = null, stickyExtra = '', afterSafe = null;
+function changedDays() { const o = JSON.parse(saved).days; const out = []; for (let d = 1; d <= DAYS; d++) if (JSON.stringify(days[d]) !== JSON.stringify(o[d])) out.push(d); return out; }
+function sheetSafety(kind, after) {   // safety check: never leave a half-edited plan behind
+  afterSafe = after;
+  const ch = changedDays(), n = calQ.size;
+  const head = kind === 'leave' ? 'Save your plan?' : 'Unsaved plan changes from last time';
+  const sub = kind === 'leave' ? 'You are leaving Plans with changes that are not saved. A half-saved plan can leave a broken day.' : 'The app was closed before you pressed Plan done. Sort this out first, then plan.';
+  $('sheet').innerHTML = `<h2>${head}</h2><p class="small muted">${sub}</p>
+    <div class="card" style="border-color:var(--warn);background:var(--warn-soft)"><b>Changed: ${ch.length ? ch.map(dname).join(' · ') : 'templates only'}</b>${n ? `<span class="small">${n} calendar change${n > 1 ? 's' : ''} waiting: ${[...calQ.values()].join(' · ')}</span>` : ''}</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <button type="button" class="btn primary" data-safe="save">Save changes now</button>
+      <button type="button" class="btn" data-safe="review">Review changes</button>
+      <button type="button" class="btn" data-safe="revert">Revert (back to the last saved plan)</button></div>`;
+  $('sheet').hidden = false;
+}
+function planDone() { const n = calQ.size; prevDone = { state: saved, n, list: [...calQ.values()] }; for (let d = 1; d <= DAYS; d++) days[d].blocks.forEach(x => { x.changed = false; x.pendingAdd = false; }); calQ = new Map(); saved = stateStr(); return n; }
+let meta, days, cur, tab, view, sel, adding, flow, tap, selTpl, selDay, dragged, synced, approved, calEdit, linked, touchedT, stepMode;
+function evsFor(d) {
+  const s = $('sync').value; if (s === 'off' || s === 'oneway') return [];
+  const fresh = s === 'monthly' && synced ? (EV_NEW[d] || []).map(e => Object.assign({}, e, { isNew: !approved[d + '|' + e.d] })) : [];
+  return (EV_FIRST[d] || []).concat(s === 'daily' ? (EV_NEW[d] || []) : fresh);
+}
+function reset() {
+  initTpls();
+  meta = {}; days = {}; synced = false; approved = {}; calEdit = -1; linked = true; touchedT = new Set(); stepMode = 'auto';
+  for (let d = 1; d <= DAYS; d++) meta[d] = { base: isWE(d) ? 'weekend' : 'work', theme: null, focusMin: null, edited: false };
+  meta[21].theme = 'hobby'; meta[7].theme = 'chores'; meta[27].theme = 'vacation'; meta[28].theme = 'vacation'; meta[29].theme = 'vacation';
+  meta[22].base = 'work';   // "I have to work this Sunday"
+  for (let d = 1; d <= DAYS; d++) rebuild(d);
+  cur = TODAY; tab = 'day'; view = 'plan'; sel = -1; adding = false; flow = null; selTpl = 'hobby'; selDay = TODAY; dragged = null;
+  tap = { idx: -1, elapsed: 0, off: null, clock: null, prompt: false, promptDone: false };
+  document.documentElement.style.setProperty('--tint', 'transparent');
+  $('sheet').hidden = true;
+  calQ = new Map(); saved = stateStr();
+}
+
+// ---------- building a day from day type + theme + calendar ----------
+function buildDay(d) {
+  const m = meta[d], base = TPLS[m.base];
+  let blocks;
+  if (!m.theme) blocks = base.blocks.map(cp);
+  else {
+    const th = TPLS[m.theme];
+    blocks = th.blocks.map(cp);
+    if (m.base === 'work' && th.keepWork) blocks.splice(1, 0, ...TPLS.work.blocks.filter(x => x.k === 'a09').map(cp));
+    if (m.focusMin != null) {
+      const fs = blocks.filter(x => x.focus), sum = fs.reduce((a, x) => a + x.dur, 0);
+      if (sum) fs.forEach(x => x.dur = r5(x.dur * m.focusMin / sum));
+    }
+  }
+  evsFor(d).forEach(e => blocks.push({ k: e.k, d: e.d, dur: e.dur, pin: e.start, cal: true, isNew: e.isNew }));
+  const awake = base.bed - base.wake, total = blocks.reduce((a, x) => a + x.dur, 0), room = awake - total;
+  if (room > 0 && m.theme) blocks.push(b('a03', 'Sofa', room, { fill: 1 }));
+  else if (room < 0) {   // calendar date or big focus: shrink the flexible, non-focus, non-always-do blocks
+    const flex = blocks.filter(x => !x.ess && !x.cal && x.pin == null && !x.focus), fsum = flex.reduce((a, x) => a + x.dur, 0);
+    if (fsum) {
+      const f = Math.max(0, (fsum + room) / fsum); flex.forEach(x => x.dur = r5(x.dur * f));
+      const diff = awake - blocks.reduce((a, x) => a + x.dur, 0), big = flex.reduce((a, x) => x.dur > a.dur ? x : a, flex[0]);
+      big.dur = Math.max(5, big.dur + diff);
+    }
+  }
+  return { d, wake: base.wake, bed: base.bed, blocks };
+}
+function rebuild(d) { days[d] = buildDay(d); }
+function rebuildUsing(id) { for (let d = 1; d <= DAYS; d++) { const m = meta[d]; if (!m.edited && (m.theme === id || (!m.theme && m.base === id) || id === '*')) rebuild(d); } }
+
+const $$ = s => document.querySelector(s);
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, 3000); }
+let undoSnap = null;
+function snap() { undoSnap = JSON.stringify({ days, meta, approved }); }
+function toastUndo(msg) {   // calendar actions + auto-fix: one tap undoes it (and, in the real app, the calendar change)
+  const t = $('toast'); t.innerHTML = ''; t.append(msg); const u = document.createElement('button'); u.type = 'button'; u.textContent = 'Undo'; u.dataset.undo = '1'; t.append(u);
+  t.hidden = false; clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, 7000);
+}
+const fmtT = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const fmtD = m => { m = Math.round(m); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return r ? `${h} h ${String(r).padStart(2, '0')}` : `${h} h`; };
+const fmtH = m => (Math.round(m / 6) / 10).toString().replace(/\.0$/, '') + ' h';
+const btitle = x => TITLE[x.k] + (x.d ? ' · ' + x.d : '');
+function art(tid, cls = '') { return `<span class="art ${cls}" data-art="${tid}"><span class="press">${tileArt(tid)}</span></span>`; }
+function playArt(root) {
+  if (!root) return;
+  const tid = root.dataset.art;
+  root.querySelector('.press').animate(PRESS, { duration: D, easing: 'linear' });
+  if (TILES[tid]) TILES[tid].els.forEach(el => root.querySelectorAll(`[data-el="${tid}-${el.e}"]`).forEach(n => n.animate(el.track, { duration: D, easing: 'linear' })));
+}
+function dayLabel(d) {
+  const m = meta[d];
+  if (m.theme) return { name: TPLS[m.theme].name, color: TPLS[m.theme].color, icon: TPLS[m.theme].icon };
+  if (m.base === 'work' && isWE(d)) return { name: 'Work', color: TPLS.work.color, icon: 'a09' };
+  return { name: TPLS[m.base].name, color: TPLS[m.base].color, icon: null };
+}
+
+// ---------- the day math ----------
+// fixed blocks (calendar dates, fixed start) are anchors. All other blocks flow in order and split around anchors.
+function layoutDay(p) {
+  const anchors = p.blocks.map((x, i) => ({ x, i })).filter(o => o.x.pin != null).sort((a, c) => a.x.pin - c.x.pin);
+  const flows = p.blocks.map((x, i) => ({ x, i })).filter(o => o.x.pin == null);
+  const segs = []; let t = p.wake, ai = 0;
+  const putAnchor = a => {
+    if (a.x.pin > t) segs.push({ gap: a.x.pin - t, at: t });
+    segs.push({ i: a.i, start: a.x.pin, end: a.x.pin + a.x.dur, dur: a.x.dur, conflict: a.x.pin < t ? t - a.x.pin : 0 });
+    t = Math.max(t, a.x.pin + a.x.dur);
+  };
+  flows.forEach(o => {
+    let rem = o.x.dur;
+    while (rem > 0) {
+      const na = anchors[ai];
+      if (na && na.x.pin < t + rem) {
+        const before = Math.max(0, na.x.pin - t);
+        if (before > 0) { segs.push({ i: o.i, start: t, end: t + before, dur: before }); rem -= before; t += before; }
+        putAnchor(na); ai++;
+      } else { segs.push({ i: o.i, start: t, end: t + rem, dur: rem }); t += rem; rem = 0; }
+    }
+  });
+  while (ai < anchors.length) putAnchor(anchors[ai++]);
+  if (t < p.bed) segs.push({ gap: p.bed - t, at: t, tail: true });
+  const cnt = {}; segs.forEach(s => { if (s.gap == null) { cnt[s.i] = (cnt[s.i] || 0) + 1; s.part = cnt[s.i]; } });
+  segs.forEach(s => { if (s.gap == null) s.parts = cnt[s.i]; });
+  const unplanned = segs.reduce((a, s) => a + (s.gap || 0), 0), planned = p.blocks.reduce((a, x) => a + x.dur, 0);
+  return { segs, unplanned, planned, over: Math.max(0, t - p.bed), end: t, awake: p.bed - p.wake };
+}
+function perTile(p) { const o = {}; ALL8.forEach(k => o[k] = 0); p.blocks.forEach(x => o[x.k] += x.dur); return o; }
+function perDetail(p, o) { p.blocks.forEach(x => { const key = x.k + '|' + (x.d || '(no subcategory)'); o[key] = (o[key] || 0) + x.dur; }); return o; }
+function dayBar(p, L) {
+  const span = Math.max(p.bed, L.end) - p.wake;
+  let h = `<div class="bar"${L.over ? ` style="background:linear-gradient(90deg, transparent ${(p.bed - p.wake) / span * 100}%, var(--warn-soft) 0)"` : ''}>`;
+  L.segs.forEach(r => {
+    const w = (r.gap != null ? r.gap : r.dur) / span * 100;
+    h += r.gap != null ? `<span class="gap" style="width:${w}%" title="unplanned"></span>` : `<span style="width:${w}%;background:${TINT[p.blocks[r.i].k]}" title="${btitle(p.blocks[r.i])}"></span>`;
+  });
+  return h + '</div>';
+}
+
+// ---------- PLAN view ----------
+function renderPlan() {
+  const T = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['templates', 'Templates']];
+  const dirty = isDirty();
+  stickyExtra = '';
+  let body = tab === 'day' ? renderDay() : tab === 'week' ? renderWeek() : tab === 'month' ? renderMonth() : renderTemplates();
+  let bar = `<div class="draftbar${dirty ? ' dirty' : ''}">${dirty ? `<b>● Unsaved plan changes</b>
+      ${changedDays().length ? `<span class="q">Changed days: ${changedDays().map(d => `<button type="button" class="textlink" style="font-size:12px;padding:0 4px" data-openday="${d}">${dname(d)}</button>`).join('')}</span>` : ''}
+      <span class="q">${calQ.size ? `${calQ.size} calendar change${calQ.size > 1 ? 's' : ''} waiting: ${[...calQ.values()].join(' · ')}` : 'Nothing is saved or sent to your calendar until you press Plan done.'}</span>`
+      : `<span class="small muted">✓ All saved. Edits stay a draft until you press Plan done.</span>`}
+    <div class="chips">${!dirty && prevDone ? `<button type="button" class="btn" data-undodone="1">↶ Undo last Plan done${prevDone.n ? ` (+ ${prevDone.n} calendar change${prevDone.n > 1 ? 's' : ''})` : ''}</button>` : `<button type="button" class="btn" data-undoall="1"${dirty ? '' : ' disabled'}>Undo changes</button>`}<button type="button" class="btn" data-resetdef="1">Reset defaults</button><button type="button" class="btn primary" data-plandone="1"${dirty ? '' : ' disabled'}>Plan done ✓</button></div></div>`;
+  return `<h2 class="page">Plan</h2><div class="tabs">${T.map(([t, n]) => `<button type="button" data-tab="${t}" aria-pressed="${tab === t}">${n}</button>`).join('')}</div>
+    <div class="stickyhead">${bar}${stickyExtra}</div>` + body;
+}
+function budgetBox(p, L, extra) {
+  const cls = L.over ? 'over' : L.unplanned ? 'left' : 'zero';
+  const big = L.over ? '+' + fmtD(L.over) : L.unplanned ? fmtD(L.unplanned) : '0 min';
+  const cap = L.over ? 'past the planned bedtime. Shown, not blocked.' : L.unplanned ? 'awake time without a job. Fine: it shows as a gap.' : 'left to plan. Every awake hour has a job.';
+  return `<div class="budget"><div class="big ${cls}">${big}</div><div class="cap">${cap}</div>
+    <div class="small muted">Awake ${fmtD(L.awake)} (${fmtT(p.wake)}–${fmtT(p.bed)}) · planned ${fmtD(L.planned)}</div>${extra || ''}
+    ${dayBar(p, L)}<div class="barlbl"><span>${fmtT(p.wake)} wake up</span><span>${fmtT(p.bed)} bedtime</span></div></div>`;
+}
+function renderDay() {
+  const p = days[cur], L = layoutDay(p), m = meta[cur], lab = dayLabel(cur);
+  let h = '';
+  if (late && cur === TODAY) {
+    const lm = late.min;
+    h += `<div class="flowbar"><b>Late start: first tap at ${fmtT(late.at)}, ${fmtD(lm)} after your planned wake-up</b>
+      <div class="small" style="margin-bottom:6px">Change the plan for the rest of today? Or move blocks by hand below.</div>
+      <div class="chips"><button type="button" class="chip${late.done === 'auto' ? ' on' : ''}" data-late="auto">Auto-adjust (shrinks everything except work + fixed times)</button>
+      <button type="button" class="chip${late.done === 'shift' ? ' on' : ''}" data-late="shift">Shift the whole day (bedtime ${fmtD(lm)} later)</button>
+      <button type="button" class="chip${late.done === 'keep' ? ' on' : ''}" data-late="keep">Keep the plan</button></div>
+      <div class="nextrow" style="justify-content:flex-start;margin-top:8px"><button type="button" class="btn primary" data-lateok="1">Plan done → back to tapping</button></div></div>`;
+  }
+  if (flow) {
+    const opts = (isWE(cur) ? [['b:weekend', 'Weekend'], ['b:work', 'Work this day']] : [['b:work', 'Workday']]).concat(themeIds().map(id => ['t:' + id, TPLS[id].name]), [['t:empty', 'Empty (always-do only)'], ['yday', 'Same as yesterday']]);
+    h += `<div class="flowbar"><b>Planning ${cur === TODAY ? 'today' : 'tomorrow'} · ${dname(cur)}</b><div class="small" style="margin-bottom:6px">Start from:</div>
+      <div class="chips">${opts.map(([v, n]) => `<button type="button" class="chip${m.from === v ? ' on' : ''}" data-from="${v}">${n}</button>`).join('')}</div></div>`;
+  }
+  const mon = cur - wdOf(cur);
+  h += `<div class="daychips">${DAYN.map((n, j) => { const d = mon + j, ok = d >= 1 && d <= DAYS;
+    return `<button type="button" data-day="${d}" aria-pressed="${d === cur}" class="${d === TODAY ? 'today' : ''}${j >= 5 ? ' we' : ''}"${ok ? '' : ' disabled'}>${d === TODAY ? 'Today' : d === TODAY + 1 ? 'Tmrw' : n}<small>${ok ? d + ' Nov' : '—'}</small></button>`; }).join('')}</div>`;
+  const evN = p.blocks.filter(x => x.cal).length;
+  stickyExtra = budgetBox(p, L, `<div class="daytype"><span class="pill" style="background:${lab.color}">${lab.name}</span><span class="muted">${isWE(cur) ? 'weekend day' : 'weekday'}${evN ? ` · ${evN} calendar date${evN > 1 ? 's' : ''}` : ''}${m.edited ? ' · planned by hand' : ''}</span>
+    <button type="button" class="textlink" style="font-size:13px;padding:0" data-tomonth="${cur}">change day type / theme</button></div>`);
+  h += renderBlocks(p, L, 'day');
+  h += `<div class="legend"><b>How the tap screen uses this</b><ul>
+    <li>"First on your day" = <b>${L.segs.find(s => s.gap == null) ? btitle(p.blocks[L.segs.find(s => s.gap == null).i]) : 'nothing planned (shows your last tile instead)'}</b>; "next" follows this order.</li>
+    <li>Still on a block after its planned end = overtime → checkout. Tiles picked off-plan never make overtime.</li>
+    <li>Calendar dates come first; the blocks around them split and move.</li></ul>
+    ${cur === TODAY ? `<div class="nextrow" style="justify-content:flex-start"><button type="button" class="textlink" data-nav="tap">see it in the Tap tab →</button></div>` : ''}</div>`;
+  if (flow) h += `<div class="nextrow" style="margin-top:14px"><button type="button" class="btn primary" data-ready="1">Plan ready ✓</button></div>`;
+  return h;
+}
+// shared block list: day plans and templates
+function renderBlocks(p, L, ctx) {
+  const isTheme = ctx === 'tpl' && TPLS[selTpl].kind !== 'base';
+  let h = `<div class="edge"><span class="ico" aria-hidden="true">☀</span><span class="txt"><b>Wake up</b><span class="small muted">${isTheme ? 'Taken from the day type (weekday / weekend) on the day itself.' : 'Before your first tap = unlogged (checkout asks).'}</span></span>
+    ${isTheme ? `<span class="muted small">${fmtT(p.wake)}</span>` : `<span class="stepper"><button type="button" data-wake="-15" aria-label="15 min earlier">−</button><span>${fmtT(p.wake)}</span><button type="button" data-wake="15" aria-label="15 min later">+</button></span>`}</div>
+    ${isTheme ? '' : `<button type="button" class="linkbtn${linked ? ' on' : ''}" data-link="1">${linked ? `🔗 linked: moving wake-up or bedtime moves both (awake ${fmtD(p.bed - p.wake)}, sleep ${fmtD(1440 - (p.bed - p.wake))})` : '⛓️‍💥 not linked: wake-up and bedtime move separately'}</button>`}`;
+  L.segs.forEach(r => {
+    if (r.gap != null) { h += `<div class="gaprow">${fmtT(r.at)}–${fmtT(r.at + r.gap)} · ${fmtD(r.gap)} ${isTheme && r.tail ? 'left over → becomes Chill on the day' : 'unplanned'}</div>`; return; }
+    const x = p.blocks[r.i], on = sel === r.i;
+    const tags = (x.isNew ? '<span class="tag new">new · approve</span>' : '') + (x.changed ? '<span class="tag chg">changed · goes to calendar with Plan done</span>' : '') + (x.pendingAdd ? '<span class="tag chg">added · goes to calendar with Plan done</span>' : '') + (x.cal ? `<span class="tag cal">${x.mine ? 'in calendar (from app)' : 'calendar'}</span>` : '') + (x.pin != null && !x.cal ? '<span class="tag pin">fixed time</span>' : '') + (x.focus ? '<span class="tag focus">focus</span>' : '') + (x.ess ? '<span class="tag ess">always-do</span>' : '') + (x.fill ? '<span class="tag ess">leftover</span>' : '');
+    const handle = x.pin != null ? `<span class="drag fixed" title="fixed: order cannot change" aria-label="fixed">📌</span>` : `<button type="button" class="drag" data-drag="${r.i}" aria-label="drag to reorder ${btitle(x)}" title="drag to reorder">⠿</button>`;
+    h += `<div class="blk${on ? ' sel' : ''}${r.conflict ? ' bad' : ''}${x.cal ? ' calb' : ''}" data-bi="${r.i}"${x.pin == null ? ' data-flex="1"' : ''}><div class="row">${handle}
+      <button class="main" type="button" data-sel="${r.i}">${art(x.k, 'sm')}<span class="txt"><b>${btitle(x)}${r.parts > 1 ? ` <span class="muted" style="font-weight:600">(part ${r.part}/${r.parts})</span>` : ''}</b>
+        <span class="small muted">${fmtT(r.start)}–${fmtT(r.end)}</span>${tags}</span></button>
+      ${x.cal ? `<span class="lock">${fmtD(x.dur)}</span>` : r.part > 1 ? `<span class="small muted">${fmtD(r.dur)}</span>`
+        : `<span class="stepper"><button type="button" data-dur="${r.i}:-15" aria-label="15 min shorter">−</button><span>${fmtD(x.dur)}</span><button type="button" data-dur="${r.i}:15" aria-label="15 min longer">+</button></span>`}
+    </div>${r.conflict ? `<div class="warnline">Overlaps the block before by ${fmtD(r.conflict)}. Shown, not blocked.</div>` : ''}${on && r.part === r.parts ? editor(x, r, ctx) : ''}</div>`;
+  });
+  h += `<div class="addrow">${adding ? `<div class="small muted" style="margin-bottom:6px">Add which tile? (goes before bedtime)</div><div class="grid8">${ALL8.map(k => `<button type="button" class="tile" data-add="${k}">${art(k)}<span class="title">${TITLE[k]}</span></button>`).join('')}</div>
+    <div class="nextrow"><button type="button" class="textlink" data-addtoggle="1">cancel</button></div>` : `<button type="button" class="btn" data-addtoggle="1">+ Add activity</button>`}</div>`;
+  h += `<div class="edge"><span class="ico" aria-hidden="true">☾</span><span class="txt"><b>Planned bedtime</b><span class="small muted">${isTheme ? 'Taken from the day type on the day itself.' : 'A timer still running after this = "after bedtime" (checkout asks).'}</span></span>
+    ${isTheme ? `<span class="muted small">${fmtT(p.bed)}</span>` : `<span class="stepper"><button type="button" data-bed="-15" aria-label="15 min earlier">−</button><span>${fmtT(p.bed)}</span><button type="button" data-bed="15" aria-label="15 min later">+</button></span>`}</div>`;
+  return h;
+}
+function editor(x, r, ctx) {
+  if (x.cal) {
+    const ed = calEdit === r.i;
+    return `<div class="editor"><div class="rule" style="margin-top:0">${x.mine ? 'Planned here and pushed to your calendar.' : 'From your calendar.'} <b>Fixed start ${fmtT(x.pin)}, planned length ${fmtD(x.dur)}</b>, always.</div>
+      ${x.isNew ? `<div class="chips" style="margin-top:6px"><button type="button" class="btn primary" data-approveblk="${r.i}">Approve new date</button><span class="small muted">until approved it is only a suggestion</span></div>` : ''}
+      ${ed ? `<div class="chips" style="margin-top:8px"><span class="small">Start</span><span class="stepper"><button type="button" data-cpin="-15" aria-label="15 min earlier">−</button><span>${fmtT(x.pin)}</span><button type="button" data-cpin="15" aria-label="15 min later">+</button></span>
+          <span class="small">Length</span><span class="stepper"><button type="button" data-cdur="-15" aria-label="15 min shorter">−</button><span>${fmtD(x.dur)}</span><button type="button" data-cdur="15" aria-label="15 min longer">+</button></span></div>
+        <div class="chips" style="margin-top:8px"><button type="button" class="btn primary" data-cpush="1">Done changing</button><span class="small muted">sent to your calendar with Plan done</span></div>` : ''}
+      <div class="nextrow" style="justify-content:flex-start;margin-top:6px">${$('sync').value === 'off' ? '<span class="small muted">Calendar sync is off (Settings).</span>' : ed ? '' : `<button type="button" class="textlink" data-cedit="${r.i}">change</button>`}<button type="button" class="textlink" data-sel="${r.i}">done</button></div></div>`;
+  }
+  return `<div class="editor">
+    <div class="sec" style="margin-top:2px">Tile</div>
+    <div class="grid8">${ALL8.map(k => `<button type="button" class="tile${k === x.k ? ' on' : ''}" data-setk="${k}">${art(k)}<span class="title">${TITLE[k]}</span></button>`).join('')}</div>
+    <div class="sec">Subcategory (optional)</div>
+    <div class="chips"><button type="button" class="chip${!x.d ? ' on' : ''}" data-setd="">none</button>${DETAIL[x.k].map(d => `<button type="button" class="chip${x.d === d ? ' on' : ''}" data-setd="${d}">${d}</button>`).join('')}</div>
+    <div class="sec">Timing</div>
+    <div class="chips"><button type="button" class="chip${x.pin == null ? ' on' : ''}" data-pin="0">flexible (order can change)</button><button type="button" class="chip${x.pin != null ? ' on' : ''}" data-pin="1">fixed time (order locked)</button>
+      ${x.pin != null ? `<span class="stepper"><button type="button" data-pinm="-15" aria-label="15 min earlier">−</button><span>${fmtT(x.pin)}</span><button type="button" data-pinm="15" aria-label="15 min later">+</button></span>` : ''}</div>
+    ${x.pin != null && ctx === 'day' && $('sync').value !== 'off' ? `<div class="chips" style="margin-top:6px"><button type="button" class="btn" data-tocal="1">+ Add to calendar</button><span class="small muted">optional: e.g. not if you only sometimes pick them up</span></div>` : ''}
+    ${ctx === 'tpl' && TPLS[selTpl].kind === 'theme' ? `<div class="chips" style="margin-top:6px"><button type="button" class="chip${x.focus ? ' on' : ''}" data-focus="1">counts as this theme's focus</button></div>` : ''}
+    <div class="rule">Still on ${TITLE[x.k]} after ${fmtT(r.end)} without tapping "next"? The extra time is <b>overtime</b> and waits in the evening checkout.${x.ess ? ' Always-do item (from Empty): stays on every themed day.' : ''}</div>
+    <div class="nextrow" style="justify-content:flex-start;margin-top:8px"><button type="button" class="textlink" data-mv="-1">↑ move up</button><button type="button" class="textlink" data-mv="1">↓ move down</button><button type="button" class="textlink" data-del="1">delete</button><button type="button" class="textlink" data-sel="${r.i}">done</button></div>
+  </div>`;
+}
+
+// ---------- TEMPLATES ----------
+function renderTemplates() {
+  const t = TPLS[selTpl];
+  const card = id => { const x = TPLS[id]; return `<button type="button" class="tcard${id === selTpl ? ' on' : ''}" data-tpl="${id}"><span class="sw" style="background:${x.color}"></span>${x.icon ? art(x.icon, 'xs') : '<span class="art xs" style="display:grid;place-items:center;font-size:18px">○</span>'}${x.name}<small>${x.kind === 'base' ? 'base day' : x.kind === 'starter' ? 'always-do' : 'theme'}</small></button>`; };
+  let h = `<div class="explain"><b>Templates</b> fill your days so you do not have to plan every hour.
+    <b>Base days</b> (Workday, Weekend) follow the calendar. <b>Empty</b> holds what you always do (food, chores); every theme starts from it.
+    A <b>theme</b> is a day's focus (Hobby day, Vacation …). Put it on a day in Month; that day is then filled from the theme. Changes here update every day that uses the template, unless you planned that day by hand.</div>`;
+  h += `<div class="sec" style="margin-top:4px">Base days · Always-do</div><div class="tlist">${['work', 'weekend', 'empty'].map(card).join('')}</div>`;
+  h += `<div class="sec">Themes</div><div class="tlist">${themeIds().map(card).join('')}<button type="button" class="tcard" data-newtpl="1"><span class="sw" style="background:var(--line)"></span><span class="art xs" style="display:grid;place-items:center;font-size:22px">+</span>New theme<small>from Empty</small></button></div>`;
+  h += `<div class="sec">Edit: ${t.name}</div>`;
+  if (t.kind !== 'starter') {
+    h += `<label class="small muted">Name</label><input type="text" id="tplName" value="${t.name.replace(/"/g, '&quot;')}" aria-label="Template name">`;
+    if (t.kind === 'theme') h += `<div class="small muted" style="margin:6px 0 4px">or name it after a tile (sets the tile picture too):</div><div class="chips">${ALL8.map(k => `<button type="button" class="chip" data-tname="${k}">${TITLE[k]} day</button>`).join('')}</div>`;
+    h += `<div class="small muted" style="margin:8px 0 4px">Colour</div><div class="palette">${PALETTE.map(c => `<button type="button" aria-label="colour ${c}" class="${c === t.color ? 'on' : ''}" style="background:${c}" data-color="${c}"></button>`).join('')}</div>`;
+  } else h += `<div class="small muted">Empty has no name or colour: it is the starting point. Add here what you need on every day, themes included.</div>`;
+  if (t.kind === 'theme') {
+    const fsum = t.blocks.filter(x => x.focus).reduce((a, x) => a + x.dur, 0);
+    h += `<div class="small muted" style="margin:10px 0 4px">On a weekday</div><div class="chips"><button type="button" class="chip${!t.keepWork ? ' on' : ''}" data-keep="0">day off (no work)</button><button type="button" class="chip${t.keepWork ? ' on' : ''}" data-keep="1">keep work, fit the focus around it</button></div>
+      <div class="small" style="margin-top:8px">Focus: <b>${fmtD(fsum)}</b> (blocks tagged "focus"). Can be changed per day in Month.</div>`;
+  }
+  const L = layoutDay(t);
+  stickyExtra = budgetBox(t, L); h += `<div class="sec">Blocks of ${t.name}</div>` + renderBlocks(t, L, 'tpl');
+  return h;
+}
+
+// ---------- WEEK (sliders) ----------
+const WK = [9, 10, 11, 12, 13, 14, 15];
+const isFlex = x => !x.cal && x.pin == null;
+function weekStats() {
+  let awake = 0, planned = 0, unpl = 0, over = 0;
+  WK.forEach(d => { const L = layoutDay(days[d]); awake += L.awake; planned += L.planned; unpl += L.unplanned; over += L.over; });
+  const net = planned - awake;
+  return { awake, planned, unpl, over, net, state: net > 10 ? 'over' : net < -10 ? 'under' : 'ok' };
+}
+function renderWeek() {
+  const st = weekStats();
+  const per = {}; ALL8.forEach(k => per[k] = 0); WK.forEach(d => { const o = perTile(days[d]); ALL8.forEach(k => per[k] += o[k]); });
+  const big = st.state === 'over' ? '+' + fmtH(st.net) : st.state === 'under' ? fmtH(-st.net) : '0 h';
+  let h = `<div class="budget"><div class="big ${st.state === 'over' ? 'over' : st.state === 'under' ? 'left' : 'zero'}">${big}</div>
+    <div class="cap">${st.state === 'over' ? 'over-assigned this week (more planned than awake time)' : st.state === 'under' ? 'unplanned this week' : 'left to plan this week'}</div>
+    <div class="small muted">Week 46 · 9–15 Nov · awake ${fmtH(st.awake)} · planned ${fmtH(st.planned)}</div></div>`;
+  h += `<div class="small muted" style="margin-bottom:4px">Tap a day name to plan that day. Tap its label to change its type or theme (Month).</div><div class="wstrip">${WK.map(d => { const lab = dayLabel(d);
+    return `<div class="wday${d === TODAY ? ' today' : ''}"><button type="button" class="open${isWE(d) ? ' we' : ''}" data-openday="${d}">${d === TODAY ? 'Today' : DAYN[wdOf(d)]}<br><span class="muted" style="font-weight:500">${d}</span></button>
+      <button type="button" class="tpl" style="background:${lab.color}" data-tomonth="${d}">${lab.name.replace(' day', '')}</button><span class="bed">☾ ${fmtT(days[d].bed)}</span></div>`; }).join('')}</div>`;
+  const fixable = st.state !== 'ok';
+  const stp = stepSize(st.net);
+  h += fixable ? `<div class="fixbar ${st.state}"><b>${st.state === 'over' ? 'Over-assigned' : 'Under-assigned'} by ${fmtD(Math.abs(st.net))}.</b>
+      <span>Fix tiles with + / − (${fmtD(stp)} per tap), or</span><button type="button" class="btn primary" data-autofix="1">Auto-fix</button>
+      <span class="chips stepchips" style="width:100%"><span class="small">+ / − step:</span>${[['auto', 'auto'], ['15', '15 min'], ['30', '30 min'], ['60', '1 h']].map(([v, n]) => `<button type="button" class="chip${stepMode === v ? ' on' : ''}" data-step="${v}">${n}</button>`).join('')}</span>
+      <span class="small muted" style="width:100%">Auto = big steps while far off (1 h), smaller as you get close (30 → 15 → 5 min). Auto-fix spreads only what is left, over the tiles you did not touch${touchedT.size ? ` (touched: ${[...touchedT].map(k => TITLE[k]).join(', ')})` : ''}. Fixed times never change. Or leave it and catch up next week: your choice.</span></div>`
+    : `<div class="small muted" style="margin-bottom:6px">Drag a slider to change a tile's hours this week. The rest turns red or blue until it is balanced again. Calendar dates and fixed times never change.</div>`;
+  h += `<div class="thead"><span></span><span>Tile · drag the bar = hours this week</span><span></span></div>`;
+  ALL8.forEach(k => {
+    const fixed = WK.reduce((a, d) => a + days[d].blocks.filter(x => x.k === k && !isFlex(x)).reduce((s, x) => s + x.dur, 0), 0);
+    const done = WK.reduce((a, d) => a + (d < TODAY ? perTile(days[d])[k] * DONE_F[k] : d === TODAY ? perTile(days[d])[k] * .45 : 0), 0);
+    const flag = st.state !== 'ok' && dragged !== k ? ' flag-' + st.state : '';
+    const mg = monthGoal(k);
+    const max = 60 * 60, pct = Math.min(100, per[k] / max * 100);
+    h += `<div class="srow${flag}${dragged === k ? ' dragged' : ''}"><div class="top">${art(k, 'xs')}<span class="nm">${TITLE[k]}</span><span class="val" id="val-${k}">${fmtH(per[k])}</span></div>
+      <div class="sl">${flag ? `<button type="button" class="pm" data-pm="${k}:-1" aria-label="${TITLE[k]} less">−</button>` : ''}
+        <input type="range" class="slider ${st.state}" min="0" max="${max}" step="30" value="${per[k]}" data-slide="${k}" aria-label="${TITLE[k]} hours this week" style="--p:${pct}%">
+        ${flag ? `<button type="button" class="pm" data-pm="${k}:1" aria-label="${TITLE[k]} more">+</button>` : ''}</div>
+      <div class="sub">done so far ${fmtH(done)}${fixed ? ` · ${fmtH(fixed)} fixed (calendar / fixed time)` : ''}</div>
+      <div class="sub" style="margin-top:2px">Month goal: ${mg}</div></div>`;
+  });
+  h += `<div class="legend">Bar colour = the whole week: <b style="color:var(--neutral)">grey</b> balanced · <b style="color:var(--under)">blue</b> under-assigned (unplanned time) · <b style="color:var(--warn)">red</b> over-assigned. "Done" = fake numbers.</div>`;
+  return h;
+}
+function goalTag(k, minutes) {
+  const p = minutes / 60, g = GOALS[k];
+  if (!g) return '<span class="goal none">no goal</span>';
+  const [type, v] = g;
+  if (type === 'min') return p >= v ? `<span class="goal ok">≥ ${v} h · plan reaches it</span>` : `<span class="goal short">≥ ${v} h · plan short ${Math.round(v - p)} h</span>`;
+  if (type === 'max') return p <= v ? `<span class="goal ok">≤ ${v} h · plan stays under</span>` : `<span class="goal short">≤ ${v} h · plan over by ${Math.round(p - v)} h</span>`;
+  return Math.abs(p - v) <= v * .1 ? `<span class="goal ok">≈ ${v} h · on track</span>` : `<span class="goal short">≈ ${v} h · plan ${p > v ? 'over' : 'under'} by ${Math.round(Math.abs(p - v))} h</span>`;
+}
+function monthGoal(k) { let m = 0; for (let d = 1; d <= DAYS; d++) m += perTile(days[d])[k]; return goalTag(k, m); }
+function stepSize(net) {
+  if (stepMode !== 'auto') return +stepMode;
+  const n = Math.abs(net); return n >= 120 ? 60 : n >= 45 ? 30 : n >= 15 ? 15 : Math.max(5, Math.round(n / 5) * 5);
+}
+function adjustTile(k, delta) {   // exact: adds / removes delta minutes, spread over the tile's flexible blocks this week
+  const bl = []; WK.forEach(d => days[d].blocks.forEach(x => { if (x.k === k && isFlex(x)) { bl.push(x); meta[d].edited = true; } }));
+  if (!bl.length) { if (delta > 0) { days[TODAY].blocks.push(b(k, null, delta)); } return; }
+  const tot = bl.reduce((a, x) => a + x.dur, 0); let done = 0;
+  bl.forEach(x => { const add = Math.round(delta * x.dur / tot / 5) * 5; const nd = Math.max(5, x.dur + add); done += nd - x.dur; x.dur = nd; });
+  const big = bl.reduce((a, x) => x.dur > a.dur ? x : a, bl[0]); big.dur = Math.max(5, big.dur + (delta - done));
+}
+function autoFix() {   // every day of the week: the other flexible blocks absorb the difference so the day is full again
+  WK.forEach(d => {
+    const L = layoutDay(days[d]), room = L.awake - L.planned;
+    if (!room) return;
+    let others = days[d].blocks.filter(x => !touchedT.has(x.k) && isFlex(x));
+    if (!others.length) others = days[d].blocks.filter(x => x.k !== dragged && isFlex(x));
+    const O = others.reduce((a, x) => a + x.dur, 0);
+    if (!O) return;
+    const f = Math.max(0, (O + room) / O);
+    others.forEach(x => x.dur = Math.max(5, Math.round(x.dur * f / 5) * 5));
+    const rest = (O + room) - others.reduce((a, x) => a + x.dur, 0), big = others.reduce((a, x) => x.dur > a.dur ? x : a, others[0]);
+    big.dur = Math.max(5, big.dur + rest); meta[d].edited = true;
+  });
+}
+function scaleTile(k, newTotal) {   // sets tile k's weekly total; returns change per day
+  const cur = {}, fixed = {}; let flexSum = 0, fixSum = 0;
+  WK.forEach(d => { cur[d] = 0; fixed[d] = 0; days[d].blocks.forEach(x => { if (x.k !== k) return; if (isFlex(x)) { cur[d] += x.dur; flexSum += x.dur; } else { fixed[d] += x.dur; fixSum += x.dur; } }); });
+  const target = Math.max(0, newTotal - fixSum);
+  const delta = {};
+  if (!flexSum) {
+    if (target <= 0) { WK.forEach(d => delta[d] = 0); return delta; }
+    const each = r5(target / 7);   // tile not planned yet this week: add one block per day
+    WK.forEach(d => { days[d].blocks.push(b(k, null, each)); meta[d].edited = true; delta[d] = each; }); return delta;
+  }
+  const f = target / flexSum;
+  WK.forEach(d => {
+    let after = 0;
+    days[d].blocks = days[d].blocks.filter(x => { if (x.k !== k || !isFlex(x)) return true; x.dur = Math.round(x.dur * f / 5) * 5; after += x.dur; return x.dur >= 5; });
+    delta[d] = after - cur[d]; if (delta[d]) meta[d].edited = true;
+  });
+  return delta;
+}
+function applySlide(k, val) { dragged = k; touchedT.add(k); scaleTile(k, val); render(); }
+
+// ---------- MONTH ----------
+function renderMonth() {
+  const s = $('sync').value;
+  const push = '<span class="small muted">Your changes go to the calendar with Plan done.</span>';
+  let h = `<div class="syncbar">${s === 'monthly' ? `<span class="muted">Calendar pulled ${synced ? 'just now' : 'on 1 Nov'}</span><span><button type="button" class="btn" data-resync="1">⟳ Resync</button> ${push}</span>`
+    : s === 'daily' ? `<span class="muted">Calendar pulls daily (Settings).</span>${push}` : s === 'oneway' ? `<span class="muted">One way: app → calendar (Settings).</span>${push}` : '<span class="muted">Calendar not connected (Settings).</span>'}</div>`;
+  h += `<div class="cal">${DAYN.map((n, j) => `<span class="h${j >= 5 ? ' we' : ''}">${n}</span>`).join('')}${'<span></span>'.repeat(wdOf(1))}`;
+  for (let d = 1; d <= DAYS; d++) {
+    const lab = dayLabel(d), themed = meta[d].theme || (meta[d].base === 'work' && isWE(d)), ev = days[d].blocks.filter(x => x.cal).length;
+    h += `<button type="button" class="${isWE(d) ? 'we' : ''}${d < TODAY ? ' past' : ''}${d === TODAY ? ' today' : ''}${d === selDay ? ' selday' : ''}" data-mday="${d}"
+      style="${themed ? `background:color-mix(in srgb, ${lab.color} 22%, var(--bg));border-color:${lab.color}` : ''}" aria-label="${dname(d)}, ${lab.name}${ev ? ', ' + ev + ' calendar dates' : ''}">
+      <span class="dn">${d}</span>${themed && lab.icon ? art(lab.icon, 'cal') : '<span class="art cal"></span>'}<span class="th">${themed ? lab.name : ''}</span>${ev ? `<span class="evd">cal</span>` : ''}${days[d].blocks.some(x => x.isNew) ? '<span class="newd">new</span>' : ''}</button>`;
+  }
+  h += `</div><div class="small muted" style="margin-bottom:8px">Date colour: <b>dark</b> weekday · <b style="color:var(--wkend)">pink</b> weekend. Tile + colour = the day's theme. <b style="color:var(--under)">cal</b> = calendar dates.</div>`;
+  const d = selDay, m = meta[d], lab = dayLabel(d), evs = days[d].blocks.filter(x => x.cal);
+  h += `<div class="daypanel"><h3>${dname(d)} <span class="pill" style="background:${lab.color};font-size:11px;vertical-align:2px">${lab.name}</span></h3>
+    <div class="small muted">${isWE(d) ? 'Weekend day' : 'Weekday'}${m.edited ? ' · planned by hand (a new theme replaces that)' : ''}</div>
+    ${isWE(d) ? `<div class="sec" style="margin-top:8px">Day type</div><div class="chips"><button type="button" class="chip${m.base === 'weekend' ? ' on' : ''}" data-mbase="weekend">Weekend</button><button type="button" class="chip${m.base === 'work' ? ' on' : ''}" data-mbase="work">Work this day</button></div>` : ''}
+    <div class="sec" style="margin-top:8px">Theme</div><div class="chips"><button type="button" class="chip${!m.theme ? ' on' : ''}" data-mtheme="">none</button>${themeIds().map(id => `<button type="button" class="chip${m.theme === id ? ' on' : ''}" data-mtheme="${id}"><span class="dot" style="background:${TPLS[id].color}"></span>${TPLS[id].name}</button>`).join('')}</div>
+    ${m.theme ? (() => { const fs = days[d].blocks.filter(x => x.focus), sum = fs.reduce((a, x) => a + x.dur, 0); const ft = fs[0] ? TITLE[fs[0].k] : 'Focus';
+      return `<div class="chips" style="margin-top:8px"><span class="small"><b>${ft} focus</b> this day</span><span class="stepper"><button type="button" data-mfocus="-30" aria-label="30 min less">−</button><span>${fmtD(sum)}</span><button type="button" data-mfocus="30" aria-label="30 min more">+</button></span></div><div class="small muted">The rest of the day adjusts around it.</div>`; })() : ''}
+    ${evs.length ? `<div class="small" style="margin-top:8px">${evs.map(x => `<div style="margin-top:4px"><span class="tag ${x.isNew ? 'new' : 'cal'}" style="margin:0 4px 0 0">${x.isNew ? 'new' : 'calendar'}</span>${fmtT(x.pin)} ${btitle(x)} · ${fmtD(x.dur)}${x.isNew ? ` <button type="button" class="chip" data-approve="${d}|${x.d}">Approve</button>` : ''}</div>`).join('')}</div>` : ''}
+    <div class="nextrow" style="justify-content:flex-start;margin-top:10px"><button type="button" class="btn primary" data-planday="${d}">Plan this day →</button></div></div>`;
+  // tiles + subcategories for the month (progress bars stay progress bars)
+  const per = {}, done = {}, det = {}; ALL8.forEach(k => { per[k] = 0; done[k] = 0; });
+  for (let dd = 1; dd <= DAYS; dd++) { const o = perTile(days[dd]); perDetail(days[dd], det); ALL8.forEach(k => { per[k] += o[k]; if (dd < TODAY) done[k] += o[k] * DONE_F[k]; else if (dd === TODAY) done[k] += o[k] * .45; }); }
+  h += `<div class="thead"><span></span><span>Tile · month goal · subcategories</span><span>planned · done</span></div>`;
+  ALL8.forEach(k => {
+    const tag = goalTag(k, per[k]);
+    const pct = per[k] ? Math.min(100, done[k] / per[k] * 100) : 0;
+    const subs = Object.keys(det).filter(key => key.startsWith(k + '|')).map(key => [key.split('|')[1], det[key]]).sort((a, c) => c[1] - a[1]);
+    h += `<div class="crow">${art(k, 'xs')}<span class="nm">${TITLE[k]} ${tag}</span><span class="nums">${fmtH(per[k])} · ${fmtH(done[k])}</span>
+      <span class="cbar"><span style="width:${pct}%;background:${TINT[k]}"></span></span>
+      <div class="subs">${subs.map(([n, v]) => `<div><span>${n}</span><span>${fmtH(v)}</span></div>`).join('')}</div></div>`;
+  });
+  h += `<div class="legend">Goals are placeholders (real goals = 02b Categories). Like YNAB's "underfunded": the month shows where the plan does not reach a goal.</div>`;
+  return h;
+}
+
+// ---------- TAP view (v8 layout A, fed by today's plan) ----------
+function renderTap() {
+  const p = days[TODAY], rows = layoutDay(p).segs.filter(r => r.gap == null);
+  const running = tap.idx >= 0 || tap.off;
+  const showIdx = tap.idx >= 0 ? tap.idx : 0;
+  const row = rows[showIdx], x = row ? p.blocks[row.i] : null;
+  const k = tap.off ? tap.off : x ? x.k : 'a03';
+  const label = !running ? 'First on your day' : tap.off ? 'Now · not in the plan' : `Now · block ${showIdx + 1} of ${rows.length}`;
+  const nm = tap.off ? TITLE[tap.off] : x ? btitle(x) + (row.parts > 1 ? ` (part ${row.part})` : '') : 'No plan yet';
+  const clockNow = tap.clock != null ? tap.clock + tap.elapsed : null;
+  let line = '';
+  if (!running) line = `<div class="planline">Planned ${row ? fmtT(row.start) + '–' + fmtT(row.end) : '—'} · woke ${fmtT(p.wake)}: time until your first tap shows as unlogged</div>`;
+  else if (tap.off) line = `<div class="planline">Off-plan tile: counts as tapped, never overtime. "next" goes back to the plan.</div>`;
+  else {
+    const ot = tap.elapsed - row.dur, pct = Math.min(100, tap.elapsed / row.dur * 100);
+    line = `<div class="planline${ot > 0 ? ' ot' : ''}"><div class="track"><div class="fill" style="width:${pct}%"></div></div>
+      ${ot > 0 ? `Overtime +${fmtD(ot)} · planned ${fmtD(row.dur)}, ended ${fmtT(row.end)}. The checkout will ask about it.` : `${x.cal ? 'From your calendar · ' : ''}${fmtD(tap.elapsed)} of ${fmtD(row.dur)} planned · ends ${fmtT(row.end)}`}</div>`;
+    if (clockNow > p.bed) line += `<div class="planline ot">After bedtime +${fmtD(clockNow - p.bed)} → checkout asks</div>`;
+  }
+  const nextIdx = tap.idx >= 0 ? tap.idx + 1 : (tap.off ? 0 : 1);
+  const nr = rows[nextIdx];
+  let h = `<div class="hero"><div class="label">${label}</div>
+    <button class="tile" type="button" data-hero="1" style="padding:0" aria-label="${nm}"><span class="stage">${art(k)}</span></button>
+    <div class="name">${nm}</div><div class="clock${running ? '' : ' off'}">${running ? fmtT(tap.elapsed) : '00:00'}</div>${line}</div>`;
+  h += `<div class="reward">${running ? (tap.msg || '') : 'Tap the tile to start your day.'}</div>`;
+  if (flow === null && tap.prompt) {
+    h += `<div class="card"><b>${running ? `${nm} is running. Plan the rest of today while you're at it?` : 'Good morning. Plan today before you start?'}</b>
+      <span class="small">Today: ${dayLabel(TODAY).name} + 1 calendar date (dentist 15:00). A good plan = fewer questions in the evening checkout.</span>
+      <div class="nextrow"><button type="button" class="btn primary" data-plannow="1">Adjust the plan</button><button type="button" class="textlink" data-planskip="1">skip</button></div></div>`;
+  }
+  h += `<div style="border-top:1px solid var(--line);padding-top:12px;margin-top:10px"><div class="nextrow">
+    ${nr ? `<button class="nextbtn" type="button" data-next="${nextIdx}">next: ${btitle(p.blocks[nr.i])} →</button>` : `<span class="small muted">Last block of the plan. Bedtime ${fmtT(p.bed)}.</span>`}
+    <button class="textlink" type="button" data-all="1">${tap.all ? 'hide' : 'pick'}</button></div>
+    ${tap.all ? `<div class="grid8" style="margin-top:10px">${ALL8.map(t => `<button class="tile${tap.off === t ? ' on' : ''}" type="button" data-pick="${t}">${art(t)}<span class="title">${TITLE[t]}</span></button>`).join('')}</div>` : ''}</div>`;
+  h += `<div class="legend">Simulated clock: ${clockNow != null ? fmtT(clockNow) : fmtT(p.wake) + ' (not started)'} · use "Clock +15 min" in the mockup controls to test overtime.</div>`;
+  return h;
+}
+function startBlock(idx, peel) {
+  const p = days[TODAY], rows = layoutDay(p).segs.filter(r => r.gap == null), row = rows[idx];
+  if (!row) return;
+  const go = () => {
+    tap.clock = tap.clock == null ? row.start : tap.clock + tap.elapsed;
+    tap.idx = idx; tap.off = null; tap.elapsed = 0; tap.msg = RW[p.blocks[row.i].k];
+    if (moment() === 'after' && !tap.promptDone && idx === 0) tap.prompt = true;
+    setTint(p.blocks[row.i].k); render(); playArt($$('.hero .stage > .art'));
+  };
+  if (peel) peelOff(go); else go();
+}
+function peelOff(then) {
+  const a = $$('.hero .stage > .art');
+  if (!a) { then(); return; }
+  a.animate([{ transform: 'none', opacity: 1 }, { transform: 'translate(-4%, 3%) rotate(-5deg)', offset: .25 }, { transform: 'translate(130%, -28%) rotate(32deg) scale(.9)', opacity: 0 }],
+    { duration: 380, easing: 'cubic-bezier(.5,0,.8,.5)', fill: 'forwards' });
+  setTimeout(then, 390);
+}
+function setTint(k) { document.documentElement.style.setProperty('--tint', $('tint').checked && TINT[k] ? TINT[k] : 'transparent'); }
+const moment = () => $('moment').value;
+
+// ---------- render + sheets ----------
+function render() {
+  $('view').innerHTML = view === 'tap' ? renderTap() : renderPlan();
+  document.querySelectorAll('.nav [data-nav]').forEach(x => x.setAttribute('aria-pressed', x.dataset.nav === view));
+}
+function sheetEvening() {
+  $('sheet').innerHTML = `<h2>Evening checkout</h2><div class="small muted">Thu 12 Nov · all sorted (see mockup v8 for the full checkout)</div>
+    <div class="stamp">Day closed<small>86 % · well sorted</small></div>
+    <div class="card"><b>Plan tomorrow? About 2 minutes.</b><span class="small">Fri 13 Nov · ${dayLabel(13).name}. Tomorrow's tap screen will propose block 1 as "First on your day".</span>
+      <div class="nextrow"><button type="button" class="btn primary" data-flowgo="tomorrow">Plan tomorrow</button><button type="button" class="textlink" data-closesheet="1">later, in the morning</button></div></div>`;
+  $('sheet').hidden = false;
+}
+function miniStamp(t, sub) {
+  const m = document.createElement('div'); m.className = 'mini-stamp'; m.innerHTML = `${t} ✓<small>${sub}</small>`;
+  $('phone').appendChild(m); setTimeout(() => m.remove(), 2400);
+}
+function sheetReady() {
+  const p = days[cur], L = layoutDay(p), first = L.segs.find(s => s.gap == null);
+  $('sheet').innerHTML = `<h2>${cur === TODAY ? 'Today' : 'Tomorrow'} is planned</h2>
+    <div class="stamp">Plan ready<small>${fmtT(p.wake)} – ${fmtT(p.bed)}</small></div>
+    <p>First on your day: <b>${first ? btitle(p.blocks[first.i]) : 'nothing planned'}</b>.</p>
+    <p>Planned bedtime <b>${fmtT(p.bed)}</b>. ${cur === TODAY ? '' : 'Sleep well.'}</p>
+    <div class="nextrow"><button type="button" class="btn primary" data-closesheet="tap">${cur === TODAY ? 'Back to tapping' : 'Close'}</button></div>`;
+  $('sheet').hidden = false;
+}
+
+// ---------- events ----------
+function target() { return tab === 'templates' ? TPLS[selTpl] : days[cur]; }
+function touched() { if (tab === 'templates') rebuildUsing(selTpl === 'empty' ? '*' : selTpl); else meta[cur].edited = true; }
+document.addEventListener('click', ev => {
+  const q = s => ev.target.closest(s); let e;
+  const p = target();
+  if ((e = q('[data-safe]'))) {
+    const v = e.dataset.safe, go = afterSafe; afterSafe = null; $('sheet').hidden = true;
+    if (v === 'review') { const ch = changedDays(); view = 'plan'; tab = 'day'; if (ch.length) cur = ch[0]; sel = -1; render(); toast('Here are your unsaved changes. Press Plan done when it looks right.'); return; }
+    if (v === 'save') { const n = planDone(); miniStamp('Plan saved', n ? `${n} calendar change${n > 1 ? 's' : ''} sent` : 'no calendar changes'); }
+    if (v === 'revert') { const o = JSON.parse(saved); days = o.days; meta = o.meta; approved = o.approved; TPLS = o.TPLS; calQ = new Map(); sel = -1; calEdit = -1; toast('Reverted to the last saved plan.'); }
+    if (go) go(); else render(); return;
+  }
+  if ((e = q('#closeapp'))) {
+    if (!isDirty()) { days[TODAY].blocks.find(x => isFlex(x)).dur += 15; days[14].blocks.find(x => isFlex(x)).dur += 30; meta[TODAY].edited = true; meta[14].edited = true; }
+    view = 'tap'; $('sheet').hidden = true; render(); toast('Simulated: the app was closed with unsaved plan changes. Now press "Play this moment".'); return;
+  }
+  if ((e = q('[data-nav]')) && view === 'plan' && e.dataset.nav === 'tap' && isDirty()) { sheetSafety('leave', () => { view = 'tap'; sel = -1; render(); }); return; }
+  if ((e = q('[data-nav]'))) { view = e.dataset.nav; sel = -1; adding = false; render(); return; }
+  if ((e = q('[data-tab]'))) { tab = e.dataset.tab; sel = -1; adding = false; render(); return; }
+  if ((e = q('[data-day]'))) { cur = +e.dataset.day; sel = -1; render(); return; }
+  if ((e = q('[data-openday]')) || (e = q('[data-planday]'))) { cur = +(e.dataset.openday || e.dataset.planday); tab = 'day'; sel = -1; render(); return; }
+  if ((e = q('[data-tomonth]'))) { selDay = +e.dataset.tomonth; tab = 'month'; render(); return; }
+  // month
+  if ((e = q('[data-mday]'))) { selDay = +e.dataset.mday; render(); return; }
+  if ((e = q('[data-mbase]'))) { meta[selDay].base = e.dataset.mbase; meta[selDay].edited = false; rebuild(selDay); render(); return; }
+  if ((e = q('[data-mtheme]'))) { meta[selDay].theme = e.dataset.mtheme || null; meta[selDay].focusMin = null; meta[selDay].edited = false; rebuild(selDay); render(); return; }
+  if ((e = q('[data-mfocus]'))) {
+    const fs = days[selDay].blocks.filter(x => x.focus), sum = fs.reduce((a, x) => a + x.dur, 0);
+    meta[selDay].focusMin = Math.max(30, sum + +e.dataset.mfocus); meta[selDay].edited = false; rebuild(selDay); render(); return;
+  }
+  if ((e = q('[data-resync]'))) {
+    const wasDirty = isDirty(); setTimeout(() => { if (!wasDirty) { saved = stateStr(); render(); } }, 0);
+    synced = true; for (let d = 1; d <= DAYS; d++) if (EV_NEW[d]) meta[d].edited = false; for (let d = 1; d <= DAYS; d++) if (EV_NEW[d] && !meta[d].edited) rebuild(d);
+    toast('2 new dates imported (marked "new"): Sat 14 Birthday party 15:00 · Fri 20 Car service 08:00. Approve them in the day panel.'); render(); return;
+  }
+  // templates
+  if ((e = q('[data-tpl]'))) { selTpl = e.dataset.tpl; sel = -1; adding = false; render(); return; }
+  if ((e = q('[data-newtpl]'))) {
+    const id = 'own' + Date.now(); TPLS[id] = { kind: 'theme', name: 'New theme', color: PALETTE[themeIds().length % PALETTE.length], icon: 'a02', keepWork: false, wake: 420, bed: 1350, blocks: ESS() };
+    selTpl = id; sel = -1; render(); toast('New theme from Empty. Name it, pick a colour, add its focus blocks.'); return;
+  }
+  if ((e = q('[data-tname]'))) { const k = e.dataset.tname; TPLS[selTpl].name = TITLE[k] + ' day'; TPLS[selTpl].icon = k; render(); return; }
+  if ((e = q('[data-color]'))) { TPLS[selTpl].color = e.dataset.color; render(); return; }
+  if ((e = q('[data-keep]'))) { TPLS[selTpl].keepWork = e.dataset.keep === '1'; rebuildUsing(selTpl); render(); return; }
+  if ((e = q('[data-focus]'))) { p.blocks[sel].focus = !p.blocks[sel].focus; touched(); render(); return; }
+  // day / template block editing
+  if ((e = q('[data-from]'))) {
+    const v = e.dataset.from, m = meta[cur];
+    if (v === 'yday') { days[cur] = { d: cur, wake: days[cur - 1].wake, bed: days[cur - 1].bed, blocks: days[cur - 1].blocks.filter(x => !x.cal).map(cp) }; evsFor(cur).forEach(x => days[cur].blocks.push({ k: x.k, d: x.d, dur: x.dur, pin: x.start, cal: true })); m.edited = true; }
+    else { const [t, id] = v.split(':'); if (t === 'b') { m.base = id; m.theme = null; } else m.theme = id; m.edited = false; m.focusMin = null; rebuild(cur); }
+    m.from = v; sel = -1; render(); return;
+  }
+  if ((e = q('[data-wake]'))) { const v = +e.dataset.wake; p.wake += v; if (linked) p.bed += v; touched(); render(); return; }
+  if ((e = q('[data-bed]'))) { const v = +e.dataset.bed; p.bed += v; if (linked) p.wake += v; touched(); render(); return; }
+  if ((e = q('[data-link]'))) { linked = !linked; render(); return; }
+  if ((e = q('[data-cedit]'))) { snap(); calEdit = +e.dataset.cedit; render(); return; }
+  if ((e = q('[data-undo]'))) { if (undoSnap) { const o = JSON.parse(undoSnap); days = o.days; meta = o.meta; approved = o.approved; undoSnap = null; if (late) late.done = null; } $('toast').hidden = true; calEdit = -1; sel = -1; render(); toast('Undone (in the real app: also in your calendar).'); return; }
+  if ((e = q('[data-plandone]'))) { const n = planDone(); render(); miniStamp('Plan saved', n ? `${n} calendar change${n > 1 ? 's' : ''} sent` : 'no calendar changes'); return; }
+  if ((e = q('[data-undodone]'))) { const pd = prevDone, o = JSON.parse(pd.state); days = o.days; meta = o.meta; approved = o.approved; TPLS = o.TPLS; saved = pd.state; calQ = new Map(); prevDone = null; sel = -1; calEdit = -1; render();
+    toast(pd.n ? `Last Plan done undone. Taken back from your calendar: ${pd.list.join(' · ')}` : 'Last Plan done undone.'); return; }
+  if ((e = q('[data-undoall]'))) { const o = JSON.parse(saved); days = o.days; meta = o.meta; approved = o.approved; TPLS = o.TPLS; calQ = new Map(); sel = -1; calEdit = -1; if (late) late.done = null; render(); toast('All changes since the last Plan done are undone.'); return; }
+  if ((e = q('[data-resetdef]'))) { for (let d = 1; d <= DAYS; d++) { meta[d].edited = false; meta[d].focusMin = null; rebuild(d); } calQ = new Map(); sel = -1; calEdit = -1; render(); toast('Back to the template defaults (themes and calendar dates kept). Not saved yet: press Plan done, or Undo changes.'); return; }
+  if ((e = q('[data-cpin]'))) { p.blocks[sel].pin += +e.dataset.cpin; p.blocks[sel].changed = true; touched(); render(); return; }
+  if ((e = q('[data-cdur]'))) { const x = p.blocks[sel]; x.dur = Math.max(15, x.dur + +e.dataset.cdur); x.changed = true; touched(); render(); return; }
+  if ((e = q('[data-cpush]'))) { const x = p.blocks[sel]; calEdit = -1; if (x.changed) calQ.set('chg|' + cur + '|' + x.d, `change ${x.d} → ${fmtT(x.pin)}–${fmtT(x.pin + x.dur)}`); render(); return; }
+  if ((e = q('[data-tocal]'))) { const x = p.blocks[sel]; x.cal = true; x.mine = true; x.pendingAdd = true; calQ.set('add|' + cur + '|' + btitle(x), `add ${btitle(x)} ${DAYN[wdOf(cur)]} ${cur} Nov ${fmtT(x.pin)}`); touched(); render(); return; }
+  if ((e = q('[data-approveblk]'))) { snap(); const x = p.blocks[+e.dataset.approveblk]; approved[cur + '|' + x.d] = true; x.isNew = false; render(); return; }
+  if ((e = q('[data-approve]'))) { snap(); const [d, n] = e.dataset.approve.split('|'); approved[d + '|' + n] = true; days[+d].blocks.forEach(x => { if (x.cal && x.d === n) x.isNew = false; }); render(); return; }
+  if ((e = q('[data-push]'))) {
+    snap(); let n = 0; for (let d = 1; d <= DAYS; d++) days[d].blocks.forEach(x => { if (x.pin != null) { n++; x.changed = false; } });
+    toastUndo(`Pushed ${n} fixed dates and times of November to your calendar.`); render(); return;
+  }
+  if ((e = q('[data-autofix]'))) { autoFix(); toast('Auto-fix done (not saved yet): the rest was spread over the tiles you did not touch. Check the month goals.'); render(); return; }
+  if ((e = q('[data-dur]'))) { const [i, d] = e.dataset.dur.split(':').map(Number); p.blocks[i].dur = Math.max(15, p.blocks[i].dur + d); touched(); render(); return; }
+  if ((e = q('[data-sel]'))) { const i = +e.dataset.sel; sel = sel === i ? -1 : i; calEdit = -1; adding = false; render(); return; }
+  if ((e = q('[data-setk]'))) { p.blocks[sel].k = e.dataset.setk; p.blocks[sel].d = null; touched(); render(); return; }
+  if ((e = q('[data-setd]'))) { p.blocks[sel].d = e.dataset.setd || null; touched(); render(); return; }
+  if ((e = q('[data-pin]'))) {
+    const x = p.blocks[sel];
+    if (e.dataset.pin === '1' && x.pin == null) { const r = layoutDay(p).segs.find(s => s.i === sel); x.pin = Math.round(r.start / 15) * 15; }
+    if (e.dataset.pin === '0') x.pin = null; touched(); render(); return;
+  }
+  if ((e = q('[data-pinm]'))) { p.blocks[sel].pin += +e.dataset.pinm; touched(); render(); return; }
+  if ((e = q('[data-mv]'))) {
+    const j = sel + +e.dataset.mv; if (j < 0 || j >= p.blocks.length) return;
+    [p.blocks[sel], p.blocks[j]] = [p.blocks[j], p.blocks[sel]]; sel = j; touched(); render(); return;
+  }
+  if ((e = q('[data-del]'))) { p.blocks.splice(sel, 1); sel = -1; touched(); render(); return; }
+  if ((e = q('[data-addtoggle]'))) { adding = !adding; sel = -1; render(); return; }
+  if ((e = q('[data-add]'))) { p.blocks.push(b(e.dataset.add, null, 60)); adding = false; sel = p.blocks.length - 1; touched(); render(); return; }
+  if ((e = q('[data-ready]'))) {
+    flow = null; planDone(); const pp = days[cur], first = layoutDay(pp).segs.find(x => x.gap == null), tm = cur !== TODAY;
+    view = 'tap'; render(); miniStamp(tm ? 'Tomorrow planned' : 'Plan ready', `${first ? 'first: ' + btitle(pp.blocks[first.i]) : ''} · bedtime ${fmtT(pp.bed)}`);
+    if (tm) toast('Tomorrow is planned. Sleep well.'); return;
+  }
+  if ((e = q('[data-flowgo]'))) { $('sheet').hidden = true; flow = 'on'; view = 'plan'; tab = 'day'; cur = e.dataset.flowgo === 'tomorrow' ? TODAY + 1 : TODAY; sel = -1; render(); return; }
+  if ((e = q('[data-closesheet]'))) { $('sheet').hidden = true; if (e.dataset.closesheet === 'tap') { view = 'tap'; render(); } return; }
+  // week
+  if ((e = q('[data-pm]'))) { const [k, sg] = e.dataset.pm.split(':'); adjustTile(k, +sg * stepSize(weekStats().net)); touchedT.add(k); render(); return; }
+  if ((e = q('[data-step]'))) { stepMode = e.dataset.step; render(); return; }
+  // tap view
+  if ((e = q('[data-hero]'))) {
+    if (tap.idx < 0 && !tap.off) { if (tap.prompt && moment() === 'before') { toast('Answer the plan question first (or skip).'); return; } startBlock(0); return; }
+    playArt($$('.hero .stage > .art')); return;
+  }
+  if ((e = q('[data-next]'))) { if (tap.prompt && moment() === 'before') { toast('Answer the plan question first (or skip).'); return; } startBlock(+e.dataset.next, true); return; }
+  if ((e = q('[data-all]'))) { tap.all = !tap.all; render(); return; }
+  if ((e = q('[data-pick]'))) {
+    const k = e.dataset.pick;
+    tap.clock = tap.clock == null ? days[TODAY].wake : tap.clock + tap.elapsed; tap.elapsed = 0; tap.off = k; tap.msg = RW[k] + ' Not in the plan, that is fine.'; tap.prompt = false;
+    setTint(k); render(); playArt($$('.hero .stage > .art')); return;
+  }
+  if ((e = q('[data-plannow]'))) { tap.prompt = false; tap.promptDone = true; flow = 'on'; view = 'plan'; tab = 'day'; cur = TODAY; render(); return; }
+  if ((e = q('[data-planok]'))) { tap.prompt = false; tap.promptDone = true; toast('Plan kept. Tap the tile to start.'); render(); return; }
+  if ((e = q('[data-planskip]'))) { tap.prompt = false; tap.promptDone = true; toast('Skipped. The tile still comes from your day template.'); render(); return; }
+  // controls
+  if ((e = q('#startFlow'))) {
+    const m = moment(), keep = isDirty() ? { st: stateStr(), saved, q: [...calQ] } : null; reset();
+    if (keep) { const o = JSON.parse(keep.st); days = o.days; meta = o.meta; approved = o.approved; TPLS = o.TPLS; saved = keep.saved; calQ = new Map(keep.q); }
+    view = 'tap';
+    const go = () => { if (m === 'evening') { render(); sheetEvening(); } else { tap.prompt = m === 'before'; render(); } };
+    if (keep) { render(); sheetSafety('resume', go); } else go(); return;
+  }
+  if ((e = q('#ff'))) { view = 'tap'; if (tap.idx < 0 && !tap.off) { toast('Start the day first: tap the big tile.'); render(); return; } tap.elapsed += 15; render(); return; }
+  if ((e = q('#tmrw'))) { reset(); flow = 'on'; view = 'plan'; tab = 'day'; cur = TODAY + 1; sel = -1; render(); return; }
+  if ((e = q('#late'))) { reset(); late = { at: 570, min: 570 - days[TODAY].wake, done: null }; view = 'plan'; tab = 'day'; cur = TODAY; render(); return; }
+  if ((e = q('[data-late]'))) {
+    const v = e.dataset.late, p2 = days[TODAY];
+    if (late.done && undoSnap) { const o = JSON.parse(undoSnap); days = o.days; meta = o.meta; approved = o.approved; } else snap();
+    const p3 = days[TODAY]; late.done = v;
+    if (v === 'auto') {
+      p3.wake = late.at; const pool = p3.blocks.filter(x => isFlex(x) && x.k !== 'a09'), O = pool.reduce((a, x) => a + x.dur, 0);
+      if (O) { const f = Math.max(0, (O - late.min) / O); pool.forEach(x => x.dur = Math.max(5, Math.round(x.dur * f / 5) * 5)); const big = pool.reduce((a, x) => x.dur > a.dur ? x : a, pool[0]); big.dur = Math.max(5, big.dur + (O - late.min) - pool.reduce((a, x) => a + x.dur, 0)); }
+      toast(`Auto-adjusted (not saved yet): day starts ${fmtT(late.at)}; ${fmtD(late.min)} taken from everything except work and fixed times.`);
+    } else if (v === 'shift') { p3.wake += late.min; p3.bed += late.min; toast(`Whole day shifted (not saved yet): bedtime now ${fmtT(p3.bed)}.`); }
+    else toast('Plan kept. The missed time shows as unlogged in the checkout.');
+    meta[TODAY].edited = true; render(); return;
+  }
+  if ((e = q('[data-lateok]'))) { planDone(); late = null; view = 'tap'; render(); miniStamp('Plan updated', 'first: ' + btitle(days[TODAY].blocks[layoutDay(days[TODAY]).segs.find(x => x.gap == null).i])); return; }
+  if ((e = q('#reset'))) { late = null; reset(); render(); return; }
+});
+let drag = null;
+document.addEventListener('pointerdown', ev => {
+  const h = ev.target.closest('[data-drag]'); if (!h) return;
+  ev.preventDefault();
+  drag = { i: +h.dataset.drag, over: null, before: true };
+  h.closest('.blk').classList.add('dragging');
+  document.querySelectorAll(`.blk[data-bi="${drag.i}"]`).forEach(n => n.classList.add('dragging'));
+});
+document.addEventListener('pointermove', ev => {
+  if (!drag) return;
+  document.querySelectorAll('.drop-before, .drop-after').forEach(n => n.classList.remove('drop-before', 'drop-after'));
+  const rows = [...document.querySelectorAll('.blk[data-flex="1"]')].filter(n => +n.dataset.bi !== drag.i);
+  let best = null, bd = 1e9;
+  rows.forEach(n => { const r = n.getBoundingClientRect(), c = r.top + r.height / 2, dd = Math.abs(ev.clientY - c); if (dd < bd) { bd = dd; best = { n, before: ev.clientY < c }; } });
+  if (best) { drag.over = +best.n.dataset.bi; drag.before = best.before; best.n.classList.add(best.before ? 'drop-before' : 'drop-after'); }
+});
+document.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  document.querySelectorAll('.dragging, .drop-before, .drop-after').forEach(n => n.classList.remove('dragging', 'drop-before', 'drop-after'));
+  if (d.over == null || d.over === d.i) return;
+  const p = target(), item = p.blocks[d.i], tgt = p.blocks[d.over];
+  p.blocks.splice(d.i, 1);
+  let j = p.blocks.indexOf(tgt); if (!d.before) j += 1;
+  p.blocks.splice(j, 0, item); sel = -1; touched(); render();
+});
+document.addEventListener('input', ev => {
+  const s = ev.target.closest('[data-slide]');
+  if (s) { const k = s.dataset.slide; s.style.setProperty('--p', (s.value / s.max * 100) + '%'); $('val-' + k).textContent = fmtH(+s.value); return; }
+  if (ev.target.id === 'tplName') TPLS[selTpl].name = ev.target.value || 'Untitled';
+});
+document.addEventListener('change', ev => {
+  const s = ev.target.closest('[data-slide]');
+  if (s) { applySlide(s.dataset.slide, +s.value); return; }
+  if (ev.target.id === 'tplName') render();
+});
+function setBodyClass() { document.body.className = ('idle-' + $('idle').value + ' ' + $('shadow').value).trim(); }
+$('idle').addEventListener('change', setBodyClass);
+$('shadow').addEventListener('change', setBodyClass);
+$('tint').addEventListener('change', () => setTint(tap.off || null));
+$('moment').addEventListener('change', () => { $('momentNote').textContent = NOTES[moment()]; });
+$('sync').addEventListener('change', () => { const w = isDirty(); rebuildUsing('*'); if (!w) saved = stateStr(); render(); });
+setBodyClass();
+$('momentNote').textContent = NOTES.evening;
+reset(); render();
+})();
+</script>
+</body>
+</html>

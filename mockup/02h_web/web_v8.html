@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget – web v8</title>
+<link rel="stylesheet" href="web_v8.css">
+</head>
+<body>
+<div class="wrap">
+<p class="mock">MOCKUP 02h · web v8 · draft, no real links · felt look, images from v6</p>
+<nav><b>Time Budget</b><div><a href="#how">How to play</a><a href="#rules">House rules</a><a href="#loop">You've got time!</a><a href="#why">Why though?</a><a href="v8_start.html">Start here</a><a href="v8_faq.html">FAQ</a></div></nav>
+
+<section class="hero">
+  <h1>Time is always running, whether you plan for it or not.</h1>
+  <p class="sub">A time budget. Like a money budget, but for your hours.</p>
+  <div class="btns"><a class="btn" href="v8_start.html">Start here</a><button class="btn alt" data-soon>Open the app</button><a class="btn alt" href="#how">How it works</a></div>
+  <div class="grid4" id="demo"></div>
+  <div class="now" id="now">Nothing running yet.<small>Tap a tile. The clock is already running.</small></div>
+  <p class="muted" style="margin-top:10px">Demo clock: <span class="clock" id="clk">0:00</span></p>
+</section>
+
+<section>
+  <h2>You get 24 hours a day. Everyone does.</h2>
+  <p>Money you can save for later. Time you can only spend. A budget just shows you where it went, so you can spend it on purpose.</p>
+  <p class="muted">Not a productivity app. Nobody is grading you.</p>
+</section>
+
+<section id="how">
+  <h2>How to play</h2>
+  <p class="muted">Tap a step to open it.</p>
+  <div class="steps" id="steps"></div>
+  <p><strong>Too lazy to tap?</strong> If everything goes to plan, you don't need to. You only tap where the day splits from the plan.</p>
+  <a class="more" href="v8_how.html">I still don&#39;t understand the game… →</a>
+</section>
+
+<section id="rules">
+  <h2>House rules</h2>
+  <p class="muted">Tap a rule to open it.</p>
+  <div class="why" id="ruleList"></div>
+  <a class="more" href="v8_rules.html">Read more, with examples →</a>
+  <p class="muted" style="margin-top:12px">Want to know where these come from? <a href="#why">Why though?</a></p>
+</section>
+
+<section id="loop">
+  <h2>You've got time! <span class="tag">draft title</span></h2>
+  <p>Every tap is a bit of data. A pile of data is just a list. Here is what it turns into, in the order you would probably meet it.</p>
+  <div class="loop" aria-label="The loop"><span>Tap</span><i>→</i><span>See it</span><i>→</i><span>Decide</span><i>→</i><span>Adjust</span><i>→</i><span>Tap</span></div>
+  <div class="why" id="loopList"></div>
+  <p class="quote" style="margin-top:18px">It's just data and we make it visible. We can make it more fun to play with too, but in the end, what you do with it is your choice.</p>
+  <a class="more" href="v8_loop.html">Read more, with examples (and goals with a date) →</a>
+</section>
+
+<section id="who">
+  <h2>Made for days that don't go to plan.</h2>
+  <p>Maybe you know some of these:</p>
+  <ul>
+    <li>You sat down for "five minutes" and it was dinner time.</li>
+    <li>Your plan was perfect until 11:00.</li>
+    <li>You know you'll start. You've known for three hours.</li>
+    <li>At night you can't say where the day went, only that it was gone.</li>
+  </ul>
+  <p>If your brain does time differently, this was made with that in mind. No diagnosis needed, and nobody gives you a score.</p>
+  <p class="muted">Not for: anyone who wants a productivity ranking or a boss-friendly report.</p>
+</section>
+
+<section id="why">
+  <h2>Why though?</h2>
+  <p class="muted" style="margin-top:-6px">Lost in time? Start here.</p>
+  <p>The long version, for the skeptical you: why time is hard to see, why everyone guesses wrong, what the research says (and doesn't), and what a time budget could give you without becoming a cage. Nine short chapters, sources at the end.</p>
+  <a class="btn alt" href="v8_why.html">Read the long version</a>
+</section>
+
+<section id="faq"><h2>FAQ</h2><div class="why"><details><summary>Do I have to plan?</summary><p>No. Planning is always skippable, and you can use the app with taps only. Pick "Quick start" on the Start here page and you never see a plan.</p></details><details><summary>What if I forget to tap?</summary><p>Then the last tile kept running. The gap is data, not a failure. At night the app asks about the unclear bits, and "Sorry, forgot to tap" and "TBH? No idea" are both fine answers.</p></details><details><summary>Where does my data go?</summary><p>Version 1 saves everything in your browser. No account, nothing is sent anywhere. Export a backup file any time. What is it for? Looking back at where your hours went, and suggestions for changes. Suggestions you can ignore.</p></details><details><summary>What if I try it and hate it?</summary><p>Close it. Export your data first if you want to keep it. Nothing else happens, nobody is notified, there are no streaks to lose.</p></details></div><a class="more" href="v8_faq.html">All questions →</a></section>
+
+<footer><a href="#" data-soon>Open the app</a><a href="#rules">House rules</a><a href="#loop">You've got time!</a><p style="margin-top:10px">Time Budget · version 1 · works in your browser, on a Windows PC for now.</p></footer>
+</div>
+
+<script src="web_v8.js"></script>
+<script>
+document.getElementById('demo').innerHTML = ['a09','a06','a01','a03'].map(t=>`<button class="tile" data-tap="${t}">${art(t)}<span class="title">${TILES[t].title}</span></button>`).join('');
+const STEPS = [
+  ['a09',"Tap what you're doing.",'One tap on a tile starts the clock. The next tap switches. There is no stop button.','Details (like "emails") are optional. "next" suggests the next planned thing, "pick" shows all tiles. A suggestion waits as a grey tile with a slow bar until you tap it. Forgot to tap? The gap is data, you sort it later.'],
+  ['a05','Plan ahead, if you like.','Plan tomorrow in the evening or the morning, or skip it. Fixed times stay put, everything else flexes around them.','You choose when the planning prompt shows up, and you can always skip it. Picking up the kids at 14:00 is a fixed time. The rest of the day wraps around it.'],
+  ['a06','Check out at night.','The app only asks about the unclear bits. Don\'t remember? "TBH? No idea" is a fine answer.','Time that matches your plan is already approved. Open bits get a short answer: "It was Chores", "Sorry, forgot to tap", or a type of Stuck. Every answer gets a small comment and points.'],
+  ['a03','Sleep has its own tile.','Tap it, close the app, sleep keeps counting. Staying up is allowed. It just shows.','Staying up shows as orange "past bedtime" time. The next morning asks how you slept, then offers to change the plan.']
+];
+document.getElementById('steps').className='why';
+document.getElementById('steps').innerHTML = STEPS.map((s,i)=>`<details><summary>${i+1}. ${s[1]}</summary><div class="step">${art(s[0])}<div><p>${s[2]}</p><p class="muted">${s[3]}</p></div></div></details>`).join('');
+const RULES = [
+ ['Your time needs purpose.','Rest counts. Fun counts. Doing nothing on purpose counts.','Scrolling because you couldn\'t start is not a purpose, and neither is overtime nobody chose. Both still happen. When they do, name them (Stuck is a fine name). A named hour is data. An unnamed hour is a mystery.'],
+ ['Your time is limited.','If you don\'t know what you spend it on, you will never be in charge of it.','Everybody has the same 24. Without a record you are guessing, and guesses about time are famously off. See "Why though?".'],
+ ['Time is relative.','You can\'t always decide what to do with your time. But without a plan, you also can\'t adjust the plan.','An hour of waiting and an hour of something you love are the same on paper and feel nothing alike. Some of your hours are not yours to choose: work, kids, appointments. A plan is not a promise. It is the thing you can change when the day changes. Fixed times stay put, everything else flexes around them. Want to protect a day? Fix its times. Didn\'t fix your plans for the hobby day? Your bad. Learn to fix days for yourself :)'],
+ ['Spend it more consciously.','You can\'t put time in an account. The goal isn\'t doing more with it. The goal is doing less of what you don\'t actually value.','You can\'t bank an hour. You can choose what the next one is for. An unbalanced week is allowed: catch up next week and still hit the monthly goal. The app shows what each choice costs. You decide.']
+];
+document.getElementById('ruleList').innerHTML = RULES.map((r,i)=>`<details><summary>${i+1}. ${r[0]}</summary><p><strong>${r[1]}</strong></p><p>${r[2]}</p></details>`).join('');
+const LOOP = [
+ ['See it.','Look back at where your hours went.','Your day hour by hour. Planned versus tapped. The month at a glance. Trends over the last weeks. Untapped time and overtime. Sleep and bedtime. It is a picture of your own time, and nobody else wrote it. Patterns tend to show up on their own.'],
+ ['Decide what you want.','Some things you want more of, some less. Give them a goal.','Each category can be one to grow, one to reduce, or have a target per week or month. A week out of balance is allowed. The app shows what each choice does to your monthly goal, and you decide. Switch a goal between day, week and month and the amount converts for you.<br><br><strong>Friction.</strong> Getting going takes time too: setting up, finding the cables, switching from work mode to family mode. Give an activity a friction time in minutes. It is added to every session of that activity, so "making music" with 20 minutes of friction is not rushed, and the suggestion on the tap screen already includes it.'],
+ ['Get suggestions.','The app can suggest changes. You can ignore every one of them.','Suggestions come from your own data, for example when the plan says one hour and the taps keep saying two. They are offers. Nothing changes unless you say so.'],
+ ['Enjoy it.','Small rewards for keeping up.','Sorting out your day at night earns points and a short comment: "Sweet! +1" when it matches the plan. Don\'t remember? "TBH? No idea" is an allowed answer. At the end of the day you get a score, a stamp and some confetti. The comments can be switched off. The whole thing is a game, play it or ignore it.']
+];
+document.getElementById('loopList').innerHTML = LOOP.map((r,i)=>`<details${i===0?' open':''}><summary>${i+1}. ${r[0]}</summary><p><strong>${r[1]}</strong></p><p>${r[2]}</p></details>`).join('');
+// demo clock: never stops, only switches
+let t0 = Date.now(), cur = null;
+setInterval(()=>{ const s=Math.floor((Date.now()-t0)/1000); document.getElementById('clk').textContent = Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); },500);
+document.querySelectorAll('[data-tap]').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tile').forEach(x=>x.classList.remove('on')); t.classList.add('on');
+  const st=t.querySelector('.stage'); st.classList.remove('bob'); void st.offsetWidth; st.classList.add('bob');
+  document.getElementById('now').innerHTML = `Now: ${TILES[t.dataset.tap].title}<small>Switched. The old one ended right here.</small>`;
+}));
+</script>
+</body>
+</html>

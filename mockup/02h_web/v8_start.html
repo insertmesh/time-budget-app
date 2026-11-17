@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget – Start here</title>
+<link rel="stylesheet" href="web_v8.css">
+</head><body>
+<div class="wrap">
+<p class="mock">MOCKUP 02h · web v8 · subpage · draft, no real links · examples are invented scenes</p>
+<nav class="top"><a class="home" href="web_v8.html">Time Budget</a><div>
+<a href="v8_how.html">How to play</a><a href="v8_rules.html">House rules</a><a href="v8_loop.html">You've got time!</a><a href="v8_why.html">Why though?</a><a href="v8_start.html">Start here</a><a href="v8_faq.html">FAQ</a></div></nav>
+<div class="pagehead"><span data-art="a06"></span><h1>Start here</h1>
+<p class="sub">Pick how you want to begin. You can change your mind at any time.</p></div>
+<div class="callout"><strong>Impatient?</strong> Skip all of this. <a class="more" href="#" data-soon>Open the app</a>, tap a tile, done. That is the whole tour.</div>
+<p class="muted">Not a test and not a diagnosis. Everyone's brain does time a little differently, and ADHD and autism are not the same for everyone either. Mockup: nothing is saved.</p>
+<div id="path"></div>
+<div id="quiz"></div>
+<div id="result"></div>
+<footer><a href="web_v8.html">Back to the start page</a><a href="#" data-soon>Open the app</a></footer>
+</div>
+<script src="web_v8.js"></script>
+<script>
+const PATHS = [
+ ["quick","Quick start","Three steps, then you're tapping. Nothing to set up."],
+ ["guided","Guided","Seven short questions (all skippable). I suggest a starter setup that fits how you work."],
+ ["deep","Deep dive","I want to set everything up first, before I trust it. Categories, goals, plans, the full workshop."]
+];
+const Q = [
+ {id:'why', multi:true, t:"What brings you here?", o:[["where","I don't know where my hours go"],["plans","My plans keep falling apart"],["start","Starting things is hard"],["stop","Stopping things is hard"],["curious","Just curious"]]},
+ {id:'plan', t:"How do you feel about planning?", o:[["love","I like it, when it works"],["break","I plan, then it all falls apart"],["cage","It feels like a cage"],["none","I don't plan at all"]]},
+ {id:'lose', multi:true, t:"When do you lose track of time?", o:[["deep","When I'm deep into something"],["feed","Scrolling, or just 'checking one thing'"],["wait","When I'm waiting for something"],["switch","Between things, when I have to switch"]]},
+ {id:'tap', t:"How often do you want to tap?", o:[["min","As little as possible"],["some","A few times a day"],["often","Happy to tap often"]]},
+ {id:'game', t:"How do you feel about points and little rewards?", o:[["yes","Bring them on"],["meh","Don't mind either way"],["no","Please no, I'd rather see plain data"]]},
+ {id:'when', t:"When would you look at your data?", o:[["eve","In the evening"],["morn","In the morning"],["ask","Only when I ask"]]},
+ {id:'setup', t:"Before you start tapping, how much do you want to set up?", o:[["nothing","Nothing, let me just start"],["some","A little: my main categories"],["all","Everything. I trust it more when I've built it myself"]]}
+];
+const ans = {}; let i = 0;
+function showPaths(){
+  document.getElementById('quiz').innerHTML=''; document.getElementById('result').innerHTML='';
+  document.getElementById('path').innerHTML = `<div class="q"><h3>How do you want to begin?</h3><div class="opts">${PATHS.map(p=>`<button class="opt" data-p="${p[0]}"><b>${p[1]}</b><br><span style="font-weight:400">${p[2]}</span></button>`).join('')}</div></div>`;
+  document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>go(b.dataset.p));
+}
+function go(p){
+  document.getElementById('path').innerHTML='';
+  if(p==='quick') return quick();
+  if(p==='deep') return deep();
+  i=0; render();
+}
+function again(){ for(const k in ans) delete ans[k]; showPaths(); }
+function card(title, intro, items, extra=''){
+  document.getElementById('result').innerHTML = `<div class="card"><h2>${title}</h2><p class="muted">${intro}</p><ul class="plan">${items.map(x=>`<li>${x}</li>`).join('')}</ul>${extra}
+  <div class="row"><a class="btn" href="#" data-soon>Open the app</a><button class="skip" id="again">Start over</button></div></div>`;
+  document.getElementById('again').onclick=again;
+  document.querySelectorAll('[data-soon]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); toast('Mockup: this would open the app.'); }));
+}
+function quick(){
+  card("Quick start: 3 steps","That's all you need today. Everything else can wait.",[
+   "<b>1. Tap what you're doing.</b> One tile, one tap. The next tap switches.",
+   "<b>2. Keep going.</b> Switch the tile whenever the day changes. No planning, no goals.",
+   "<b>3. Look at the picture after 3 days.</b> The week view shows where the hours went. Close the app if it isn't for you."]);
+}
+const WORKSHOP = [
+ "<b>1. Collect.</b> Start from a template list of categories and subcategories. Add everything you can think of that fills your days, then delete what doesn't apply. Takes a while. It's the part that makes everything later easier.",
+ "<b>2. Weigh.</b> Give each category a time per week. Typed, or with ＋/−. The app shows what's left from your 168 hours, so you can see when it doesn't add up.",
+ "<b>3. Mark the fixed.</b> Add the things that can't move: appointments, pick-ups, work hours. Import your calendar if you like.",
+ "<b>4. Build templates.</b> A Workday and a Weekend, so you don't plan from scratch.",
+ "<b>5. Add friction and chains.</b> A few minutes of getting-going time for the activities that need it, and a chain or two for the times nothing is planned.",
+ "<b>6. Set goals.</b> Which things you want more of, which less. Optionally with a date."
+];
+function deep(){
+  card("Deep dive: the setup workshop","For people who want to build the whole thing before they trust it. Roughly an hour. You can stop after any step: each step is saved, and the app works from step 1 on.",WORKSHOP,
+   '<p class="muted">Not for everyone. If you notice it gets heavy, go to Quick start and come back to this later.</p>');
+}
+function render(){
+  const q = Q[i], el = document.getElementById('quiz');
+  if(!q){ el.innerHTML=''; return result(); }
+  const sel = ans[q.id] || [];
+  el.innerHTML = `<div class="q"><div class="prog">Question ${i+1} of ${Q.length}${q.multi?' · pick any':''}</div><h3>${q.t}</h3>
+  <div class="opts">${q.o.map(o=>`<button class="opt${sel.includes(o[0])?' sel':''}" data-v="${o[0]}">${o[1]}</button>`).join('')}
+  <button class="opt${sel.includes('else')?' sel':''}" data-v="else">Something else / I mean…</button></div>
+  <div class="row"><button class="btn" id="nx">${i<Q.length-1?'Next':'Show my starter setup'}</button><button class="skip" id="sk">Skip this one</button><button class="skip" id="done">Skip the rest</button></div></div>`;
+  el.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
+    const v=b.dataset.v; let a=ans[q.id]||[];
+    if(q.multi){ a = a.includes(v)? a.filter(x=>x!==v) : [...a,v]; } else { a=[v]; }
+    ans[q.id]=a; render();
+  }));
+  document.getElementById('nx').onclick=()=>{ i++; render(); };
+  document.getElementById('sk').onclick=()=>{ delete ans[q.id]; i++; render(); };
+  document.getElementById('done').onclick=()=>{ i=Q.length; render(); };
+}
+const has=(k,v)=>(ans[k]||[]).includes(v);
+function result(){
+  const L=[];
+  const day1 = has('plan','cage')||has('plan','none')||has('tap','min');
+  L.push(day1 ? "<b>Days 1–3: tap only.</b> No planning, no goals. Switch the tile when the day changes, and look at the picture afterwards. That is a complete way to try it."
+              : "<b>Day 1: tap, and plan tomorrow in the evening.</b> A short plan after your first day, then tap through it.");
+  if(has('why','start')||has('lose','switch')) L.push("<b>Friction time.</b> Starting and switching cost time. Give those activities a few minutes of friction, so your plan counts the getting-going part. A chain of small steps can help when starting is the hard bit.");
+  if(has('why','stop')||has('lose','deep')) L.push("<b>Bars and a visible clock.</b> Deep focus swallows hours. A visible running clock and a planned end for those blocks make the stop easier to notice. Ignoring it is always allowed.");
+  if(has('lose','feed')) L.push("<b>Name the scrolling.</b> Use the Stuck tile for hours that slipped away. A named hour is data, no verdict.");
+  if(has('lose','wait')) L.push("<b>Waiting counts too.</b> Tap Chilling or Stuck while you wait. It shows how much of your day is waiting.");
+  if(has('plan','break')||has('why','plans')) L.push("<b>Plans that flex.</b> Fixed times only for what really can't move (pick-ups, appointments). Everything else wraps around, and \"Change the plan?\" shifts a broken day for you.");
+  if(has('why','where')||has('why','curious')) L.push("<b>Week view first.</b> After 3 days of tapping, open Overviews. See where the hours went, before deciding anything.");
+  L.push(has('game','no') ? "<b>Plain mode.</b> No points, no comments. Just the data." : (has('game','yes') ? "<b>Rewards on.</b> Checkout comments and points are on, and you can unlock more themes by being thorough." : "<b>Rewards on, quiet.</b> Short comments on, everything else off. Switch them any time."));
+  L.push(has('when','morn') ? "<b>Look back in the morning.</b> A short check-in with last night's leftovers instead of an evening checkout." : (has('when','ask') ? "<b>Only when you ask.</b> No prompts. The picture is there when you open it." : "<b>Evening checkout.</b> The app asks about the unclear bits at night. Skippable."));
+  let extra='';
+  if(has('setup','all')) extra = '<h3>Because you want to build it first</h3><p class="muted">Your setup workshop, step by step:</p><ul class="plan">'+WORKSHOP.map(x=>`<li>${x}</li>`).join('')+'</ul>';
+  else if(has('setup','some')) extra = '<h3>Your main categories first</h3><p class="muted">Step 1 of the workshop: collect and prune your categories from a template list. Add weekly times, fixed times and goals later, whenever you feel like it.</p>';
+  card("Your starter setup","Suggestions, not rules. Every line is a setting you can change or ignore.",L,extra);
+}
+showPaths();
+</script>
+</body></html>

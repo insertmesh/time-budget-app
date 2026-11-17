@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget</title>
+<!--
+  Time Budget SAM-10 · tap timer v2 (step 04b_tap_flow, 2026-11-13). Tap flow = approved mockup v9.2 (built on v8 layout A).
+  Open: double-click this file (Chrome or Edge). Images: .\assets\ (keep the folder next to this file).
+  Data: saved in this browser (localStorage key "sam10.timeBudget.v1", data model v2 inside; v1 data is migrated on load).
+  Use "Export data" for a backup file. Previous version: index_v1_backup.html.
+  Test only: add ?fast to the address (all bars 10 s) and/or ?shift=MINUTES (pretend the clock is later). Both use the real data.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap">
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A4F36; --warn-soft: #F5E4DC; --good: #2F7A4F;
+  --late: #C0522F; --night: #5B5FA8;
+  --tint: transparent; --glow: transparent;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif;
+  --font-head: "Literata", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+    --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+    --late: #F08A62; --night: #A9ACEB;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+  --late: #F08A62; --night: #A9ACEB;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: color-mix(in srgb, var(--tint) 16%, var(--bg)); color: var(--ink); font: 15px/1.5 var(--font-ui); padding: 16px 16px 48px; transition: background-color 1.2s ease; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.testbar { max-width: 440px; margin: 0 auto 8px; padding: 4px 10px; border-radius: 8px; background: #B3261E; color: #fff; font-size: 13px; font-weight: 700; text-align: center; }
+
+.app { position: relative; max-width: 440px; margin: 0 auto; background: color-mix(in srgb, var(--tint) 16%, var(--surface)); border: 1px solid var(--line); border-radius: 28px;
+  padding: 16px 16px 22px; transition: background-color 1.2s ease; overflow: hidden; }
+
+/* hero: fixed size so nothing moves */
+.hero { height: 358px; display: flex; flex-direction: column; align-items: center; }
+.hero .label { min-height: 22px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; text-align: center; line-height: 1.3; }
+.hero .stage { position: relative; width: 210px; height: 210px; transition: filter .3s ease; }
+.hero .stage > .art { width: 210px; height: 210px; position: absolute; inset: 0; }
+.hero .name { font-weight: 800; font-size: 20px; line-height: 1.2; margin-top: 4px; text-align: center; height: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.hero .clock { font: 700 46px/1 var(--font-ui); font-variant-numeric: tabular-nums; height: 50px; }
+.hero .clock.off { color: var(--muted); opacity: .5; }
+.hero .clock.late { color: var(--late); }
+.hero.grey .stage { filter: saturate(.5) opacity(.78); }
+.hero.grey .label { color: var(--accent); }
+.hero.stuck .label { color: var(--warn); }
+.hero.bed .label { color: var(--night); }
+.pend { height: 28px; width: 290px; max-width: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.pend .track { height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.pend .fill { height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+.pend .cap { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pend .cap .textlink { font-size: 12px; padding: 0 2px; }
+@keyframes pendfill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cap.late, .late-txt { color: var(--late); font-weight: 700; }
+.forgot { border: 0; background: #2F7A4F; color: #fff; border-radius: 999px; padding: 5px 14px; font-size: 13px; font-weight: 700; box-shadow: 0 2px 0 #1F5A38; align-self: center; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.forgot:hover { background: #358A59; }
+.reward { min-height: 20px; font-size: 14px; color: var(--accent); text-align: center; line-height: 1.3; }
+.reward.pop { animation: rpop .35s ease-out; }
+@keyframes rpop { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* placeholder tiles (Sleep, Stuck) */
+.tile-text { position: absolute; inset: 14%; display: flex; align-items: center; justify-content: center; text-align: center; color: #FFF4E2; font: 700 22px/1.15 var(--font-ui); text-shadow: 0 1px 0 rgba(70, 30, 10, .5); }
+.ph { position: absolute; left: 16%; right: 16%; bottom: 17%; background: #B3261E; color: #fff; font: 700 9px/1.2 var(--font-ui); text-align: center; padding: 3px 2px; border-radius: 4px; letter-spacing: .03em; }
+.hero .ph { font-size: 11px; }
+/* "Colour on tap" B: coloured glow around the big tile */
+.glow-on .hero .stage .bgwrap { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--glow) 85%, transparent)) drop-shadow(0 0 20px color-mix(in srgb, var(--glow) 60%, transparent)) drop-shadow(5px 12px 13px rgba(40, 25, 10, .42)); transition: filter .8s ease; }
+
+/* detail below the tile: reserved height */
+.detail { min-height: 96px; margin-top: 16px; }
+.detail .lbl { font-size: 13px; color: var(--muted); margin-bottom: 6px; text-align: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+.chip.on { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.chip.quiet { border-style: dashed; color: var(--muted); font-weight: 500; }
+.segs { font-size: 13px; color: var(--muted); text-align: center; margin-top: 6px; min-height: 18px; font-variant-numeric: tabular-nums; line-height: 1.45; }
+.times { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin-top: 8px; font-size: 13px; }
+.times input { font: inherit; color: var(--ink); background: var(--surface); padding: 3px 6px; border: 1px solid var(--line); border-radius: 8px; }
+
+/* picker */
+.picker { border-top: 1px solid var(--line); padding-top: 12px; }
+.nextrow { display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; }
+.nextbtn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+.textlink { border: 0; background: none; color: var(--muted); text-decoration: underline; font-size: 15px; padding: 6px 8px; }
+
+/* tiles */
+.tile { border: 0; background: none; padding: 4px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 2px; -webkit-tap-highlight-color: transparent; }
+.tile.on { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.tile .title { font-size: 14px; font-weight: 700; line-height: 1.2; text-align: center; }
+.art { position: relative; display: block; }
+.art .press, .layer, .tap, .place, .idle, .layer img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.place { transform-origin: 0 0; }
+.layer img { display: block; pointer-events: none; user-select: none; }
+.patchclip { clip-path: inset(12.3% 11.5% 12.9% 11.7% round 7%); }
+.grid8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 2px; margin-top: 10px; }
+.grid8 .art { width: 80px; height: 80px; }
+/* Photoshop-style drop shadow (angle about 120°, distance 4 %, size 8 %, opacity 40 %) */
+.bgwrap { filter: drop-shadow(3px 7px 8px rgba(40, 25, 10, .42)); }
+.hero .bgwrap { filter: drop-shadow(5px 12px 13px rgba(40, 25, 10, .42)); }
+
+/* idle = medium */
+@keyframes breathe2 { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.015, 1.03); } }
+@keyframes sway2    { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.idle.breathe { animation: breathe2 2.2s ease-in-out infinite; } .idle.sway { animation: sway2 3s ease-in-out infinite; }
+.idle.breathe.slow { animation-duration: 3.2s; } .idle.sway.late { animation-delay: -1.4s; }
+@media (prefers-reduced-motion: reduce) { .idle { animation: none !important; } }
+
+/* "Nighty night!" */
+.nighty { position: absolute; inset: 0; z-index: 7; background: rgba(28, 30, 70, .94); color: #F3EEDF; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; animation: rpop .4s ease-out; cursor: pointer; border: 0; width: 100%; font: inherit; }
+.nighty.closed { background: #08080C; }
+.nighty .moon { font-size: 96px; line-height: 1; animation: moonbob 2.4s ease-in-out infinite; }
+.nighty .zz { height: 40px; position: relative; width: 80px; }
+.nighty .zz span { position: absolute; left: 50%; bottom: 0; font: 800 18px var(--font-ui); opacity: 0; animation: zfloat 2.4s ease-out infinite; }
+.nighty .zz span:nth-child(2) { animation-delay: .8s; font-size: 22px; } .nighty .zz span:nth-child(3) { animation-delay: 1.6s; font-size: 28px; }
+.nighty .nt { font: 800 28px/1.2 var(--font-ui); margin-top: 6px; }
+.nighty .ns { font-size: 15px; max-width: 300px; margin-top: 8px; opacity: .9; }
+@keyframes moonbob { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+@keyframes zfloat { 0% { transform: translate(-50%, 0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(10px, -46px); opacity: 0; } }
+
+/* today */
+.today { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.today h2 { font: 600 16px/1.3 var(--font-head); margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.today h2 span { font: 500 13px/1.3 var(--font-ui); color: var(--muted); }
+.bar { display: flex; height: 14px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; margin-top: 6px; }
+.legend b { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+details { margin-top: 8px; }
+summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.log { list-style: none; margin: 6px 0 0; padding: 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.log li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.log .t { color: var(--muted); white-space: nowrap; }
+.log .src { color: var(--good); font-size: 12px; }
+
+.foot { max-width: 440px; margin: 14px auto 0; display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: center; align-items: center; font-size: 14px; color: var(--muted); }
+.foot label { display: inline-flex; gap: 6px; align-items: center; }
+.foot select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; }
+.foot .textlink { font-size: 14px; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; max-width: calc(100vw - 32px); z-index: 50; }
+.toast.bad { background: var(--warn); color: #fff; }
+@media (max-width: 440px) { .app { border-radius: 18px; padding: 12px 10px; } .grid8 .art { width: 70px; height: 70px; } }
+</style>
+</head>
+<body>
+  <div class="testbar" id="testbar" hidden></div>
+  <main class="app" id="app">
+    <div class="hero" id="hero"></div>
+    <div class="detail" id="detail"></div>
+    <div class="picker" id="picker"></div>
+    <section class="today" id="today"></section>
+    <div id="night"></div>
+  </main>
+  <div class="foot">
+    <label>Colour on tap <select id="colour"><option value="off">off</option><option value="bg">A · background</option><option value="glow">B · glow</option><option value="both">A + B</option></select></label>
+    <button class="textlink" type="button" id="export">Export data</button>
+    <button class="textlink" type="button" id="importBtn">Import data</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+'use strict';
+
+// ================= settings for now (the Settings page comes later) =================
+// Bar lengths in seconds. Each bar has a default that happens when it runs out ("time is always running").
+const BAR_PROPOSE_S = 120;  // "next" / "pick" proposal: runs out → Stuck "?" tile
+const BAR_PLAN_S    = 60;   // morning "Change the plan?": runs out → auto-adjust
+const BAR_FIRST_S   = 180;  // grey first tile of the day: runs out → it starts on its own (if untouched)
+const BAR_BED_S     = 300;  // "Time to sleep!": runs out → Sleep starts, counted from bedtime
+const WAKE = '07:00';       // planned start of the day (the Plans page comes later)
+const BEDTIME = '22:30';    // planned bedtime
+const DAY_START = '04:00';  // a "day" in this app runs from 04:00 to 04:00 (so staying up past midnight still counts as the evening)
+
+const $ = id => document.getElementById(id);
+const $$ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const QS = new URLSearchParams(location.search);
+const FAST = QS.has('fast');
+const SHIFT_MS = (parseFloat(QS.get('shift')) || 0) * 60000;
+const now = () => Date.now() + SHIFT_MS;
+const BAR = { propose: BAR_PROPOSE_S, plan: BAR_PLAN_S, first: BAR_FIRST_S, bed: BAR_BED_S };
+const barMs = k => (FAST ? 10 : BAR[k]) * 1000;
+
+// ================= tile art + tap animations (copied from mockup v8) =================
+const A = 'assets/';
+const D = 750;
+const EIN = 'cubic-bezier(.5,0,.8,.4)';
+const CROUCH = 'cubic-bezier(.2,.7,.3,1)';
+const T = (x, y, sx = 1, sy = 1, r = 0) => `translate(${x}%, ${y}%) rotate(${r}deg) scale(${sx}, ${sy})`;
+function K(rows, delay = 0) {
+  return rows.map(([ms, x = 0, y = 0, sx = 1, sy = 1, r = 0, e]) => {
+    const t = delay + ms * (D - delay) / D;
+    const f = { offset: t / D, transform: T(x, y, sx, sy, r) };
+    if (e) f.easing = e;
+    return f;
+  });
+}
+const hop = (up, lean = 0, d = 0) => K([[0], [95, 0, 0, 1.04, .92, 0, CROUCH], [315, 0, -up, .97, 1.05, lean, EIN], [525], [585, 0, 0, 1.06, .90, 0, 'ease-out'], [675, 0, -.5, .99, 1.02], [750]], d);
+const pop = (up, d = 0) => K([[0], [130, 0, 3, .6, 1.1, 0, 'cubic-bezier(.2,1.4,.4,1)'], [345, 0, -up, 1.15, .92], [450, 0, -2, .97, 1.03, -6], [555, 0, 0, 1.02, .99, 4], [650, 0, 0, 1, 1, -2], [750]], d);
+const swing = (a, b, c, d = 0) => K([[0], [200, 0, 0, 1, 1, a], [400, 0, 0, 1, 1, b], [580, 0, 0, 1, 1, c], [750]], d);
+const PRESS = [{ offset: 0, transform: 'scale(1)' }, { offset: .1, transform: 'scale(0.95)', easing: 'cubic-bezier(.3,1.6,.5,1)' }, { offset: .3, transform: 'scale(1)' }, { offset: 1, transform: 'scale(1)' }];
+
+const BOX = {
+  a01: [[102,29,405,481],[55,119,376,440],[303,168,453,355]],
+  a02: [[22,23,489,489],[33,117,341,464],[266,167,470,370]],
+  a03: [[77,43,434,376],[102,39,409,337],[240,163,488,347]],
+  a04: [[92,29,386,477],[56,29,477,487],[412,76,452,433]],
+  a05: [[118,32,391,487],[57,29,264,460],[263,151,485,357]],
+  a06: [[32,47,479,453],[122,284,391,486],[246,71,485,327]],
+  a08: [[99,57,399,456],[252,173,464,346],[164,11,344,155]],
+  a09: [[44,35,490,482],[35,99,482,437],[310,165,474,405]]
+};
+const BG_SCALE = { 1: 1, 2: 1.037, 3: 1.22 };
+const ELS = {
+  a09: [
+    { e: 2, r: [82,230,250,400], a: 'b', pv: [.5,1], track: K([[0],[200,0,0,1.05,1.05,1.5],[280,0,0,1.05,1.05,-1.5],[360,0,0,1.03,1.03,1],[450],[750]]) },
+    { e: 1, r: [150,130,420,420], a: 'b', pv: [.5,1], idle: 'breathe', track: K([[0],[150,0,2,1.01,.98],[300,0,-1],[450],[750]]) },
+    { e: 3, r: [345,105,432,230], a: 'c', pv: [.5,1], track: K([[0],[330,0,-8,1,1,10,EIN],[520,0,0,1,1,-6],[640,0,0,1.04,.95],[750]], 120) } ],
+  a08: [
+    { e: 1, r: [110,95,410,425], a: 'b', pv: [.2,1], clip: true, track: K([[0],[95,-2,0,1,1,0,'cubic-bezier(.6,0,.9,.5)'],[280,80,0,1,1,-6],[280.1,-80,0,1,1,-3,'cubic-bezier(.15,.8,.3,1)'],[525,3],[585,0,1.2,1.02,.97,0,'ease-out'],[750]]) } ],
+  a01: [
+    { e: 1, r: [170,100,385,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(4) },
+    { e: 2, r: [82,245,250,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(6, 0, 60) },
+    { e: 3, r: [350,300,428,405], a: 'b', pv: [.5,1], idle: 'sway', track: pop(6, 120) } ],
+  a02: [
+    { e: 1, r: [150,95,400,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(7) },
+    { e: 2, r: [82,210,240,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(6, -4, 60) },
+    { e: 3, r: [330,110,432,215], a: 'c', pv: [.5,.2], idle: 'sway', track: pop(8, 120) } ],
+  a05: [
+    { e: 2, r: [82,190,200,425], a: 'b', pv: [.5,1], track: K([[0],[190,-6],[380,4],[560,-2],[750]]) },
+    { e: 1, r: [160,95,350,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(5) },
+    { e: 3, r: [325,215,432,325], a: 'c', pv: [.5,0], idle: 'sway', track: K([[0],[200,0,0,1.1,.92],[380,0,0,1,1,5],[560,0,0,1,1,-3],[750]]) } ],
+  a06: [
+    { e: 2, r: [165,335,345,432], a: 'b', pv: [.5,1], track: K([[0],[150,0,0,1,1.15],[300,0,0,1,.95],[450,0,0,1,1.1],[750]]) },
+    { e: 1, r: [95,85,365,370], a: 'b', pv: [.5,1], track: K([[0],[100,0,0,1.06,.9],[300,0,-5,.97,1.05,0,EIN],[525],[585,0,0,1.05,.92],[750]]) },
+    { e: 3, r: [330,215,432,330], a: 'c', pv: [.25,.8], track: swing(12, -12, 5) } ],
+  a04: [
+    { e: 2, r: [82,120,225,425], a: 'b', pv: [.5,0], idle: 'sway', track: K([[0],[230,0,0,1,1,6],[420,0,0,1,1,-4],[600,0,0,1,1,2],[750]]) },
+    { e: 1, r: [160,95,375,425], a: 'b', pv: [.5,1], idle: 'breathe', track: hop(4) },
+    { e: 3, r: [380,130,425,410], a: 'b', pv: [.5,1], track: K([[0],[300,0,-8,1,1,-15],[480,0,0,1,1,8],[750]]) } ],
+  a03: [
+    { e: 2, r: [95,90,200,190], a: 'c', pv: [.5,.5], track: K([[0],[300,0,0,1.12,1.12,15],[550,0,0,1,1,-4],[750]]) },
+    { e: 1, r: [120,200,395,420], a: 'b', pv: [.5,.8], idle: 'breathe', track: K([[0],[150,0,2,1,1,3],[400,0,-3,1,1,-2],[600,0,1],[750]]) },
+    { e: 3, r: [320,240,432,330], a: 'c', pv: [.5,.5], track: K([[0],[330,0,-8,1,1,-20,EIN],[560,0,0,1,1,15],[630,0,0,1.08,.9],[750]], 120) } ]
+};
+const bgOf = id => ((parseInt(id.slice(1), 10) - 1) % 3) + 1;
+const bgLayer = n => `<div class="layer bgwrap" style="transform:scale(${BG_SCALE[n]})"><img src="${A}background_rgba_0000${n}_.png" alt=""></div>`;
+function placeOf(box, r, a) {
+  const bw = box[2] - box[0], bh = box[3] - box[1];
+  const s = Math.min((r[2] - r[0]) / bw, (r[3] - r[1]) / bh);
+  const tx = (r[0] + r[2]) / 2 - s * (box[0] + box[2]) / 2;
+  const ty = a === 'c' ? (r[1] + r[3]) / 2 - s * (box[1] + box[3]) / 2 : r[3] - s * box[3];
+  return { s, tx, ty };
+}
+const pct = px => (px / 512 * 100).toFixed(2) + '%';
+function tileArt(tid) {
+  if (PH[tid]) return PH[tid]();
+  let h = bgLayer(bgOf(tid));
+  ELS[tid].forEach(el => {
+    const box = BOX[tid][el.e - 1], p = placeOf(box, el.r, el.a);
+    const pvx = p.tx + p.s * (box[0] + el.pv[0] * (box[2] - box[0]));
+    const pvy = p.ty + p.s * (box[1] + el.pv[1] * (box[3] - box[1]));
+    const ipx = box[0] + el.pv[0] * (box[2] - box[0]), ipy = box[1] + el.pv[1] * (box[3] - box[1]);
+    h += `<div class="layer${el.clip ? ' patchclip' : ''}"><div class="tap" data-el="${tid}-${el.e}" style="transform-origin:${pct(pvx)} ${pct(pvy)}">` +
+      `<div class="place" style="transform:translate(${pct(p.tx)}, ${pct(p.ty)}) scale(${p.s.toFixed(4)})">` +
+      `<div class="idle ${el.idle || ''}" style="transform-origin:${pct(ipx)} ${pct(ipy)}"><img src="${A}${tid}_e${el.e}_00001_.png" alt=""></div></div></div></div>`;
+  });
+  return h;
+}
+const art = tid => `<span class="art" data-art="${tid}"><span class="press">${tileArt(tid)}</span></span>`;
+function playArt(root) {
+  if (!root) return;
+  const tid = root.dataset.art;
+  if (FELT[tid]) {                                   // Stuck / Sleep: own clip length and tracks
+    const c = FELT[tid];
+    root.querySelector('.press').animate(c.press, { duration: c.ms, easing: 'linear' });
+    Object.keys(c.tracks).forEach(n => { const el = root.querySelector(`[data-fel="${tid}-${n}"]`); if (el) el.animate(c.tracks[n], { duration: c.ms, easing: 'linear' }); });
+    return;
+  }
+  root.querySelector('.press').animate(PRESS, { duration: D, easing: 'linear' });
+  (ELS[tid] || []).forEach(el => root.querySelectorAll(`[data-el="${tid}-${el.e}"]`).forEach(n => n.animate(el.track, { duration: D, easing: 'linear' })));
+}
+
+// Felt Stuck "?" and Sleep tiles (Button Tiles CO-22d, 2026-11-13; approved by Samuel 2026-11-13).
+// Taken from felt_stuck_sleep_tap_prototype.html: every layer is a full 512 px PNG; place = move + scale, pv = pivot.
+const FELT_LAYERS = {
+  stuck: { clip: 'inset(12.3% 11.5% 12.9% 11.7% round 7%)', els: [
+    ['question', 'translate(23.4%, -11.7%) scale(0.432)', '49.7% 94.7%', 'sway'],
+    ['person', 'translate(-7.2%, 7.5%) scale(0.588)', '50.3% 93.4%', 'breathe'],
+    ['yarn', 'translate(24.4%, 15.6%) scale(0.419)', '49.5% 68.3%', ''] ] },
+  sleep: { clip: 'inset(12.9% 12.3% 14.5% 12.3% round 7%)', els: [
+    ['moon', 'translate(-18.8%, -17.8%) scale(0.372)', '50.2% 50%', 'sway late'],
+    ['star', 'translate(8.5%, -19.8%) scale(0.37)', '76.7% 47.5%', ''],
+    ['sleeper', 'translate(0.1%, 19.2%) scale(0.719)', '49.9% 67.8%', 'breathe slow'] ] }
+};
+const PH = {};
+Object.keys(FELT_LAYERS).forEach(k => {
+  const f = FELT_LAYERS[k];
+  PH[k] = () => `<div class="layer bgwrap"><div class="layer" style="clip-path:${f.clip}"><img src="${A}${k}_background.png" alt=""></div></div>` +
+    f.els.map(([n, place, pv, idle]) => `<div class="layer" style="transform:${place}"><div class="tap" data-fel="${k}-${n}" style="transform-origin:${pv}">` +
+      `<div class="idle ${idle}" style="transform-origin:${pv}"><img src="${A}${k}_${n}.png" alt=""></div></div></div>`).join('');
+});
+const FELT = (() => {
+  const P = { person: 0.588, yarn: 0.419 }, hopY = -4 / P.person;
+  const pr = o => PRESS.map(k => k.offset === 0.3 ? Object.assign({}, k, { offset: o }) : k);
+  return {
+    stuck: { ms: 750, press: pr(0.307), tracks: {    // 750 ms shrug
+      person: [{ offset: 0, transform: T(0, 0) }, { offset: 0.147, transform: T(0, 0, 1.04, 0.92), easing: 'cubic-bezier(.2,.7,.3,1)' },
+        { offset: 0.4, transform: T(0, hopY, 0.97, 1.05, -4), easing: 'cubic-bezier(.5,0,.8,.4)' }, { offset: 0.6, transform: T(0, hopY * 0.4, 0.99, 1.02, 4) },
+        { offset: 0.7, transform: T(0, 0, 1.06, 0.90), easing: 'ease-out' }, { offset: 0.85, transform: T(0, -0.5 / P.person, 0.99, 1.02) }, { offset: 1, transform: T(0, 0) }],
+      question: [{ offset: 0, transform: T(0, 0) }, { offset: 0.08, transform: T(0, 0) }, { offset: 0.333, transform: T(0, 0, 1.15, 1.15), easing: 'cubic-bezier(.2,1.4,.4,1)' },
+        { offset: 0.5, transform: T(0, 0, 1, 1, -8) }, { offset: 0.667, transform: T(0, 0, 1, 1, 5) }, { offset: 0.8, transform: T(0, 0, 1, 1, -2) }, { offset: 0.933, transform: T(0, 0) }, { offset: 1, transform: T(0, 0) }],
+      yarn: [{ offset: 0, transform: T(0, 0) }, { offset: 0.16, transform: T(0, 0) }, { offset: 0.533, transform: T(-4 / P.yarn, 0, 1, 1, -30), easing: 'cubic-bezier(.3,0,.3,1)' },
+        { offset: 0.8, transform: T(2 / P.yarn, 0, 1, 1, 10) }, { offset: 1, transform: T(0, 0) }] } },
+    sleep: { ms: 800, press: pr(0.29), tracks: {     // 800 ms snuggle
+      sleeper: [{ offset: 0, transform: T(0, 0) }, { offset: 0.25, transform: T(0, 0, 1.03, 0.95), easing: 'cubic-bezier(.4,0,.2,1)' },
+        { offset: 0.5625, transform: T(0, 0, 0.99, 1.02), easing: 'ease-in-out' }, { offset: 1, transform: T(0, 0) }],
+      moon: [{ offset: 0, transform: T(0, 0) }, { offset: 0.075, transform: T(0, 0) }, { offset: 0.375, transform: T(0, 0, 1, 1, 8), easing: 'ease-in-out' },
+        { offset: 0.6875, transform: T(0, 0, 1, 1, -4), easing: 'ease-in-out' }, { offset: 1, transform: T(0, 0) }],
+      star: [{ offset: 0, transform: T(0, 0) }, { offset: 0.15, transform: T(0, 0) }, { offset: 0.2625, transform: T(0, 0, 0.6, 0.6), easing: 'cubic-bezier(.2,1.4,.4,1)' },
+        { offset: 0.4125, transform: T(0, 0, 1.25, 1.25, 15) }, { offset: 0.625, transform: T(0, 0, 1, 1, 0) }, { offset: 0.8125, transform: T(0, 0, 1.1, 1.1) }, { offset: 1, transform: T(0, 0) }] } }
+  };
+})();
+
+// ================= content (temporary 8 tiles, approved 2026-11-12) =================
+const TITLE = { a09: 'Work', a08: 'Commute', a05: 'Chores', a06: 'Food', a01: 'Family', a02: 'Friends', a04: 'Hobby', a03: 'Chill', sleep: 'Sleep', stuck: 'Stuck' };
+const TINT = { a09: '#7E9BB6', a08: '#4FA3A0', a05: '#C9A98A', a06: '#E0A25A', a01: '#C77FA3', a02: '#D88A72', a04: '#9C88CC', a03: '#E0B45F', sleep: '#5B5FA8', stuck: '#A7A09A' };
+const ALL8 = ['a09', 'a08', 'a05', 'a06', 'a01', 'a02', 'a04', 'a03'];
+const DETAIL = {
+  a09: ['Client work', 'Production', 'Emails & calls', 'Problem solving'],
+  a08: ['Picking up kids', 'Drive to friends', 'Drive to family', 'Appointments'],
+  a05: ['Cleaning, dishes', 'Laundry', 'Admin & paperwork', 'Shopping', 'Repairs'],
+  a06: ['Coffee / breakfast', 'Lunch break', 'Dinner', 'Cooking'],
+  a01: ['Watching TV', 'Kids', 'Partner', 'Outing'],
+  a02: ['Meeting', 'Call', 'Helping out'],
+  a04: ['Making music', 'Synths', 'Problem solving'],
+  a03: ['TV', 'Games', 'Sofa', 'Walk']
+};
+const STUCK_TYPES = ['Relationship issues', 'Meltdown', 'Shutdown', "Can't start", 'Low energy'];
+const WHY_UP = ['Worth it', "Can't sleep", 'Doomscrolling', 'Gotta keep working', 'None of ya business'];
+const SLEEP_Q = ['I slept (forgot to tap)', "Couldn't sleep", 'Doomscrolling', 'Meltdown', 'Shutdown', 'None of ya business'];
+// Example day plan (fixed for now; the Plans page comes later). After the last item, "next" leads to Sleep.
+const PLAN = [['a06', 'Coffee / breakfast'], ['a09', null], ['a06', 'Lunch break'], ['a05', 'Cleaning, dishes'], ['a06', 'Dinner'], ['a01', 'Watching TV'], ['a04', 'Making music'], ['a03', 'TV']];
+const RW = {
+  a09: 'Work logged. Real hours, real name.', a08: 'Commute logged. The road gets its own line.', a05: 'Chores logged. Somewhere a sink is grateful.',
+  a06: 'Food logged. Mmm.', a01: 'Family time logged. That one counts double.', a02: 'Friend time logged. Driving not included.',
+  a04: 'Hobby time logged. Protect it.', a03: 'Chilling logged. No guilt.',
+  sleep: 'Good night. Sleep runs until your first tap tomorrow.', stuck: 'Stuck logged. Data, not a verdict.'
+};
+const AWAKE_H = 16;
+const PLANS_LATER = 'The Plans page comes later. Nothing was changed.';
+
+// ================= data (saved in the browser) =================
+// Entry = { id, tile, detail (text or null), start (ms), end (ms or null while running), tap (id of the tile tap it belongs to), approved, src }
+//   tile: a01…a09, "sleep" or "stuck". src: "tap" (you tapped), "auto" (a bar ran out), "forgot" (Sorry, forgot), "sleepq" (morning answer).
+//   Gaps between entries = untapped time.
+// flow = where the tap flow stands (survives reload): pending proposal, Stuck tile, bedtime, staying up, morning steps.
+const KEY = 'sam10.timeBudget.v1';   // kept from v1 so the data stays; the data model inside is v2
+const blankFlow = () => ({ day: '', bedDay: '', pending: null, stuck: null, bed: null, up: null, morning: null, review: null });
+const blank = () => ({ v: 2, entries: [], plan: { date: '', idx: 0 }, settings: { colour: 'bg' }, flow: blankFlow() });
+let S = blank();
+let storageOk = true;
+
+// ---- time helpers ----
+const hmMin = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+const CUT = hmMin(DAY_START);
+const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+function dayStart(t) { const d = new Date(t); d.setHours(0, CUT, 0, 0); if (d.getTime() > t) { d.setDate(d.getDate() - 1); d.setHours(0, CUT, 0, 0); } return d.getTime(); }
+const ldKey = t => dayKey(dayStart(t));                  // the app's day (04:00 to 04:00)
+function atOf(ds, hm) { const m = hmMin(hm), d = new Date(ds); d.setHours(0, m < CUT ? m + 1440 : m, 0, 0); return d.getTime(); }
+const bedAt = t => atOf(dayStart(t), BEDTIME);
+const wakeAt = t => atOf(dayStart(t), WAKE);
+const clockTime = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+function lastAtOrBefore(hm, t) { const m = hmMin(hm), d = new Date(t); d.setHours(0, m, 0, 0); if (d.getTime() > t) d.setDate(d.getDate() - 1); return d.getTime(); }
+const clamp = (x, a, b) => Math.min(Math.max(x, a), b);
+
+function migrate(d) {
+  if (!d || !Array.isArray(d.entries) || (d.v !== 1 && d.v !== 2)) return null;
+  const o = Object.assign(blank(), d);
+  o.settings = Object.assign({ colour: 'bg' }, d.settings || {});
+  if (d.v === 1) {
+    // v1 → v2: tint on/off becomes "Colour on tap"; the tap flow starts fresh. If you already tapped today, no morning steps today.
+    o.settings.colour = d.settings && d.settings.tint ? 'bg' : 'off'; delete o.settings.tint;
+    o.entries = d.entries.map(e => Object.assign({ src: 'tap' }, e));
+    o.flow = blankFlow();
+    const t = now(), tappedToday = d.entries.some(e => e.start >= dayStart(t));
+    o.flow.day = tappedToday ? ldKey(t) : '';
+    o.plan = { date: ldKey(t), idx: tappedToday && d.plan && d.plan.date === dayKey(t) ? (d.plan.idx || 0) : 0 };
+    o.v = 2;
+  } else o.flow = Object.assign(blankFlow(), d.flow || {});
+  return o;
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const d = migrate(JSON.parse(raw)); if (d) { const was = JSON.parse(raw).v; S = d; if (was === 1) save(); } }
+  } catch (e) { storageOk = false; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; }
+  catch (e) { storageOk = false; toast('Could not save in this browser. Use "Export data" to keep a copy.', true); }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const running = () => { const e = S.entries[S.entries.length - 1]; return e && e.end == null ? e : null; };
+const lastEnd = () => { const e = S.entries[S.entries.length - 1]; return e ? (e.end == null ? e.start : e.end) : 0; };
+const label = (tile, detail) => TITLE[tile] + (detail ? ' · ' + detail : '');
+const tapStart = r => { const first = S.entries.find(e => e.tap === r.tap); return first ? first.start : r.start; };
+function endRunning(t) { const r = running(); if (r) r.end = Math.max(t, r.start); }
+
+// ================= the tap flow =================
+let rewardMsg = '', nightyShow = null, playNext = false, peelNext = false;
+
+// Start a tile (the only place where the timer switches). t may lie in the past (a default that happened while the app was closed).
+function startTile(tile, detail, t, o = {}) {
+  const F = S.flow;
+  t = Math.max(t, lastEnd());
+  endRunning(t);
+  const id = uid();
+  S.entries.push({ id, tile, detail: detail || null, start: t, end: null, tap: o.tap || id, approved: !!o.approved, src: o.src || 'tap' });
+  if (o.idx != null) S.plan.idx = o.idx;
+  F.pending = null; F.stuck = null; F.review = null; F.bed = null;
+  if (tile === 'sleep') { F.up = null; F.bedDay = ldKey(t); }
+  rewardMsg = RW[tile] || 'Logged.';
+}
+// "next" / "pick": only propose. The current activity ends now; the time until the confirm is untapped.
+function propose(key, sub, t, idx) {
+  const F = S.flow;
+  F.stuck = null; F.review = null;
+  endRunning(t);
+  F.pending = { key, sub: sub || null, at: t, from: t, auto: false, touched: false, idx };
+  rewardMsg = '';
+}
+function confirmPending(t) {
+  const p = S.flow.pending;
+  startTile(p.key, p.sub, t, { idx: p.idx });
+  if (p.auto) rewardMsg = 'Day started. Good morning!';
+}
+function expirePending(te) {
+  const F = S.flow, p = F.pending;
+  if (p.auto && !p.touched) {          // first tile of the day, untouched: it starts on its own, counted from when the plan question appeared
+    startTile(p.key, p.sub, p.from, { idx: p.idx, src: 'auto' });
+    rewardMsg = TITLE[p.key] + ' started on its own, counted from ' + clockTime(Math.max(p.from, S.entries[S.entries.length - 1].start)) + '.';
+    return;
+  }
+  endRunning(te);
+  F.pending = null; F.review = null;
+  F.stuck = { key: p.key, sub: p.sub, from: p.auto ? te : p.from, pick: null, idx: p.idx };
+  rewardMsg = '';
+}
+function forgot(t) {                    // green "Sorry, forgot": the gap counts as the suggestion, approved
+  const st = S.flow.stuck, gid = uid();
+  const a = Math.max(st.from, lastEnd());
+  if (t - a >= 1000) S.entries.push({ id: gid, tile: st.key, detail: st.sub || null, start: a, end: t, tap: gid, approved: true, src: 'forgot' });
+  startTile(st.key, st.sub, t, { tap: t - a >= 1000 ? gid : null, idx: st.idx });
+  rewardMsg = 'No problem. The gap counts as ' + TITLE[st.key] + ', approved.';
+}
+// Bedtime. at = where the orange overtime counts from; sleepAt = where Sleep starts if you do nothing.
+function goBed(at, shown, sleepAt) {
+  const F = S.flow;
+  F.pending = null; F.stuck = null; F.review = null;
+  F.bed = { at, shown, sleepAt, phase: 'ask', alt: null, whyPick: null };
+  F.bedDay = ldKey(shown);
+  rewardMsg = '';
+}
+function expireBed(te) {
+  const b = S.flow.bed;
+  startTile('sleep', null, b.sleepAt, { src: 'auto' });
+  rewardMsg = 'You did not tap, so Sleep started at ' + clockTime(S.entries[S.entries.length - 1].start) + '.';
+  if (now() - te < 60000) nightyShow = 'bar';
+}
+// Morning: runs once per app day, at the first open after 04:00.
+function startMorning(t) {
+  const F = S.flow;
+  F.day = ldKey(t); F.pending = null; F.stuck = null; F.bed = null; F.up = null; F.review = null; F.morning = null;
+  S.plan = { date: F.day, idx: 0 };
+  const r = running(), last = S.entries[S.entries.length - 1];
+  rewardMsg = '';
+  if (!last) { F.pending = autoFirst(t, t); return; }                         // very first use: straight to the first tile
+  if (r && r.tile === 'sleep') { F.morning = { step: 'plan', planAt: t }; return; }   // Sleep was tapped: it runs until the first tap
+  const since = r ? r.start : lastEnd();
+  const prevBed = atOf(dayStart(dayStart(t) - 1), BEDTIME);
+  const from = clamp(Math.max(since, prevBed), since, t);
+  F.morning = { step: 'sleepq', since, pick: null, from: clockTime(from), to: clockTime(t), fromT: from };
+}
+function answerSleepQ(t) {
+  const F = S.flow, m = F.morning, r = running();
+  const floor = r ? r.start : lastEnd();
+  if (m.pick === SLEEP_Q[0]) {
+    const a = clamp(lastAtOrBefore(m.from, t), floor, t);
+    const b = clamp(lastAtOrBefore(m.to, t) < a ? t : lastAtOrBefore(m.to, t), a, t);
+    endRunning(a);
+    S.entries.push({ id: uid(), tile: 'sleep', detail: 'forgot to tap', start: a, end: b, tap: uid(), approved: true, src: 'sleepq' });
+    rewardMsg = 'Sleep logged (' + clockTime(a) + '–' + clockTime(b) + '). Good morning!';
+  } else {
+    const a = clamp(m.fromT, floor, t);
+    endRunning(a);
+    const d = m.pick === 'None of ya business' ? 'private' : m.pick;
+    S.entries.push({ id: uid(), tile: 'stuck', detail: d + ', overnight', start: a, end: t, tap: uid(), approved: true, src: 'sleepq' });
+    rewardMsg = m.pick === 'None of ya business' ? 'Fair enough. Logged as private.' : 'Logged as ' + m.pick + '. Data, not shame.';
+  }
+  F.morning = { step: 'plan', planAt: t };
+}
+const autoFirst = (t, from) => ({ key: PLAN[0][0], sub: PLAN[0][1], at: t, from, auto: true, touched: false, idx: 0 });
+function doAdj(kind, t, byBar) {
+  const F = S.flow, planAt = F.morning.planAt;
+  F.morning = null;
+  F.review = { kind };
+  F.pending = autoFirst(t, planAt);
+  rewardMsg = byBar ? 'No answer, so the plan auto-adjusted.' : kind === 'keep' ? 'Plan kept.' : kind === 'auto' ? 'Plan auto-adjusted.' : PLANS_LATER;
+}
+const reviewTxt = k => k === 'auto' ? 'Auto-adjusted. Your plan has no times yet (Plans page comes later), so only its order counts: nothing moved.'
+  : k === 'keep' ? 'Plan kept as it was.' : 'Plans page comes later: plan kept as it was.';
+
+// Defaults that happen when a bar runs out, and the day edges (bedtime, new morning). Also catches up after the app was closed.
+function advance(t) {
+  const F = S.flow; let changed = false;
+  for (let i = 0; i < 12; i++) {
+    let fired = true;
+    if (F.day !== ldKey(t)) startMorning(t);
+    else if (F.pending && t >= F.pending.at + barMs(F.pending.auto ? 'first' : 'propose')) expirePending(F.pending.at + barMs(F.pending.auto ? 'first' : 'propose'));
+    else if (F.morning && F.morning.step === 'plan' && t >= F.morning.planAt + barMs('plan')) doAdj('auto', F.morning.planAt + barMs('plan'), true);
+    else if (F.bed && t >= F.bed.shown + barMs('bed')) expireBed(F.bed.shown + barMs('bed'));
+    else if (!F.bed && !F.morning && F.bedDay !== ldKey(t) && t >= bedAt(t)) {
+      const r = running();
+      if (r && r.tile === 'sleep') F.bedDay = ldKey(t);
+      else goBed(bedAt(t), t, bedAt(t));
+    } else fired = false;
+    if (!fired) break;
+    changed = true;
+  }
+  if (changed) save();
+  return changed;
+}
+
+// ================= render =================
+function fmt(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(x).padStart(2, '0');
+}
+function hm(ms) { const m = Math.round(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0'); }
+function mode() {
+  const F = S.flow;
+  if (F.morning) return F.morning.step;      // sleepq | plan
+  if (F.bed) return 'bed-' + F.bed.phase;    // bed-ask | bed-why | bed-alt
+  if (F.stuck) return 'stuck';
+  if (F.pending) return 'pending';
+  return running() ? 'run' : 'idle';
+}
+const barHtml = late => `<div class="track"><div class="fill" id="pendfill"></div></div><div class="cap${late ? ' late' : ''}" id="cap"></div>`;
+let lastHeroKey = null;
+
+function renderHero() {
+  const F = S.flow, m = mode(), r = running(), p = F.pending;
+  let key, lab, name, grey = false, cls = '', clk = '', pend = '';
+  if (m === 'sleepq') { key = 'stuck'; lab = 'Good morning! No Sleep tap last night – what happened?'; name = F.morning.pick || '?'; grey = !F.morning.pick; clk = 'off'; pend = `<div class="cap" id="cap"></div>`; }
+  else if (m === 'plan') {
+    key = PLAN[0][0]; name = label(PLAN[0][0], PLAN[0][1]); grey = true; clk = 'off'; pend = barHtml();
+    const late = F.morning.planAt - wakeAt(F.morning.planAt);
+    lab = late > 15 * 60000 ? 'You start ' + hm(late) + ' later than planned (' + WAKE + ')' : 'Good morning! Change the plan?';
+  }
+  else if (m === 'bed-ask') { key = 'sleep'; lab = 'Time to sleep!'; name = 'Sleep'; cls = 'bed'; clk = 'late'; pend = barHtml(true); }
+  else if (m === 'bed-why') { key = 'stuck'; lab = 'Staying up – why?'; name = F.bed.whyPick || '?'; grey = !F.bed.whyPick; cls = 'bed'; clk = 'late'; pend = barHtml(true); }
+  else if (m === 'bed-alt') { key = F.bed.alt; lab = 'Past bedtime · tap to start ' + TITLE[F.bed.alt]; name = TITLE[F.bed.alt]; grey = true; cls = 'bed'; clk = 'late'; pend = barHtml(true); }
+  else if (m === 'stuck') {
+    key = 'stuck'; lab = "Timer not running – what's up?"; name = 'Stuck?' + (F.stuck.pick ? ' · ' + F.stuck.pick : ''); cls = 'stuck'; clk = 'off';
+    pend = `<button type="button" class="forgot" data-forgot="1">Sorry, forgot to tap ${esc(label(F.stuck.key, F.stuck.sub))}</button>`;
+  }
+  else if (m === 'pending') { key = p.key; lab = p.auto ? 'First on your day · tap to start' : 'Proposed · tap the tile to start'; name = label(p.key, p.sub); grey = true; clk = 'off'; pend = barHtml(); }
+  else if (m === 'run') {
+    key = r.tile; name = r.tile === 'stuck' ? label('stuck', r.detail) : TITLE[r.tile];
+    lab = r.tile === 'sleep' ? 'Now · Sleep' : F.up ? 'Now · past bedtime' : 'Now';
+    if (r.tile === 'sleep') { cls = 'bed'; pend = `<div class="cap" id="cap">Sleep runs until your first tap of the day</div>`; }
+    else if (F.up) pend = `<div class="cap late" id="cap"></div>`;
+  }
+  else { key = PLAN[S.plan.idx][0]; lab = 'First on your day'; name = label(PLAN[S.plan.idx][0], PLAN[S.plan.idx][1]); grey = true; clk = 'off'; }
+
+  const h = $('hero');
+  h.className = 'hero' + (grey ? ' grey' : '') + (cls ? ' ' + cls : '');
+  h.innerHTML = `<div class="label">${esc(lab)}</div>
+    <button class="tile" type="button" data-hero="1" style="padding:0" aria-label="${esc((grey ? 'Start: ' : '') + name)}"><span class="stage">${art(key)}</span></button>
+    <div class="name">${esc(name)}</div>
+    <div class="clock${clk ? ' ' + clk : ''}" id="clock">00:00</div>
+    <div class="pend">${pend}</div>
+    <div class="reward" id="reward"></div>`;
+  if (p && p.auto && m === 'pending') $('cap').innerHTML = `<button type="button" class="textlink" data-review="1">change plans</button> · do nothing = ${esc(TITLE[p.key])} starts`;
+  if (m === 'pending' && !p.auto) $('cap').textContent = 'Untapped until you confirm';
+  if (m === 'plan') $('cap').textContent = 'Do nothing = auto-adjust, then ' + TITLE[PLAN[0][0]] + ' starts';
+  const a = $$('#hero .stage > .art');
+  if (playNext) playArt(a);
+  else if (lastHeroKey !== null && key !== lastHeroKey) a.animate([{ transform: 'translate(-35%, 4%) rotate(-10deg) scale(.85)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.2,.9,.3,1.2)' });
+  lastHeroKey = key; playNext = false;
+  if (rewardMsg) { const rw = $('reward'); rw.textContent = rewardMsg; rw.classList.add('pop'); rewardMsg = ''; }
+  drawBar();
+  live();
+}
+function barInfo() {
+  const F = S.flow;
+  if (F.morning && F.morning.step === 'plan') return [F.morning.planAt, barMs('plan')];
+  if (F.bed) return [F.bed.shown, barMs('bed')];
+  if (F.pending) return [F.pending.at, barMs(F.pending.auto ? 'first' : 'propose')];
+  return null;
+}
+function drawBar() {
+  const f = $('pendfill'), b = barInfo(); if (!f || !b) return;
+  // CSS animation with a negative delay, so a reload continues the bar where it was
+  f.style.animation = `pendfill ${b[1]}ms linear ${-Math.min(b[1], now() - b[0])}ms forwards`;
+}
+// Every second: clocks and captions
+function live() {
+  const F = S.flow, m = mode(), r = running(), t = now(), c = $('clock'), cap = $('cap');
+  if (!c) return;
+  let ms = 0, plus = false;
+  if (m === 'sleepq') ms = t - F.morning.since;
+  else if (m === 'plan') ms = r && r.tile === 'sleep' ? t - r.start : t - F.morning.planAt;
+  else if (m.startsWith('bed')) { ms = t - F.bed.at; plus = true; }
+  else if (m === 'stuck') ms = t - F.stuck.from;
+  else if (m === 'pending') ms = t - F.pending.from;
+  else if (m === 'run') ms = t - tapStart(r);
+  c.textContent = (plus ? '+' : '') + (m === 'idle' ? '00:00' : fmt(ms));
+  if (cap) {
+    if (m === 'sleepq') cap.textContent = 'Nothing tapped since ' + clockTime(F.morning.since) + (F.morning.since < dayStart(t) - 86400000 ? ' (' + new Date(F.morning.since).toLocaleDateString() + ')' : '');
+    else if (m.startsWith('bed')) cap.textContent = (r ? TITLE[r.tile] + ' still runs · ' : '') + 'do nothing = Sleep starts';
+    else if (m === 'run' && F.up && r.tile !== 'sleep') cap.textContent = TITLE[r.tile] + ' · +' + fmt(t - F.up.at) + ' past bedtime (' + BEDTIME + ')';
+  }
+  const sg = $('segs');
+  if (sg && m === 'run' && r.tile !== 'sleep') {
+    const parts = S.entries.filter(e => e.tap === r.tap && e.detail && e.src !== 'forgot');
+    sg.textContent = parts.map(e => e.detail + ' ' + fmt((e.end == null ? t : e.end) - e.start)).join(' · ');
+  }
+}
+
+const chip = (txt, data, on, quiet) => `<button type="button" class="chip${on ? ' on' : ''}${quiet ? ' quiet' : ''}" ${data}>${esc(txt)}</button>`;
+function renderDetail() {
+  const F = S.flow, m = mode(), d = $('detail'), r = running();
+  if (m === 'sleepq') {
+    const mq = F.morning, slept = mq.pick === SLEEP_Q[0];
+    d.innerHTML = `<div class="lbl">First pick what happened (you have to: it is data, not shame), then tap the tile.</div>
+      <div class="chips">${SLEEP_Q.map(x => chip(x, `data-mq="${esc(x)}"`, mq.pick === x, x === 'None of ya business')).join('')}</div>
+      ${slept ? `<div class="times"><span>Slept from</span><input id="mqFrom" type="time" value="${mq.from}"><span>to</span><input id="mqTo" type="time" value="${mq.to}"></div>` : ''}`;
+    return;
+  }
+  if (m === 'plan') {
+    const sl = r && r.tile === 'sleep' ? ` (slept ${hm(F.morning.planAt - r.start)} so far)` : '';
+    d.innerHTML = `<div class="lbl">Change the plan for today?${sl}</div>
+      <div class="chips">${chip('Auto-adjust', 'data-adj="auto"', true)}${chip('Adjust in Plans', 'data-adj="manual"')}${chip('Keep the plan', 'data-adj="keep"', false, true)}</div>
+      <div class="segs">Auto-adjust moves everything except work and fixed times. Do nothing = auto-adjust when the bar runs out.</div>`;
+    return;
+  }
+  if (m === 'bed-why') {
+    d.innerHTML = `<div class="lbl">Be honest, it is data, not shame: pick why, then tap the ? tile. Do nothing = Sleep starts.</div>
+      <div class="chips">${WHY_UP.map(x => chip(x === 'Worth it' && r ? 'Worth it (keep ' + TITLE[r.tile] + ')' : x, `data-why="${esc(x)}"`, F.bed.whyPick === x)).join('')}${chip('back to Sleep', 'data-bedback="1"', false, true)}</div>`;
+    return;
+  }
+  if (m === 'bed-alt') {
+    d.innerHTML = `<div class="lbl">Tap the tile to start ${esc(TITLE[F.bed.alt])}. It counts as time past bedtime. Do nothing = Sleep starts anyway.</div>
+      <div class="chips">${chip('back to Sleep', 'data-bedback="1"', false, true)}</div>`;
+    return;
+  }
+  if (m === 'bed-ask') {
+    d.innerHTML = `<div class="lbl">Tap the moon to go to sleep. Sleep runs until your first tap in the morning.</div>
+      <div class="chips">${chip('Not yet – stay up', 'data-stayup="1"')}${chip("Adjust tomorrow's plan", 'data-tomorrow="1"')}</div>
+      <div class="segs late-txt">Staying up is your call. It shows as overtime.</div>`;
+    return;
+  }
+  if (m === 'stuck') {
+    d.innerHTML = `<div class="lbl">Stuck? Pick a reason, then tap the ? tile. Or leave it for later: "next" or the evening checkout.</div>
+      <div class="chips">${STUCK_TYPES.map(x => chip(x, `data-stuckd="${esc(x)}"`, F.stuck.pick === x)).join('')}</div>`;
+    return;
+  }
+  if (m === 'pending') {
+    const p = F.pending, list = DETAIL[p.key] || [];
+    d.innerHTML = (p.auto && F.review ? `<div class="segs" style="margin:0 0 6px">${esc(reviewTxt(F.review.kind))}</div>` : '') +
+      `<div class="lbl">Pick a detail if you like, then tap the big tile to start ${esc(TITLE[p.key])}.</div>
+      <div class="chips">${list.map(x => chip(x, `data-confirm="${esc(x)}"`, p.sub === x)).join('')}</div>`;
+    return;
+  }
+  if (m === 'idle') { d.innerHTML = `<div class="lbl">Tap the tile to start.</div>`; return; }
+  // run
+  const up = F.up && r.tile !== 'sleep' ? (F.up.tdone ? `<div class="segs late-txt" style="margin:0 0 6px">✓ ${esc(F.up.tdone)}</div>`
+    : `<div class="lbl late-txt" style="margin-bottom:4px">Staying up${F.up.reason ? ' (' + esc(F.up.reason) + ')' : ''}. Adjust tomorrow?</div>
+       <div class="chips" style="margin-bottom:8px">${chip('Auto-adjust tomorrow', 'data-tauto="1"')}${chip("Adjust tomorrow's plan", 'data-tomorrow="1"')}</div>`) : '';
+  if (r.tile === 'sleep') { d.innerHTML = `<div class="lbl">Sleeping since ${clockTime(r.start)}. Got up? Tap "pick" and choose what you do now.</div>`; return; }
+  const list = r.tile === 'stuck' ? STUCK_TYPES : DETAIL[r.tile];
+  d.innerHTML = up + `<div class="lbl">More detail? Optional. Switch between these as often as you like.</div>
+    <div class="chips">${list.map(x => chip(x, `data-detail="${esc(x)}"`, r.detail === x)).join('')}</div>
+    <div class="segs" id="segs"></div>`;
+  live();
+}
+let showAll = false, logOpen = false;
+function renderPicker() {
+  const F = S.flow, m = mode(), r = running();
+  if (m === 'sleepq' || m === 'plan') { $('picker').innerHTML = ''; return; }
+  const sleepNext = F.up || S.plan.idx >= PLAN.length - 1;
+  const ni = S.plan.idx + 1;
+  const hideNext = m.startsWith('bed') || (r && r.tile === 'sleep' && m === 'run');
+  const nextLbl = sleepNext ? 'Sleep' : label(PLAN[ni][0], PLAN[ni][1]);
+  const cur = F.bed ? F.bed.alt : F.pending ? F.pending.key : r && m === 'run' ? r.tile : null;
+  const tileBtn = tid => `<button class="tile${cur === tid ? ' on' : ''}" type="button" data-pick="${tid}">${art(tid)}<span class="title">${TITLE[tid]}</span></button>`;
+  $('picker').innerHTML = `<div class="nextrow">${hideNext ? '' : `<button class="nextbtn" type="button" data-next="1">next: ${esc(nextLbl)} →</button>`}
+    <button class="textlink" type="button" data-all="1" aria-expanded="${showAll}">${showAll ? 'hide' : 'pick'}</button></div>
+    ${showAll ? `<div class="grid8">${ALL8.map(tileBtn).join('')}</div>` : ''}`;
+}
+function todayTotals(t) {
+  const d0 = dayStart(t), per = {}, rows = [];
+  let named = 0, sleep = 0, covered = 0, first = null;
+  S.entries.forEach(e => {
+    const a = Math.max(e.start, d0), b = e.end == null ? t : e.end;
+    if (b <= a) return;
+    if (e.tile === 'sleep') sleep += b - a; else { per[e.tile] = (per[e.tile] || 0) + (b - a); named += b - a; }
+    covered += b - a; if (first == null || a < first) first = a;
+    rows.push({ e, a, b });
+  });
+  const untapped = first == null ? 0 : Math.max(0, (t - first) - covered);
+  return { per, named, sleep, untapped, rows };
+}
+const SRC = { forgot: 'forgot, approved', auto: 'started on its own', sleepq: 'morning answer' };
+function renderToday() {
+  const t = now(), { per, named, sleep, untapped, rows } = todayTotals(t);
+  const full = AWAKE_H * 3600000, keys = ALL8.concat(['stuck']).filter(k => per[k]);
+  const segs = keys.map(k => `<i style="width:${(100 * per[k] / Math.max(full, named)).toFixed(2)}%;background:${TINT[k]}" title="${TITLE[k]} ${hm(per[k])}"></i>`).join('');
+  $('today').innerHTML = `<h2>Today <span>${hm(named)} named of ${AWAKE_H} h awake${untapped >= 60000 ? ' · untapped ' + hm(untapped) : ''}</span></h2>
+    <div class="bar" role="img" aria-label="Named time today: ${hm(named)} of ${AWAKE_H} hours">${segs}</div>
+    <div class="legend">${keys.map(k => `<span><b style="background:${TINT[k]}"></b>${TITLE[k]} ${hm(per[k])}</span>`).join('')}${sleep ? `<span><b style="background:${TINT.sleep}"></b>Sleep ${hm(sleep)} (not in the bar)</span>` : ''}${!keys.length && !sleep ? '<span class="muted">Nothing tapped yet today.</span>' : ''}</div>
+    ${rows.length ? `<details id="logbox"${logOpen ? ' open' : ''}><summary>Today's log (${rows.length})</summary><ul class="log">${rows.slice().reverse().map(x =>
+      `<li><span>${esc(label(x.e.tile, x.e.detail))}${SRC[x.e.src] ? ` <span class="src">· ${SRC[x.e.src]}</span>` : ''}</span><span class="t">${clockTime(x.a)}–${x.e.end == null ? 'now' : clockTime(x.b)} · ${hm(x.b - x.a)}</span></li>`).join('')}</ul></details>` : ''}`;
+  const lb = $('logbox'); if (lb) lb.addEventListener('toggle', () => { logOpen = lb.open; });
+}
+function renderNight() {
+  const n = $('night');
+  if (!nightyShow) { n.innerHTML = ''; return; }
+  if (nightyShow === 'closed') {
+    n.innerHTML = `<button type="button" class="nighty closed" data-nighty="open"><div class="nt" style="font-size:18px;opacity:.7">Sleep keeps counting.</div><div class="ns" style="opacity:.6">You can close this tab now.</div><div class="small" style="margin-top:18px;opacity:.5">tap to open the app again</div></button>`;
+    return;
+  }
+  n.innerHTML = `<button type="button" class="nighty" data-nighty="close"><div class="moon">☾</div><div class="zz"><span>z</span><span>z</span><span>Z</span></div>
+    <div class="nt">Nighty night!</div>
+    <div class="ns">${nightyShow === 'bar' ? 'You did not tap, so Sleep started on its own. ' : ''}You can close the app now. Sleep keeps counting on its own. See you in the morning!</div>
+    <div class="ph" style="position:static;margin-top:10px;display:inline-block;padding:3px 8px">PLACEHOLDER animation · to-do for the tile designer</div>
+    <div class="small" style="margin-top:12px;opacity:.7">tap anywhere to close</div></button>`;
+}
+function setTint() {
+  const F = S.flow, r = running(), mo = S.settings.colour || 'off';
+  const k = F.bed ? 'sleep' : r ? r.tile : null, c = k ? TINT[k] : 'transparent';
+  const st = document.documentElement.style;
+  st.setProperty('--tint', (mo === 'bg' || mo === 'both') ? c : 'transparent');
+  st.setProperty('--glow', c);
+  document.body.classList.toggle('glow-on', (mo === 'glow' || mo === 'both') && !!k);
+}
+function renderAll() { setTint(); renderHero(); renderDetail(); renderPicker(); renderToday(); renderNight(); $('colour').value = S.settings.colour || 'off'; }
+// After every user action: save, then redraw (with the peel-off for "next")
+function commit(o = {}) {
+  save();
+  if (o.play) playNext = true;
+  if (o.peel) { peelOff(renderAll); return; }
+  renderAll();
+}
+function peelOff(then) {
+  const a = $$('#hero .stage > .art');
+  if (!a) { then(); return; }
+  a.animate([
+    { transform: 'none', opacity: 1 },
+    { transform: 'translate(-4%, 3%) rotate(-5deg)', offset: .25 },
+    { transform: 'translate(130%, -28%) rotate(32deg) scale(.9)', opacity: 0 }
+  ], { duration: 380, easing: 'cubic-bezier(.5,0,.8,.5)', fill: 'forwards' });
+  setTimeout(then, 390);   // timer instead of onfinish: also works when the tab is in the background
+}
+function toast(msg, bad) { const t = $('toast'); t.textContent = msg; t.className = 'toast' + (bad ? ' bad' : ''); t.hidden = false; clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, bad ? 6000 : 3200); }
+
+let lastMinute = -1;
+setInterval(() => {
+  const t = now();
+  if (advance(t)) { renderAll(); return; }
+  live();
+  const m = Math.floor(t / 60000);
+  if (m !== lastMinute) { lastMinute = m; renderToday(); }
+}, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && advance(now())) renderAll(); });
+
+// ================= events =================
+function planIdxFor(tile) {
+  for (let j = S.plan.idx + 1; j < PLAN.length; j++) if (PLAN[j][0] === tile) return j;
+  return S.plan.idx;
+}
+function setDetail(d, t) {
+  const r = running(); if (!r || r.detail === d) return;
+  if (r.detail == null) r.detail = d;               // first detail names the whole tap so far
+  else {                                             // another detail: new entry inside the same tile tap
+    r.end = t;
+    S.entries.push({ id: uid(), tile: r.tile, detail: d, start: t, end: null, tap: r.tap, approved: r.tile === 'stuck', src: 'tap' });
+  }
+  if (r.tile === 'stuck') r.approved = true;         // Stuck with a reason = approved
+  rewardMsg = 'Detail: ' + d + '. Same tile, still running.';
+}
+function readTimes() { const F = S.flow; if (F.morning && $('mqFrom')) { F.morning.from = $('mqFrom').value || F.morning.from; F.morning.to = $('mqTo').value || F.morning.to; } }
+function heroTap(t) {
+  const F = S.flow, m = mode(), r = running();
+  if (m === 'sleepq') {
+    readTimes();
+    if (!F.morning.pick) { toast('Pick what happened first (one tap), then tap the tile.'); return; }
+    answerSleepQ(t); commit({ play: true }); return;
+  }
+  if (m === 'plan') { doAdj('auto', t); confirmPending(t); commit({ play: true }); return; }
+  if (m === 'bed-ask') { startTile('sleep', null, t); nightyShow = 'tap'; commit({ play: true }); return; }
+  if (m === 'bed-why') {
+    const w = F.bed.whyPick;
+    if (!w) { toast('Pick why first (one tap), then tap the ? tile.'); return; }
+    const up = { reason: w, at: F.bed.at, tdone: null };
+    if (w === 'Gotta keep working') startTile('a09', null, t);
+    else if (w === 'Worth it' && r) F.bed = null;
+    else startTile('stuck', w === 'None of ya business' ? 'private' : w, t, { approved: true });
+    F.up = up;
+    rewardMsg = 'Staying up: ' + w + '. Tomorrow\'s plan can adjust below.';
+    commit({ play: true }); return;
+  }
+  if (m === 'bed-alt') { const a = F.bed.alt, up = { reason: TITLE[a], at: F.bed.at, tdone: null }; startTile(a, null, t); F.up = up; commit({ play: true }); return; }
+  if (m === 'stuck') { const p = F.stuck.pick; startTile('stuck', p, t, { approved: !!p }); if (!p) rewardMsg = 'Stuck logged. Add a reason below, or sort it in the evening checkout.'; commit({ play: true }); return; }
+  if (m === 'pending') { confirmPending(t); commit({ play: true }); return; }
+  if (m === 'idle') { startTile(PLAN[S.plan.idx][0], PLAN[S.plan.idx][1], t); commit({ play: true }); return; }
+  playArt($$('#hero .stage > .art'));               // tapping the running tile again changes nothing
+}
+document.addEventListener('click', ev => {
+  const q = s => ev.target.closest(s), t = now(), F = S.flow; let b;
+  if (advance(t)) { renderAll(); return; }           // a bar ran out a moment ago: show that first
+  if ((b = q('[data-nighty]'))) { nightyShow = b.dataset.nighty === 'close' ? 'closed' : null; renderNight(); return; }
+  if ((b = q('[data-hero]'))) { heroTap(t); return; }
+  if ((b = q('[data-forgot]'))) { forgot(t); commit({ play: true }); return; }
+  if ((b = q('[data-confirm]'))) { F.pending.touched = true; F.pending.sub = b.dataset.confirm; save(); renderHero(); renderDetail(); return; }   // select only
+  if ((b = q('[data-stuckd]'))) { F.stuck.pick = b.dataset.stuckd; save(); renderHero(); renderDetail(); return; }                            // select only
+  if ((b = q('[data-mq]'))) { readTimes(); F.morning.pick = b.dataset.mq; save(); renderHero(); renderDetail(); return; }
+  if ((b = q('[data-adj]'))) { doAdj(b.dataset.adj, t); if (b.dataset.adj === 'manual') toast(PLANS_LATER); commit(); return; }
+  if ((b = q('[data-review]')) || (b = q('[data-tomorrow]'))) { toast(PLANS_LATER); return; }
+  if ((b = q('[data-tauto]'))) { F.up.tdone = 'Noted. ' + PLANS_LATER; commit(); return; }
+  if ((b = q('[data-stayup]'))) { F.bed.phase = 'why'; F.bed.alt = null; commit(); return; }
+  if ((b = q('[data-why]'))) { F.bed.whyPick = b.dataset.why; save(); renderHero(); renderDetail(); return; }   // select only
+  if ((b = q('[data-bedback]'))) { F.bed.phase = 'ask'; F.bed.alt = null; F.bed.whyPick = null; commit(); return; }
+  if ((b = q('[data-next]'))) {
+    if (F.up || S.plan.idx >= PLAN.length - 1) { const ba = bedAt(t); goBed(Math.min(t, ba), t, t); commit({ peel: true }); return; }
+    const i = S.plan.idx + 1;
+    S.plan.idx = i;                                  // "next" walks the plan even if the proposal is not confirmed
+    propose(PLAN[i][0], PLAN[i][1], t, i); commit({ peel: true }); return;
+  }
+  if ((b = q('[data-all]'))) { showAll = !showAll; renderPicker(); return; }
+  if ((b = q('[data-pick]'))) {
+    const k = b.dataset.pick, r = running(), m = mode();
+    playArt(b.querySelector('.art'));
+    if (m.startsWith('bed')) { F.bed.phase = 'alt'; F.bed.alt = k; F.bed.whyPick = null; showAll = false; commit(); return; }
+    if (m === 'run' && r.tile === k) { const rw = $('reward'); rw.textContent = 'Already running. Same tile, nothing changed.'; return; }
+    if (m === 'pending' && F.pending.key === k) return;
+    propose(k, null, t, planIdxFor(k)); showAll = false; commit(); return;
+  }
+  if ((b = q('[data-detail]'))) { setDetail(b.dataset.detail, t); commit(); return; }
+  if ((b = q('#export'))) { exportData(); return; }
+  if ((b = q('#importBtn'))) { $('importFile').click(); return; }
+});
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'mqFrom' || ev.target.id === 'mqTo') { readTimes(); save(); }
+});
+$('colour').addEventListener('change', e => { S.settings.colour = e.target.value; save(); setTint(); });
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'time-budget-' + dayKey(now()) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(txt => {
+    const d = migrate(JSON.parse(txt));
+    if (!d) throw new Error('not a Time Budget file');
+    if (!confirm(`Replace the data in this browser with "${f.name}" (${d.entries.length} entries)? The current data (${S.entries.length} entries) is overwritten.`)) return;
+    S = d; save(); advance(now()); renderAll(); toast('Imported ' + d.entries.length + ' entries.');
+  }).catch(err => toast('Import failed: ' + err.message, true)).finally(() => { e.target.value = ''; });
+});
+// Another tab of this page changed the data: reload it here too
+window.addEventListener('storage', e => { if (e.key === KEY) { load(); renderAll(); } });
+
+if (FAST || SHIFT_MS) { const tb = $('testbar'); tb.hidden = false; tb.textContent = 'TEST MODE' + (FAST ? ' · all bars 10 s' : '') + (SHIFT_MS ? ' · clock shifted ' + (SHIFT_MS / 60000) + ' min' : '') + ' · uses the real data'; }
+load();
+advance(now());
+renderAll();
+if (!storageOk) toast('This browser blocks saving. Taps will be lost on reload.', true);
+})();
+</script>
+</body>
+</html>

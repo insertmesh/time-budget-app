@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget Rewards v3</title>
+<!--
+  Rewards mockup v3 (2026-11-13): v2 + mini game "Guess your week" (Progress tab card, or Rewards > Mini games > Play demo).
+  Its reveal = FX 6 (timing approved by Samuel, animated; "Replay FX 6" in the controls).
+  Rewards mockup v2 (2026-11-13, step 02d_rewards_design), from Samuel's v1 feedback:
+  1) one general layout, the active theme only reskins points / collection / FX (skins: felt, lino, chalk, riso, neutral)
+  2) the 5 FX from the approved timing plan are animated (replay buttons in the mockup controls)
+  3) real-life treats: freed time makes treat slots in the plan; app credits = a self-made treat rule
+  Theme previews = static composites in assets\themes\. Open by double-click. Mockup only: fake data, no saving.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap">
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A4F36; --warn-soft: #F5E4DC; --good: #2F7A4F;
+  --gold: #B9832F; --gold-soft: #F6EBD6;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif; --font-head: "Literata", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A; --gold: #E2B66A; --gold-soft: #3A3122; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A; --gold: #E2B66A; --gold-soft: #3A3122; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); padding: 0 16px 48px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+.controls { max-width: 920px; margin: 14px auto 16px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; background: var(--surface);
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: 14px; }
+.controls .tag { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 100%; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.seg button { border: 0; background: none; padding: 5px 11px; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 600; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+.btn.main { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.btn.sm { padding: 3px 10px; font-size: 13px; }
+.textlink { border: 0; background: none; color: var(--accent); text-decoration: underline; padding: 2px 4px; font-size: 14px; }
+
+/* ---------- phone + skins ---------- */
+.phone { position: relative; max-width: 420px; margin: 0 auto; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 28px;
+  height: 760px; overflow: hidden; display: flex; flex-direction: column; }
+.phone[data-skin="lino"]  { --surface: #F3ECDF; --line: #CDBFA8; --gold: #B3261E; --gold-soft: #F1D9CC; --accent: #1F1F1F; --ink: #1F1F1F; --muted: #5F574B; }
+.phone[data-skin="chalk"] { --surface: #2C3A35; --ink: #EEF0E6; --muted: #AEBBB3; --line: #4A5B54; --gold: #F3D98B; --gold-soft: #3B4A43; --accent: #A9D8C8; --accent-soft: #3A4B45; --warn: #F0B49E; --warn-soft: #43403A; --good: #A9E0B8; }
+.phone[data-skin="riso"]  { --surface: #FBF6EC; --gold: #E23E7F; --gold-soft: #FBDDE8; --accent: #1C8C86; --line: #E5DCCB; }
+.phone[data-skin="neutral"] { --gold: var(--accent); --gold-soft: var(--accent-soft); }
+.phone[data-skin="chalk"] .entry { background: #3A3F38; }
+.page { flex: 1; overflow-y: auto; padding: 0 16px 20px; position: relative; }
+.tabs { display: flex; border-top: 1px solid var(--line); }
+.tabs button { flex: 1; border: 0; background: none; padding: 10px 4px 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.tabs button[aria-pressed="true"] { color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+.tabs .ic { display: block; font-size: 18px; line-height: 1.2; }
+h2 { font: 600 20px/1.3 var(--font-head); margin: 16px 0 2px; }
+.sec { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; font-weight: 600; }
+
+/* wallet: sticky so the fly-in always has a target; points only go up */
+.wallet { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 8px -4px 0; border-radius: 14px; background: var(--gold-soft); color: var(--gold); font-weight: 800; box-shadow: 0 6px 10px -8px rgba(0,0,0,.3); }
+.wallet .n { font-size: 22px; font-variant-numeric: tabular-nums; }
+.wallet .lbl { font-size: 13px; font-weight: 600; color: var(--ink); }
+.wallet .pend { margin-left: auto; font-size: 13px; color: var(--muted); font-weight: 600; }
+.ico { width: 26px; height: 26px; flex: none; display: inline-block; }
+.ico.mini { width: 15px; height: 15px; vertical-align: -3px; }
+
+/* checkout */
+.score { margin: 10px 0 4px; }
+.score .row { display: flex; justify-content: space-between; font-weight: 700; }
+.track { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.track .fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--good)); transition: width .6s cubic-bezier(.3,1.4,.5,1); }
+.entry { border: 1px solid var(--warn); background: var(--warn-soft); border-radius: 14px; padding: 10px 12px; margin-top: 10px; }
+.entry .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+.entry .time { font-size: 13px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.entry .q { font-size: 14px; margin: 4px 0 6px; }
+.entry.done { background: none; border-color: var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 11px; font-size: 13px; }
+.chip.quiet { color: var(--muted); border-style: dashed; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.auto { font-size: 14px; display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+.auto:last-child { border: 0; }
+.auto .ok { color: var(--good); font-weight: 700; white-space: nowrap; }
+.st { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--gold-soft); color: var(--gold); margin-left: 4px; white-space: nowrap; }
+.pop { position: absolute; transform: translateX(-50%); font-weight: 800; color: var(--gold); pointer-events: none; z-index: 9; animation: ptsup 1.1s ease-out forwards; white-space: nowrap; }
+@keyframes ptsup { 0% { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { transform: translate(-50%, -8px) scale(1.15); opacity: 1; } 100% { transform: translate(-50%, -46px) scale(1); opacity: 0; } }
+.stamp { margin: 16px auto 6px; width: 200px; padding: 10px; border: 4px solid var(--good); color: var(--good); border-radius: 14px; text-align: center;
+  font: 800 22px/1.15 var(--font-ui); transform: rotate(-8deg); }
+.stamp.land { animation: stamp .45s cubic-bezier(.2,1.6,.4,1); }
+.stamp small { display: block; font-size: 13px; font-weight: 700; }
+@keyframes stamp { from { transform: rotate(-8deg) scale(2.2); opacity: 0; } to { transform: rotate(-8deg) scale(1); opacity: 1; } }
+.earned { margin-top: 6px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 14px; }
+
+/* flying / FX bits */
+.fly { position: absolute; z-index: 30; pointer-events: none; width: 20px; height: 20px; }
+.conf { position: absolute; z-index: 29; pointer-events: none; }
+.sparkle { position: absolute; z-index: 8; pointer-events: none; color: var(--gold); font-size: 18px; transform: translate(-50%, -50%); }
+
+/* progress: the collection (quilt / print sheet / board / poster / calendar) */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.day { text-align: center; font-size: 12px; }
+.patch { aspect-ratio: 1; border-radius: 8px; position: relative; display: grid; place-items: center; font-weight: 800; font-size: 12px; color: #fff; }
+.patch .edge { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.patch.empty { background: none !important; color: var(--muted); border: 2px dotted var(--line); box-shadow: none !important; }
+.patch.rest  { background: none !important; color: var(--muted); border: 2px dashed var(--line); box-shadow: none !important; font-weight: 600; }
+.patch.future { background: none !important; border: 1px dotted var(--line); box-shadow: none !important; }
+.quilt { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.quilt .patch { font-size: 0; border-radius: 5px; }
+/* felt: stitched edge + soft drop */
+[data-skin="felt"] .patch:not(.empty):not(.rest):not(.future) { box-shadow: 0 2px 0 rgba(0,0,0,.15); }
+/* lino: thick black outline, flat */
+[data-skin="lino"] .patch:not(.empty):not(.rest):not(.future) { border: 3px solid #1F1F1F; border-radius: 3px; background-image: repeating-linear-gradient(115deg, rgba(0,0,0,.07) 0 2px, transparent 2px 6px) !important; }
+[data-skin="lino"] .quilt .patch:not(.empty):not(.rest):not(.future) { border-width: 2px; }
+/* chalk: outline only, chalky */
+[data-skin="chalk"] .patch:not(.empty):not(.rest):not(.future) { background: transparent !important; border: 2.5px solid var(--c); color: var(--c); border-radius: 10px 6px 9px 7px; filter: drop-shadow(0 0 1px rgba(255,255,255,.35)); }
+[data-skin="chalk"] .quilt .patch:not(.empty):not(.rest):not(.future) { background: color-mix(in srgb, var(--c) 35%, transparent) !important; border-width: 1.5px; }
+/* riso: off-register colour edges */
+[data-skin="riso"] .patch:not(.empty):not(.rest):not(.future) { box-shadow: 3px 3px 0 rgba(226,62,127,.55), -2px -1px 0 rgba(28,140,134,.45); border-radius: 6px; }
+[data-skin="riso"] .quilt .patch:not(.empty):not(.rest):not(.future) { box-shadow: 2px 2px 0 rgba(226,62,127,.55); }
+/* neutral: plain */
+[data-skin="neutral"] .patch:not(.empty):not(.rest):not(.future) { border-radius: 6px; }
+
+.card { border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px; margin-top: 8px; }
+.mile { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.mile:last-child { border: 0; }
+.badge { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 20px; background: var(--gold-soft); border: 2px dashed var(--gold); position: relative; overflow: hidden; }
+.badge.locked { filter: grayscale(1); opacity: .45; }
+.badge .shine { position: absolute; inset: -10px; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.85) 50%, transparent 65%); transform: translateX(-120%); }
+.bar2 { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 3px; }
+.bar2 i { display: block; height: 100%; background: var(--gold); }
+.ribbon { position: absolute; left: 0; z-index: 12; background: var(--gold); color: #fff; font-weight: 800; padding: 8px 18px 8px 16px; border-radius: 0 999px 999px 0; box-shadow: 0 4px 10px rgba(0,0,0,.2); white-space: nowrap; }
+.newbadge { position: absolute; left: 16px; right: 16px; bottom: 64px; z-index: 25; background: var(--surface); border: 2px solid var(--gold); border-radius: 16px; padding: 12px; display: flex; gap: 12px; align-items: center; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+.newbadge .badge { width: 54px; height: 54px; font-size: 28px; }
+
+/* rewards */
+.theme { border: 1px solid var(--line); border-radius: 16px; padding: 10px; margin-top: 10px; position: relative; }
+.theme .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.theme .nm { font-weight: 800; }
+.theme .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0 4px; position: relative; perspective: 600px; }
+.theme .tiles img { width: 100%; display: block; }
+.theme.locked .tiles img { filter: grayscale(.85) brightness(1.05); }
+.wrapper { position: absolute; inset: -3px; border-radius: 10px; z-index: 2; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .05em;
+  background: repeating-linear-gradient(45deg, rgba(185,131,47,.82) 0 10px, rgba(160,108,35,.82) 10px 20px); transform-origin: 0% 100%; }
+.wrapper::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 10px; margin-top: -5px; background: rgba(255,255,255,.55); }
+.wrapper span { position: relative; background: rgba(0,0,0,.35); padding: 2px 10px; border-radius: 999px; }
+.price { font-weight: 800; color: var(--gold); white-space: nowrap; }
+.owned { font-weight: 700; color: var(--good); font-size: 13px; }
+.row2 { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.row2:last-child { border: 0; }
+.idea { border: 2px dashed var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 8px; font-size: 14px; }
+.idea b { display: block; }
+.freed { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 14px; padding: 10px 12px; margin-top: 8px; font-size: 14px; }
+.slot { border: 2px solid var(--gold); border-radius: 12px; padding: 8px 10px; margin-top: 8px; background: var(--surface); }
+.slot .top { display: flex; justify-content: space-between; font-weight: 700; gap: 8px; }
+.modal { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 40; padding: 16px; }
+.modal .box { background: var(--surface); border-radius: 18px; padding: 16px; width: 100%; }
+.modal .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.modal .grid img { width: 100%; display: block; }
+
+/* mini game: Guess your week */
+.gcard { border: 2px solid var(--gold); border-radius: 16px; padding: 10px 12px; margin-top: 10px; display: flex; gap: 12px; align-items: center; }
+.gcard .big { font-size: 30px; }
+.grow { margin-top: 14px; }
+.grow .top { display: flex; justify-content: space-between; font-weight: 700; gap: 8px; }
+.grow .val { font-variant-numeric: tabular-nums; color: var(--gold); }
+.grow input[type=range] { width: 100%; accent-color: var(--gold); }
+.gtrack { position: relative; height: 22px; border-radius: 6px; background: var(--line); margin-top: 14px; }
+.gtrack .real { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+.gtrack .plan { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--ink); opacity: .55; }
+.gtrack .guess { position: absolute; top: -13px; transform: translateX(-50%); font-size: 14px; line-height: 1; color: var(--ink); }
+.gres { font-size: 13px; margin-top: 4px; display: flex; justify-content: space-between; gap: 8px; }
+.legend { font-size: 12px; color: var(--muted); margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap; }
+.sense { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; align-items: end; height: 90px; margin-top: 22px; }
+.sense div { background: var(--accent-soft); border-radius: 6px 6px 0 0; position: relative; text-align: center; font-size: 11px; }
+.sense div.now { background: var(--gold); }
+.sense span { position: absolute; top: -17px; left: 0; right: 0; font-weight: 700; white-space: nowrap; }
+.fxph { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: #B3261E; border-radius: 4px; padding: 1px 5px; vertical-align: middle; }
+.notes { max-width: 920px; margin: 24px auto 0; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.notes h3 { font-size: 15px; margin: 14px 0 6px; } .notes h3:first-child { margin-top: 0; }
+.notes ul { margin: 0; padding-left: 20px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.tbl th, .tbl td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.wrap { overflow-x: auto; }
+@media (max-width: 440px) { .phone { border-radius: 18px; height: 700px; } }
+</style>
+</head>
+<body>
+<div class="controls">
+  <div class="tag">Mockup controls (not part of the app)</div>
+  <span>Skin <span class="seg" id="skinSeg"></span></span>
+  <span>Replay FX <span class="seg" id="fxSeg"></span></span>
+  <button class="btn" type="button" id="reset">Reset all</button>
+  <button class="btn" type="button" id="theme">Light / dark</button>
+  <span class="small muted">In the app the skin follows the tile theme you use. Tap anywhere during an FX to skip it.</span>
+</div>
+
+<div class="phone" id="phone" data-skin="felt">
+  <div class="page" id="page"></div>
+  <nav class="tabs" id="tabs">
+    <button type="button" data-tab="checkout" aria-pressed="true"><span class="ic">✓</span>Checkout</button>
+    <button type="button" data-tab="progress" aria-pressed="false"><span class="ic">▦</span>Progress</button>
+    <button type="button" data-tab="rewards" aria-pressed="false"><span class="ic">★</span>Rewards</button>
+  </nav>
+</div>
+
+<div class="notes">
+  <h3>New in v3: mini game "Guess your week"</h3>
+  <ul>
+    <li><b>When:</b> once a week, after the last checkout of the week (Sunday). A card on Progress says "Guess before you look!". Also in Rewards &gt; Mini games &gt; Play demo.</li>
+    <li><b>Play:</b> 3 sliders: guess your hours this week for 3 categories (one you want to reduce, one you want to grow, one random). Steps of 30 min, no hints. "Just show me" skips the game (no points, no shame).</li>
+    <li><b>Reveal:</b> per category the real hours (bar in category colour), your guess (&#9660; marker) and your plan (dashed line). Points: within 1 h = +3 "Spot on!", within 3 h = +2 "Close!", further = +1 "Time flies, huh?". Every guess earns something, never minus. Max +9.</li>
+    <li><b>Time sense track:</b> how far off your guesses were, week by week. Getting closer = your sense of time is getting better. That is the real reward behind the game.</li>
+  </ul>
+  <h3>FX 6 &middot; Guess reveal (approved, animated)</h3>
+  <div class="wrap"><table class="tbl">
+    <tr><th>Step</th><th>Timing</th></tr>
+    <tr><td>Rows</td><td>one row after the other, 400 ms apart (3 rows)</td></tr>
+    <tr><td>Per row</td><td>0 ms real bar grows from 0 to its length (500 ms, ease-out) &rarr; 300 ms plan line fades in (150 ms) &rarr; 500 ms your &#9660; guess drops in from above (200 ms, small bounce) &rarr; 700 ms result text + comment pop ("Close! +2", same pop as the checkout)</td></tr>
+    <tr><td>End</td><td>after the last row: total points fly to the wallet (FX 1, already approved). If all 3 guesses are within 1 h: confetti too.</td></tr>
+    <tr><td>Total</td><td>&asymp; 2.5 s, tap to skip (shows the end state)</td></tr>
+  </table></div>
+
+  <h3>What changed in v2</h3>
+  <ul>
+    <li><b>One general layout, five skins.</b> Pages, numbers and rules are the same for every theme. The skin only changes the points name + icon, how a day looks in the collection, and the confetti. Switch "Skin" above, or unlock a theme and press "Use".
+      <div class="wrap"><table class="tbl">
+        <tr><th>Skin</th><th>Points</th><th>Collection (one piece per checked-out day)</th><th>Confetti</th></tr>
+        <tr><td>Felt</td><td>stitches</td><td>quilt of stitched patches</td><td>felt scraps</td></tr>
+        <tr><td>Lino</td><td>prints</td><td>print sheet, thick black outlines</td><td>ink squares</td></tr>
+        <tr><td>Chalk</td><td>chalk marks</td><td>board with chalk outlines (dark page)</td><td>chalk dust</td></tr>
+        <tr><td>Riso</td><td>inks</td><td>poster with off-register colour edges</td><td>halftone dots</td></tr>
+        <tr><td>Neutral</td><td>points</td><td>plain calendar squares</td><td>simple paper bits</td></tr>
+      </table></div>
+      New themes (crayon, pixel, …) only need these 4 things defined. "Neutral" could be a Settings choice ("plain rewards") → 02e.</li>
+    <li><b>All 5 FX animated</b> with the approved timings. Do a full checkout to see 1 → 2 → 3 → 5 in a row; unlock a theme for 4. "Replay FX" plays each one alone.</li>
+    <li><b>Real-life treats (Rewards tab, top).</b> When you use less time than planned on things you want to reduce (Work overtime, Stuck), that time is "freed". Once enough is freed, the app makes a <b>treat slot</b> in your plan. You fill it with one of your own treats (price in points), or leave it as free time. "Guilt-free gaming" = the app-credits idea as a self-made rule: shown, not enforced.</li>
+    <li><b>Mini games:</b> still concept cards. Pick which one to mock first.</li>
+    <li>Wednesday is now a checked-out day, so tonight's checkout completes the week (to show FX 3). Rest days still show in the month collection.</li>
+  </ul>
+  <h3>FX timings (approved in v1, now built)</h3>
+  <div class="wrap"><table class="tbl">
+    <tr><th>FX</th><th>Timing</th></tr>
+    <tr><td>1 · Points fly</td><td>stamp lands → 450 ms points pop from the stamp (8, 60 ms apart) → each flies 500 ms on a curve to the wallet → wallet counts up, bounce 1.15× for 150 ms. ≈ 1.6 s</td></tr>
+    <tr><td>2 · Day piece added</td><td>200 ms the piece drops in from 1.4× (300 ms, overshoot) → 500–1100 ms the edge line draws around it → 1100 ms sparkle. ≈ 1.2 s</td></tr>
+    <tr><td>3 · Week complete</td><td>7 pieces wave (hop 6 px, 70 ms apart) → ribbon slides in from the left (300 ms) → skin confetti. ≈ 1.8 s</td></tr>
+    <tr><td>4 · Theme unlock</td><td>card shakes 2 × 80 ms → 160 ms wrapping peels off to the top right (400 ms) → 560 ms tiles flip grey → colour, 120 ms apart → 1100 ms "Try it now?" ≈ 1.3 s</td></tr>
+    <tr><td>5 · New badge</td><td>badge spins in (360°, scale 0 → 1, 500 ms, overshoot) → shine sweep (400 ms). ≈ 0.9 s</td></tr>
+  </table></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const page = $('page'), phone = $('phone');
+const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---------- skins: the only theme-specific part ----------
+const ICON = {
+  felt: '<svg viewBox="0 0 26 26"><rect x="5" y="3" width="16" height="4" rx="1.5" fill="#8A5A2B"/><rect x="5" y="19" width="16" height="4" rx="1.5" fill="#8A5A2B"/><rect x="7" y="7" width="12" height="12" fill="#C9572F"/><path d="M7 10h12M7 13h12M7 16h12" stroke="#E98A5F" stroke-width="1.2"/></svg>',
+  lino: '<svg viewBox="0 0 26 26"><rect x="4" y="9" width="18" height="13" rx="1" fill="#1F1F1F"/><rect x="9" y="3" width="8" height="7" rx="1" fill="#8A5A2B"/><path d="M8 13l3 3 3-4 4 5" stroke="#B3261E" stroke-width="2" fill="none"/></svg>',
+  chalk: '<svg viewBox="0 0 26 26"><rect x="3" y="10" width="20" height="7" rx="3" fill="#F3EFE0" transform="rotate(-25 13 13)"/><rect x="3" y="10" width="6" height="7" rx="3" fill="#F3D98B" transform="rotate(-25 13 13)"/></svg>',
+  riso: '<svg viewBox="0 0 26 26"><path d="M11 3c4 6 8 9 8 13a7 7 0 0 1-14 0c0-4 4-7 6-13z" fill="#1C8C86" opacity=".8" transform="translate(2 1)"/><path d="M11 3c4 6 8 9 8 13a7 7 0 0 1-14 0c0-4 4-7 6-13z" fill="#E23E7F" opacity=".85"/></svg>',
+  neutral: '<svg viewBox="0 0 26 26"><path d="M13 2l3.3 6.9 7.5 1-5.5 5.2 1.4 7.5L13 19l-6.7 3.6 1.4-7.5L2.2 9.9l7.5-1z" fill="#3D6B5E"/></svg>'
+};
+const SKINS = {
+  felt:    { pts: 'stitches', coll: 'quilt',       piece: 'patch',  verb: 'Sew',      week: 'Week quilted!',     month: 'Month quilt',  conf: 'scrap',  cols: ['#C9572F', '#E0A25A', '#C77FA3', '#4FA3A0', '#9C88CC', '#7E9BB6'] },
+  lino:    { pts: 'prints',   coll: 'print sheet', piece: 'print',  verb: 'Print',    week: 'Week printed!',     month: 'Month sheet',  conf: 'square', cols: ['#1F1F1F', '#B3261E', '#1F1F1F', '#C9A98A'] },
+  chalk:   { pts: 'chalk marks', coll: 'board',    piece: 'mark',   verb: 'Chalk up', week: 'Week chalked up!',  month: 'Full board',   conf: 'dust',   cols: ['#F3EFE0', '#F3D98B', '#F2B5C7', '#A9D8C8'] },
+  riso:    { pts: 'inks',     coll: 'poster',      piece: 'print',  verb: 'Print',    week: 'Week pressed!',     month: 'Month poster', conf: 'dot',    cols: ['#E23E7F', '#1C8C86', '#F2C230', '#4E61B5'] },
+  neutral: { pts: 'points',   coll: 'calendar',    piece: 'square', verb: 'Add',      week: 'Week complete!',    month: 'Month complete', conf: 'paper', cols: ['#3D6B5E', '#E0A25A', '#C77FA3', '#9C88CC', '#4FA3A0', '#D88A72'] }
+};
+let skin = 'felt';
+const S = () => SKINS[skin];
+const ico = (cls = 'ico') => `<span class="${cls}">${ICON[skin]}</span>`;
+const mini = () => ico('ico mini');
+
+// ---------- state ----------
+const TINT = { Work: '#7E9BB6', Commute: '#4FA3A0', Chores: '#C9A98A', Food: '#E0A25A', Family: '#C77FA3', Friends: '#D88A72', Hobby: '#9C88CC', Chill: '#E0B45F' };
+let wallet, tab, checkedOut, pieceAdded, OPEN, owned, freedMin, slotFilled, votes, gen = 0;
+const AUTO = [['Food · breakfast', 'planned, kept', 1], ['Work · Client work', 'planned, kept', 1], ['Food · Lunch', 'planned, kept', 1],
+  ['Chores · Dishes', 'planned, kept', 1], ['Chill · Games 20 min (cap 1 h)', 'unwanted reduced', 2], ['Family · TV', 'planned, kept', 1]];
+function resetAll() {
+  gen++; document.getAnimations().forEach(a => { try { a.finish(); } catch (e) {} });
+  wallet = 164; tab = 'checkout'; checkedOut = false; pieceAdded = false; owned = new Set(['felt']); freedMin = 75; slotFilled = null; votes = {};
+  OPEN = [
+    { t: '15:10–15:35', title: 'Stuck (?) · 25 min', opts: [['Meltdown', 'Damn.'], ["Can't start", 'Happens.'], ['Low energy', 'Low battery.'], ['Actually fine: Chill', 'Sweet!']] },
+    { t: '14:00–18:00', title: 'Overtime · Hobby · Music', opts: [['Making music (worth it)', 'Yesss!'], ['Problem solving (MIDI)', 'Nerd mode.'], ['Stuck', 'Damn.']] },
+    { t: '22:30–23:15', title: 'After bedtime · Chill · TV', opts: [['Forgot to tap out', 'Sleepy!'], ['Worth it', 'Fair enough.'], ["Couldn't stop", 'Oops.']] }
+  ];
+}
+resetAll();
+const NOIDEA = ['TBH? No idea', 'Noted!'];
+const autoSt = () => AUTO.reduce((a, r) => a + r[2], 0);
+const sortedSt = () => OPEN.filter(r => r.choice).length;
+const todaySt = () => autoSt() + 2 + sortedSt() + 3;   // auto + plan ahead + sorted + day closed (all land on close)
+const weekBonus = 5;
+function dayScore() { const bad = OPEN.filter(r => r.choice && /Meltdown|Stuck|Couldn|Can't|Low/.test(r.choice[0])).length; const done = sortedSt(); return Math.round(100 * (autoSt() + done - bad * 2) / (autoSt() + OPEN.length)); }
+
+// ---------- FX helpers (all skippable) ----------
+let skipping = false, fxRunning = 0;
+const wait = ms => new Promise(r => skipping || REDUCE ? r() : setTimeout(r, ms));
+function anim(el, kf, opt) { const a = el.animate(kf, Object.assign({ fill: 'forwards' }, opt)); if (skipping || REDUCE) a.finish(); return a.finished.catch(() => {}); }
+async function runFX(fn) { fxRunning++; try { await fn(); } finally { fxRunning--; if (!fxRunning) skipping = false; } }
+phone.addEventListener('pointerdown', () => { if (fxRunning) { skipping = true; document.getAnimations().forEach(a => { try { a.finish(); } catch (e) {} }); } }, true);
+function posIn(el) { const p = phone.getBoundingClientRect(), r = el.getBoundingClientRect(); return { x: r.left - p.left + r.width / 2, y: r.top - p.top + r.height / 2, w: r.width, h: r.height }; }
+function confettiAt(x, y, n = 36) {
+  if (REDUCE) return;
+  const sk = S();
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('div'); c.className = 'conf';
+    const col = sk.cols[i % sk.cols.length], size = sk.conf === 'dust' ? 4 + Math.random() * 4 : sk.conf === 'dot' ? 6 + Math.random() * 5 : 8;
+    Object.assign(c.style, { left: x + 'px', top: y + 'px', width: size + 'px', height: (sk.conf === 'paper' || sk.conf === 'square' ? size * 1.4 : size) + 'px', background: col,
+      borderRadius: sk.conf === 'dust' || sk.conf === 'dot' ? '50%' : sk.conf === 'scrap' ? '40% 60% 30% 70%' : sk.conf === 'square' ? '0' : '2px',
+      opacity: sk.conf === 'dust' ? .8 : 1, boxShadow: sk.conf === 'dot' ? '1px 1px 0 rgba(0,0,0,.15)' : 'none' });
+    phone.appendChild(c);
+    const a = Math.random() * Math.PI * 2, d = 70 + Math.random() * 120;
+    c.animate([{ transform: 'translate(-50%,-50%)', opacity: 1 }, { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d + 70}px)) rotate(${Math.random() * 720 - 360}deg)`, opacity: 0 }],
+      { duration: 1400, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' }).finished.then(() => c.remove()).catch(() => c.remove());
+  }
+}
+
+// FX 1: points fly from the stamp to the wallet
+async function fxFly(from, gain) {
+  const st = from || page.querySelector('.stamp'), wl = page.querySelector('.wallet'); if (!st || !wl) return;
+  const nEl = wl.querySelector('.n'), start = wallet, N = 8;
+  await wait(450);
+  const a = posIn(st), b = posIn(wl.querySelector('.ico'));
+  const flights = [];
+  for (let i = 0; i < N; i++) {
+    const f = document.createElement('div'); f.className = 'fly'; f.innerHTML = ICON[skin];
+    f.style.left = (a.x - 10 + (i - N / 2) * 6) + 'px'; f.style.top = (a.y - 10) + 'px'; f.style.opacity = 0;
+    phone.appendChild(f);
+    const dx = b.x - a.x - (i - N / 2) * 6, dy = b.y - a.y, bend = -60 - i * 6;
+    flights.push(wait(i * 60).then(() => anim(f, [
+      { transform: 'translate(0,0) scale(.4)', opacity: 0 },
+      { transform: `translate(${dx * .15}px, -24px) scale(1.1)`, opacity: 1, offset: .15 },
+      { transform: `translate(${dx * .55 + bend}px, ${dy * .5}px) scale(1)`, opacity: 1, offset: .6 },
+      { transform: `translate(${dx}px, ${dy}px) scale(.6)`, opacity: .9 }], { duration: 500, easing: 'cubic-bezier(.45,0,.55,1)' }).then(() => {
+        f.remove(); nEl.textContent = start + Math.round(gain * (i + 1) / N);
+        anim(wl, [{ transform: 'scale(1)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }], { duration: 150, fill: 'none' });
+      })));
+  }
+  await Promise.all(flights);
+  nEl.textContent = start + gain;
+}
+// FX 2: today's piece drops in, edge line draws, sparkle
+async function fxPiece(el) {
+  if (!el) return;
+  el.style.opacity = 0;
+  await wait(200);
+  el.style.opacity = '';
+  await anim(el, [{ transform: 'scale(1.4)', opacity: 0 }, { transform: 'scale(.94)', opacity: 1, offset: .7 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'ease-out' });
+  const path = el.querySelector('.edge .draw');
+  if (path) await anim(path, [{ strokeDashoffset: 100 }, { strokeDashoffset: 0 }], { duration: 600, easing: 'linear' });
+  else await wait(600);
+  const p = posIn(el), sp = document.createElement('div'); sp.className = 'sparkle'; sp.textContent = '✦';
+  sp.style.left = (p.x + p.w / 2 - 4) + 'px'; sp.style.top = (p.y - p.h / 2 + 4) + 'px'; phone.appendChild(sp);
+  await anim(sp, [{ transform: 'translate(-50%,-50%) scale(0) rotate(0)' }, { transform: 'translate(-50%,-50%) scale(1.3) rotate(90deg)', offset: .5 }, { transform: 'translate(-50%,-50%) scale(0) rotate(180deg)' }], { duration: 300 });
+  sp.remove();
+}
+// FX 3: week complete: wave, ribbon, confetti
+async function fxWeek() {
+  const ps = [...page.querySelectorAll('.week .patch')]; if (!ps.length) return;
+  await Promise.all(ps.map((p, i) => wait(i * 70).then(() => anim(p, [{ transform: 'translateY(0)' }, { transform: 'translateY(-6px)', offset: .4 }, { transform: 'translateY(0)' }], { duration: 260, easing: 'ease-in-out', fill: 'none' }))));
+  const wk = page.querySelector('.week'), r = posIn(wk);
+  const rb = document.createElement('div'); rb.className = 'ribbon'; rb.innerHTML = `${S().week} +${weekBonus} ${mini()}`;
+  rb.style.top = (r.y - 20) + 'px'; phone.appendChild(rb);
+  await anim(rb, [{ transform: 'translateX(-105%)' }, { transform: 'translateX(4%)', offset: .8 }, { transform: 'translateX(0)' }], { duration: 300, easing: 'ease-out' });
+  confettiAt(r.x, r.y, 30);
+  await wait(800);
+  await anim(rb, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }); rb.remove();
+}
+// FX 5: new badge spins in + shine
+async function fxBadge(icon, name, sub) {
+  const nb = document.createElement('div'); nb.className = 'newbadge';
+  nb.innerHTML = `<div class="badge">${icon}<i class="shine"></i></div><div><b>New badge: ${name}</b><div class="small muted">${sub}</div></div>`;
+  phone.appendChild(nb);
+  await anim(nb, [{ transform: 'translateY(20px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 160, easing: 'ease-out' });
+  await anim(nb.querySelector('.badge'), [{ transform: 'rotate(0) scale(0)' }, { transform: 'rotate(330deg) scale(1.15)', offset: .75 }, { transform: 'rotate(360deg) scale(1)' }], { duration: 500, easing: 'ease-out' });
+  await anim(nb.querySelector('.shine'), [{ transform: 'translateX(-120%)' }, { transform: 'translateX(120%)' }], { duration: 400, easing: 'ease-in-out' });
+  await wait(1600);
+  await anim(nb, [{ opacity: 1 }, { opacity: 0 }], { duration: 250 }); nb.remove();
+}
+// FX 4: theme unlock
+async function fxUnlock(card) {
+  if (!card) return;
+  await anim(card, [{ transform: 'translateX(0)' }, { transform: 'translateX(-4px) rotate(-1deg)' }, { transform: 'translateX(4px) rotate(1deg)' }, { transform: 'translateX(0)' }], { duration: 80, iterations: 2, fill: 'none' });
+  const wr = card.querySelector('.wrapper');
+  if (wr) { await anim(wr, [{ transform: 'none', opacity: 1 }, { transform: 'translate(60%, -70%) rotate(35deg) scale(.6)', opacity: 0 }], { duration: 400, easing: 'cubic-bezier(.5,0,.8,.4)' }); wr.remove(); }
+  const imgs = [...card.querySelectorAll('.tiles img')];
+  await Promise.all(imgs.map((im, i) => wait(i * 120).then(async () => {
+    await anim(im, [{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: 120, easing: 'ease-in' });
+    im.style.filter = 'none';
+    await anim(im, [{ transform: 'rotateY(90deg)' }, { transform: 'rotateY(0)' }], { duration: 120, easing: 'ease-out' });
+  })));
+  const tn = card.querySelector('[data-use]'); if (tn) { tn.hidden = false; anim(tn, [{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 200, easing: 'ease-out' }); }
+}
+
+// ---------- checkout ----------
+function renderCheckout() {
+  const left = OPEN.filter(r => !r.choice).length;
+  page.innerHTML = `<h2>Evening checkout</h2>
+    <div class="wallet">${ico()}<span class="n">${wallet}</span><span class="lbl">${S().pts}</span><span class="pend">${checkedOut ? 'banked ✓' : 'tonight +' + todaySt()}</span></div>
+    <div class="score"><div class="row"><span>Day score <span class="small muted">(data, not a grade)</span></span><span>${dayScore()} %</span></div><div class="track"><div class="fill" id="fill"></div></div></div>
+    <div class="sec">Needs you · ${left} left · every answer +1 ${mini()}</div>
+    ${left === 0 ? `<div class="stamp">Day closed<small>+${todaySt()} ${S().pts}</small></div>
+      <div style="text-align:center;margin-top:12px"><button class="btn main" type="button" data-go="progress">${S().verb} today's ${S().piece} →</button></div>` : ''}
+    ${OPEN.map((r, i) => [r, i]).sort((a, b) => (a[0].choice ? 1 : 0) - (b[0].choice ? 1 : 0)).map(([r, i]) => `<div class="entry${r.choice ? ' done' : ''}"><div class="top"><span>${r.title}</span><span class="time">${r.t}</span></div>
+      ${r.choice ? `<div class="q">Sorted as <b>${r.choice[0]}</b> <span class="st">+1 ${mini()}</span> <button class="textlink" type="button" data-undo="${i}">change</button></div>`
+      : `<div class="q">What was it?</div><div class="chips">${r.opts.concat([NOIDEA]).map((o, j) => `<button type="button" class="chip${o === NOIDEA ? ' quiet' : ''}" data-sort="${i}:${j}">${o[0]}</button>`).join('')}</div>`}</div>`).join('')}
+    <div class="sec">Lands in your wallet when the day is closed</div>
+    <div class="earned">
+      ${AUTO.map(r => `<div class="auto"><span>${r[0]} <span class="muted small">· ${r[1]}</span></span><span class="ok">✓ <span class="st">+${r[2]} ${mini()}</span></span></div>`).join('')}
+      <div class="auto"><span>Plan for tomorrow saved</span><span class="ok">✓ <span class="st">+2 ${mini()}</span></span></div>
+      <div class="auto"><span>Sorted open times <span class="muted small">· ${sortedSt()} of ${OPEN.length}</span></span><span class="ok"><span class="st">+${sortedSt()} ${mini()}</span></span></div>
+      <div class="auto"><span>Day closed</span><span class="ok">${left === 0 ? '✓ ' : ''}<span class="st">+3 ${mini()}</span></span></div>
+    </div>
+    <p class="small muted">No minus ${S().pts}, ever. The score above may go down; the wallet never does.</p>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => { const f = $('fill'); if (f) f.style.width = dayScore() + '%'; }));
+}
+async function closeDay() {   // stamp (existing) + confetti (existing) → FX 1
+  renderCheckout();
+  const st = page.querySelector('.stamp');
+  page.scrollTop = Math.max(0, st.offsetTop - 160);
+  st.classList.add('land');
+  const p = posIn(st); confettiAt(p.x, p.y);
+  const gain = todaySt(), g = gen;
+  await runFX(() => fxFly(st, gain));
+  if (g !== gen) return;   // "Reset all" was pressed during the FX
+  wallet += gain; checkedOut = true;
+  const pend = page.querySelector('.pend'); if (pend) pend.textContent = 'banked ✓';
+}
+
+// ---------- progress ----------
+const WEEK = [['Mon', 'Work', 72], ['Tue', 'Work', 64], ['Wed', 'Chores', 55], ['Thu', 'Hobby', 81], ['Fri', 'Work', 58], ['Sat', 'Family', 77]];
+const MONTH = ['Work','Work','Hobby','Work',null,'Family','Chill','Work','Work','Work',null,'Hobby','Friends','Family','Work','Chores','Work','Work','Hobby','Family','Food','Work','Work',null,'Hobby','Family','Chill','Work','Work','Chores','Hobby','Work','Family'];
+const EDGE = `<svg class="edge" viewBox="0 0 40 40" preserveAspectRatio="none"><rect class="draw" x="4" y="4" width="32" height="32" rx="4" pathLength="100" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-dasharray="3 2.2" vector-effect="non-scaling-stroke"/></svg>`;
+function piece(cat, txt, extra = '') {
+  if (cat === null) return `<div class="patch rest ${extra}">${txt}</div>`;
+  if (cat === undefined) return `<div class="patch empty ${extra}">${txt}</div>`;
+  const edge = skin === 'felt' ? EDGE : '';
+  return `<div class="patch ${extra}" style="background:${TINT[cat]};--c:${TINT[cat]}">${edge}<span style="position:relative">${txt}</span></div>`;
+}
+const MILES = () => [['🏁', 'First day', 'First checkout done', 1, 1], ['🗓️', S().week.replace('!', ''), '7 days in one week', checkedOut ? 7 : 6, 7], ['🧩', S().month, '28 days in a month', checkedOut ? 27 : 26, 28],
+  ['📅', 'Planner', 'Plan ahead 10 times', 7, 10], ['🔗', 'Connected', 'Calendar synced', 0, 1], ['❓', 'Honest', 'Sort 20 Stuck times', 20, 20]];
+function renderProgress(animateNew) {
+  const showToday = checkedOut;
+  page.innerHTML = `<h2>Progress</h2>
+    <div class="wallet">${ico()}<span class="n">${wallet}</span><span class="lbl">${S().pts}</span></div>
+    <div class="sec">This week · Nov 9–15</div>
+    <div class="week">${WEEK.map(([d, c, s]) => `<div class="day">${piece(c, s + '%')}<span class="muted">${d}</span></div>`).join('')}
+      <div class="day">${showToday ? piece('Hobby', dayScore() + '%', 'today') : piece(undefined, '…')}<span class="muted">Sun</span></div></div>
+    <p class="small muted" style="margin:6px 0 0">${showToday ? `Week complete: +${weekBonus} ${S().pts}.` : `Sunday is still open: finish the checkout to ${S().verb.toLowerCase()} its ${S().piece}.`}</p>
+    ${showToday ? GAMECARD() : ''}
+    <div class="sec">Your ${S().coll} · November</div>
+    <div class="quilt">${Array.from({ length: 35 }, (_, i) => i < 33 ? piece(MONTH[i], '') : i === 33 && showToday ? piece('Hobby', '') : `<div class="patch future"></div>`).join('')}</div>
+    <p class="small muted" style="margin:6px 0 0">One ${S().piece} per checked-out day, colour = that day's biggest category. Empty dashed squares = rest days (no checkout, no penalty). Tap a day → that day on the Overviews page (02c).</p>
+    <div class="sec">Milestones</div>
+    <div class="card">${MILES().map(([ic, n, d, a, b]) =>
+      `<div class="mile"><div class="badge${a < b ? ' locked' : ''}">${ic}</div><div style="flex:1"><b>${n}</b> <span class="muted small">· ${d}</span><div class="bar2"><i style="width:${100 * a / b}%"></i></div></div><span class="small muted">${a}/${b}</span></div>`).join('')}</div>
+    <p class="small muted">"Honest" counts sorted Stuck times on purpose: naming a bad hour is progress.</p>`;
+  if (animateNew) runFX(async () => {
+    const g = gen;
+    await fxPiece(page.querySelector('.week .today'));
+    if (g !== gen) return;
+    wallet += weekBonus; await fxWeek();
+    page.querySelector('.wallet .n').textContent = wallet;
+    await fxBadge('🗓️', S().week.replace('!', ''), `7 days in one week · +${weekBonus} ${S().pts}`);
+  });
+}
+
+// ---------- rewards ----------
+const THEMES = [
+  { id: 'felt', name: 'Felt', note: 'main style', price: 0 },
+  { id: 'lino', name: 'Lino bold', note: 'bold print, thick black lines', price: 200 },
+  { id: 'riso', name: 'Riso misprint', note: 'strong colour, off-register print', price: 200 },
+  { id: 'chalk', name: 'Chalk board', note: 'dark "night" theme', price: 150 }
+];
+const CATS = ['work', 'food', 'family', 'chill'];
+const IMG = (t, c) => `assets/themes/${t}_${c}.png`;
+const TREATS = [['Pizza night', 300, 90], ['Guilt-free gaming 1 h', 100, 60], ['Long bath', 80, 45], ['Synth noodling, no goal', 120, 60]];
+const fmt = m => (m >= 60 ? Math.floor(m / 60) + ' h ' : '') + (m % 60 ? m % 60 + ' min' : '').trim();
+function renderRewards() {
+  const w = wallet, slotReady = freedMin >= 60 && !slotFilled;
+  page.innerHTML = `<h2>Rewards</h2>
+    <div class="wallet">${ico()}<span class="n">${w}</span><span class="lbl">${S().pts} to spend</span></div>
+
+    <div class="sec">Real-life treats</div>
+    <div class="freed"><b>Freed this week: ${fmt(freedMin)}</b>
+      <div class="small">Work overtime −45 min, Stuck −30 min vs. your plan. From 1 h freed, the app makes a treat slot.</div>
+      <div class="bar2" style="margin-top:6px"><i style="width:${Math.min(100, 100 * freedMin / 120)}%;background:var(--accent)"></i></div></div>
+    ${slotFilled ? `<div class="slot"><div class="top"><span>🎁 ${slotFilled[0]}</span><span class="small">Sat 19:00–${slotFilled[2] > 60 ? '20:30' : '20:00'}</span></div>
+        <div class="small muted">Fixed slot in your plan · −${slotFilled[1]} ${S().pts} · <button class="textlink" type="button" data-unslot="1">undo</button></div></div>`
+      : slotReady ? `<div class="slot"><div class="top"><span>🎁 Treat slot ready</span><span class="small">Sat 19:00–20:00</span></div>
+        <div class="small" style="margin:2px 0 6px">Made from your freed time. Fill it with a treat, or keep it as free time.</div>
+        <div class="chips">${TREATS.map((t, i) => `<button type="button" class="chip" data-treat="${i}" ${w >= t[1] ? '' : 'disabled style="opacity:.45"'}>${t[0]} · ${t[1]}</button>`).join('')}<button type="button" class="chip quiet" data-treat="free">Just free time</button></div></div>` : ''}
+    <div class="card">
+      ${TREATS.map(t => `<div class="row2"><span><b>${t[0]}</b> <span class="muted small">· ${fmt(t[2])}${t[0].startsWith('Guilt') ? ' · your own rule, not enforced' : ''}</span></span><span class="price">${t[1]} ${mini()}</span></div>`).join('')}
+      <div class="row2"><button class="textlink" type="button" data-addtreat="1">+ add your own treat</button></div>
+    </div>
+
+    <div class="sec">Tile themes</div>
+    ${THEMES.map(t => { const own = owned.has(t.id); return `<div class="theme${own ? '' : ' locked'}" data-card="${t.id}"><div class="top"><span><span class="nm">${t.name}</span> <span class="small muted">· ${t.note}</span></span>
+      ${own ? (skin === t.id ? `<span class="owned">✓ in use</span>` : `<button class="btn sm main" type="button" data-use="${t.id}">Use</button>`) : `<span class="price">${t.price} ${mini()}</span>`}</div>
+      <div class="tiles">${CATS.map(c => `<img src="${IMG(t.id, c)}" alt="${t.name} ${c} tile">`).join('')}${own ? '' : `<div class="wrapper"><span>LOCKED</span></div>`}</div>
+      ${own ? '' : `<div style="display:flex;gap:8px;justify-content:flex-end;align-items:center"><button class="textlink" type="button" data-preview="${t.id}">preview</button><button class="btn${w >= t.price ? ' main' : ''}" type="button" data-buy="${t.id}" ${w >= t.price ? '' : 'disabled style="opacity:.5"'}>${w >= t.price ? 'Unlock' : 'Need ' + (t.price - w) + ' more'}</button></div>`}</div>`; }).join('')}
+    <p class="small muted">Previews are rough static composites. A real theme needs all 10 tiles (8 + Stuck + Sleep) made and animated first. Earned only by using the app, never bought with money.</p>
+
+    <div class="sec">Sound packs <span class="small">(sounds not built yet)</span></div>
+    <div class="card">${[['Felt', 'soft pops, "mmm", whoosh', 'owned'], ['Synth', 'little blips + chords, one per category', 80], ['Chalk', 'scratches, taps', 80], ['Silly', 'boings, kazoo for "Damn."', 60]].map(([n, d, p]) =>
+      `<div class="row2"><span><b>${n}</b> <span class="muted small">· ${d}</span></span><span>${p === 'owned' ? '<span class="owned">✓ owned</span>' : `<span class="price">${p} ${mini()}</span>`} <button class="textlink" type="button" data-beep="${n}">▶</button></span></div>`).join('')}</div>
+
+    <div class="sec">Mini games · which one first?</div>
+    ${[['puzzle', 'Patch puzzle', `Drag this week's ${S().piece}s into place before they fade. 30 seconds, +3 ${S().pts}, once a day.`],
+       ['replay', 'Day replay', 'Your day as a fast tile parade (10 s): tap the tile when it matches the clock. Silly, short, shows your real day.'],
+       ['guess', 'Guess your week', 'Mocked in v3. Before the week view opens: guess your hours for 3 categories. Closer = more points. Trains your time sense.']].map(([k, n, d]) =>
+      `<div class="idea"><b>${n}</b>${d}${k === 'guess' ? `<div style="margin-top:6px"><button class="btn sm main" type="button" data-game="rewards">Play demo</button></div>` : ''}<div class="chips" style="margin-top:6px">${['Mock this first', 'Later', 'No'].map(v => `<button class="chip" type="button" aria-pressed="${votes[k] === v}" data-vote="${k}:${v}">${v}</button>`).join('')}</div></div>`).join('')}`;
+}
+function previewModal(id) {
+  const t = THEMES.find(x => x.id === id);
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="box"><b>${t.name}</b> <span class="small muted">· how your tap tiles would look</span><div class="grid">${CATS.map(c => `<img src="${IMG(id, c)}" alt="">`).join('')}</div>
+    <div style="text-align:right"><button class="btn" type="button" data-close="1">close</button></div></div>`;
+  phone.appendChild(m);
+}
+function beep(kind) {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)(), o = ac.createOscillator(), g = ac.createGain();
+    const f = { Felt: [420, 'sine'], Synth: [660, 'square'], Chalk: [1800, 'sawtooth'], Silly: [220, 'triangle'] }[kind] || [440, 'sine'];
+    o.type = f[1]; o.frequency.setValueAtTime(f[0], ac.currentTime); o.frequency.exponentialRampToValueAtTime(f[0] * (kind === 'Silly' ? 2.5 : 1.5), ac.currentTime + .12);
+    g.gain.setValueAtTime(.18, ac.currentTime); g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + .25);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + .26);
+  } catch (e) {}
+}
+
+// ---------- mini game: Guess your week ----------
+const GCATS = [['Work', 'you want less', 38.5, 35], ['Hobby', 'you want more', 9, 8], ['Family', 'random pick', 12.5, 14]];   // name, why, real h, planned h
+const GSTART = { Work: 30, Hobby: 6, Family: 12 };
+let game = { phase: 'guess', g: Object.assign({}, GSTART), back: 'progress' };
+const hfmt = h => { const m = Math.round(h * 60); const t = (Math.floor(m / 60) ? Math.floor(m / 60) + ' h' : '') + (m % 60 ? ' ' + (m % 60) + ' min' : ''); return t.trim() || '0 h'; };
+const gPts = (g, r) => { const d = Math.abs(g - r); return d <= 1 ? [3, 'Spot on!'] : d <= 3 ? [2, 'Close!'] : [1, 'Time flies, huh?']; };
+const gTotal = () => GCATS.reduce((a, c) => a + gPts(game.g[c[0]], c[2])[0], 0);
+const gMiss = () => Math.round(GCATS.reduce((a, c) => a + Math.abs(game.g[c[0]] - c[2]), 0) / 3 * 2) / 2;
+const MAXH = 50;
+function renderGame() {
+  const rev = game.phase === 'reveal', tot = gTotal();
+  page.innerHTML = `<h2>Guess your week</h2>
+    <div class="wallet">${ico()}<span class="n">${wallet}</span><span class="lbl">${S().pts}</span><span class="pend">${rev ? (game.paid ? 'banked ✓' : 'win +' + tot) : 'win up to +9'}</span></div>
+    <p class="small" style="margin:10px 0 0">${rev ? 'Nov 9–15. Here is how your week really went.' : 'Nov 9–15 is done. Before you look: how many hours went to each of these?'}</p>
+    ${GCATS.map(([n, why, real, plan]) => { const g = game.g[n], pt = gPts(g, real); return `<div class="grow"><div class="top"><span>${n} <span class="small muted">· ${why}</span></span><span class="val">${rev ? 'real ' + hfmt(real) : 'guess ' + hfmt(g)}</span></div>
+      ${rev ? `<div class="gtrack"><div class="real" style="width:${100 * real / MAXH}%;background:${TINT[n]}"></div><div class="plan" style="left:${100 * plan / MAXH}%"></div><div class="guess" style="left:${100 * g / MAXH}%">▼</div></div>
+        <div class="gres"><span>you guessed ${hfmt(g)} · ${g === real ? 'exact!' : 'off by ' + hfmt(Math.abs(g - real))} · plan ${hfmt(plan)}</span><span class="st">${pt[1]} +${pt[0]}</span></div>`
+      : `<input type="range" min="0" max="${MAXH}" step=".5" value="${g}" data-guess="${n}" aria-label="Guess hours for ${n}">`}</div>`; }).join('')}
+    ${rev ? `<div class="legend"><span>▼ your guess</span><span>┆ your plan</span><span>bar = real hours</span></div>
+      <div class="stamp" id="gtotal" style="width:220px">+${tot} ${S().pts}<small>${tot >= 7 ? 'Great time sense!' : tot >= 5 ? 'Not bad at all!' : 'Time is sneaky, right?'}</small></div>
+      <div class="sec">Your time sense · average miss per category</div>
+      <div class="sense">${[['Oct 19', 6.5], ['Oct 26', 5], ['Nov 2', 4.5], ['Nov 9', 3]].map(([d, v]) => `<div style="height:${v / 7 * 100}%"><span>${hfmt(v)}</span></div>`).join('')}<div class="now" style="height:${Math.max(4, gMiss() / 7 * 100)}%"><span>${hfmt(gMiss())}</span></div></div>
+      <div class="sense" style="height:auto;margin-top:2px;align-items:start"><div style="background:none">Oct 19</div><div style="background:none">Oct 26</div><div style="background:none">Nov 2</div><div style="background:none">Nov 9</div><div style="background:none;font-weight:700">Nov 16</div></div>
+      <p class="small muted">Lower = closer guesses. No streak: skip a week and the track just waits.</p>
+      <div style="text-align:center;margin-top:12px"><button class="btn main" type="button" data-gdone="1">Done</button></div>`
+    : `<div style="display:flex;gap:10px;justify-content:center;margin-top:18px"><button class="btn main" type="button" data-greveal="1">Lock in my guesses</button></div>
+      <div style="text-align:center;margin-top:6px"><button class="textlink" type="button" data-gskip="1">Just show me</button> <span class="small muted">(no game, no points)</span></div>`}`;
+}
+// FX 6: guess reveal (approved timing): rows 400 ms apart; per row bar 500 ms → 300 ms plan line → 500 ms guess drops → 700 ms result + pop
+async function fxReveal() {
+  const rows = [...page.querySelectorAll('.grow')], st = $('gtotal'), sense = [...page.querySelectorAll('.sense, .legend')];
+  if (!REDUCE && !skipping) {
+    rows.forEach(r => { r.querySelector('.real').style.width = '0%'; ['.plan', '.guess', '.gres'].forEach(s => r.querySelector(s).style.opacity = 0); });
+    st.style.opacity = 0;
+  }
+  await Promise.all(rows.map((r, i) => wait(i * 400).then(async () => {
+    const real = r.querySelector('.real'), target = GCATS[i][2] / MAXH * 100 + '%';
+    anim(real, [{ width: '0%' }, { width: target }], { duration: 500, easing: 'ease-out' }).then(() => { real.style.width = target; });
+    await wait(300);
+    anim(r.querySelector('.plan'), [{ opacity: 0 }, { opacity: .55 }], { duration: 150 });
+    await wait(200);
+    anim(r.querySelector('.guess'), [{ transform: 'translate(-50%,-22px)', opacity: 0 }, { transform: 'translate(-50%,3px)', opacity: 1, offset: .7 }, { transform: 'translate(-50%,0)', opacity: 1 }], { duration: 200, easing: 'ease-in' });
+    await wait(200);
+    const res = r.querySelector('.gres');
+    anim(res, [{ transform: 'translateY(4px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 150, easing: 'ease-out' });
+    if (!skipping && !REDUCE) {
+      const tag = res.querySelector('.st'), pr = page.getBoundingClientRect(), tr = tag.getBoundingClientRect();
+      const p = document.createElement('div'); p.className = 'pop'; p.textContent = tag.textContent;
+      p.style.left = (tr.left - pr.left + tr.width / 2) + 'px'; p.style.top = (tr.top - pr.top + page.scrollTop - 6) + 'px';
+      page.appendChild(p); setTimeout(() => p.remove(), 1150);
+    }
+  })));
+  ['.plan', '.guess', '.gres'].forEach(s => rows.forEach(r => { r.querySelector(s).style.opacity = ''; }));
+  st.style.opacity = '';
+  page.scrollTop = Math.max(0, st.offsetTop - 200);
+  st.classList.add('land');
+  if (GCATS.every(c => Math.abs(game.g[c[0]] - c[2]) <= 1)) { const p = posIn(st); confettiAt(p.x, p.y); }
+}
+const GAMECARD = () => `<div class="gcard"><span class="big">🎯</span><div style="flex:1"><b>Guess your week</b><div class="small muted">Your week is done. Guess before you look! Up to +9 ${S().pts}.</div></div><button class="btn sm main" type="button" data-game="progress">Play</button></div>`;
+
+// ---------- wiring ----------
+function render(opt) {
+  phone.dataset.skin = skin;
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === (tab === 'game' ? game.back : tab)));
+  ({ checkout: renderCheckout, progress: renderProgress, rewards: renderRewards, game: renderGame })[tab](opt);
+  $('skinSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.skin === skin));
+}
+const keepScroll = fn => { const s = page.scrollTop; fn(); page.scrollTop = s; };
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.dataset.tab) { tab = b.dataset.tab; page.scrollTop = 0; render(); }
+  else if (b.dataset.go) { tab = b.dataset.go; page.scrollTop = 0; const first = checkedOut && !pieceAdded; pieceAdded = pieceAdded || checkedOut; render(first); }
+  else if (b.dataset.sort) {
+    const [i, j] = b.dataset.sort.split(':').map(Number), r = OPEN[i], o = r.opts.concat([NOIDEA])[j];
+    const pr = page.getBoundingClientRect(), br = b.getBoundingClientRect(), keep = page.scrollTop;
+    r.choice = o;
+    if (OPEN.every(x => x.choice)) { closeDay(); return; }
+    renderCheckout(); page.scrollTop = keep;
+    const p = document.createElement('div'); p.className = 'pop'; p.innerHTML = o[1] + ' +1 ' + mini();
+    p.style.left = (br.left - pr.left + br.width / 2) + 'px'; p.style.top = (br.top - pr.top + page.scrollTop - 6) + 'px';
+    page.appendChild(p); setTimeout(() => p.remove(), 1150);
+  }
+  else if (b.dataset.undo) { if (checkedOut) return; OPEN[+b.dataset.undo].choice = null; keepScroll(renderCheckout); }
+  else if (b.dataset.preview) previewModal(b.dataset.preview);
+  else if (b.dataset.close) b.closest('.modal').remove();
+  else if (b.dataset.buy) {
+    const t = THEMES.find(x => x.id === b.dataset.buy); wallet -= t.price; owned.add(t.id);
+    const card = b.closest('.theme'); card.classList.remove('locked');
+    card.querySelector('.top .price').outerHTML = `<button class="btn sm main" type="button" data-use="${t.id}" hidden>Try it now?</button>`;
+    b.parentElement.remove(); page.querySelector('.wallet .n').textContent = wallet;
+    runFX(() => fxUnlock(card));
+  }
+  else if (b.dataset.use) { skin = b.dataset.use; keepScroll(render); }
+  else if (b.dataset.treat) { if (b.dataset.treat === 'free') slotFilled = ['Free time', 0, 60]; else { const t = TREATS[+b.dataset.treat]; slotFilled = t; wallet -= t[1]; } freedMin -= 60; keepScroll(render); }
+  else if (b.dataset.unslot) { wallet += slotFilled[1]; slotFilled = null; freedMin += 60; keepScroll(render); }
+  else if (b.dataset.addtreat) { TREATS.push(['New treat (you name it)', 150, 60]); keepScroll(render); }
+  else if (b.dataset.vote) { const [k, v] = b.dataset.vote.split(':'); votes[k] = votes[k] === v ? null : v; keepScroll(render); }
+  else if (b.dataset.beep) beep(b.dataset.beep);
+  else if (b.dataset.skin) { skin = b.dataset.skin; keepScroll(render); }
+  else if (b.dataset.fx) replay(+b.dataset.fx);
+  else if (b.dataset.game) { game = { phase: 'guess', g: Object.assign({}, GSTART), back: b.dataset.game, paid: false }; tab = 'game'; page.scrollTop = 0; render(); }
+  else if (b.dataset.greveal) { game.phase = 'reveal'; page.scrollTop = 0; render();
+    const tot = gTotal(), g0 = gen;
+    runFX(async () => { await fxReveal(); const st = $('gtotal'); if (!st || g0 !== gen) return; await fxFly(st, tot); if (g0 !== gen || tab !== 'game') return; wallet += tot; game.paid = true; const pd = page.querySelector('.pend'); if (pd) pd.textContent = 'banked ✓'; }); }
+  else if (b.dataset.gskip) { tab = game.back; page.scrollTop = 0; render(); }
+  else if (b.dataset.gdone) { tab = game.back; page.scrollTop = 0; render(); }
+});
+$('skinSeg').innerHTML = Object.keys(SKINS).map(k => `<button type="button" data-skin="${k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('');
+$('fxSeg').innerHTML = [1, 2, 3, 4, 5, 6].map(n => `<button type="button" data-fx="${n}">${n}</button>`).join('');
+async function replay(n) {
+  if (fxRunning) return;
+  if (n === 1) { tab = 'checkout'; OPEN.forEach(r => r.choice = r.choice || r.opts[0]); const was = checkedOut; if (was) wallet -= todaySt(); checkedOut = false; render(); closeDay(); }
+  if (n === 2 || n === 3) { if (!checkedOut) { OPEN.forEach(r => r.choice = r.choice || r.opts[0]); checkedOut = true; } tab = 'progress'; page.scrollTop = 0; render();
+    runFX(() => n === 2 ? fxPiece(page.querySelector('.week .today')) : fxWeek()); }
+  if (n === 4) { tab = 'rewards'; owned.delete('lino'); if (skin === 'lino') skin = 'felt'; wallet = Math.max(wallet, 200); page.scrollTop = 0; render();
+    const card = page.querySelector('[data-card="lino"]'); page.scrollTop = card.offsetTop - 80; setTimeout(() => card.querySelector('[data-buy]').click(), 300); }
+  if (n === 6) { game = { phase: 'guess', g: Object.assign({}, GSTART), back: tab === 'game' ? game.back : tab, paid: false }; tab = 'game'; render(); page.querySelector('[data-greveal]').click(); }
+  if (n === 5) runFX(() => fxBadge('🗓️', S().week.replace('!', ''), `7 days in one week · +${weekBonus} ${S().pts}`));
+}
+document.addEventListener('input', e => { const n = e.target.dataset && e.target.dataset.guess; if (!n) return; game.g[n] = +e.target.value; e.target.closest('.grow').querySelector('.val').textContent = 'guess ' + hfmt(game.g[n]); });
+$('reset').onclick = () => { resetAll(); render(); };
+$('theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; };
+render();
+</script>
+</body>
+</html>
