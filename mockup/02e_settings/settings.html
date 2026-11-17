@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget Settings</title>
+<!--
+  Settings mockup (step 02e_settings_design). Current file = settings.html; older rounds in archive\settings_v<N>.html.
+  v1 (2026-11-17): first round. Grouping "by screen" (Samuel: no preference → recommended option).
+  "Untapped time" = all three rules (A strict / B short gaps vanish / C plan fills in) as a setting, C as the starting default.
+  Mockup only: fake data, nothing is saved. Tile art from ../v6/assets/ (felt Chill tile).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap">
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A4F36; --warn-soft: #F5E4DC; --good: #2F7A4F;
+  --gold: #B9832F; --gold-soft: #F6EBD6; --blue: #4C7FB3; --blue-soft: #DCE7F2; --ochre: #B9832F;
+  --untap: #A7A09A;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif; --font-head: "Literata", Georgia, serif;
+  --tint: transparent; --glow: #E0B45F;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A; --gold: #E2B66A; --gold-soft: #3A3122;
+  --blue: #8DB3DA; --blue-soft: #1F2C38; --untap: #6F6A66; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A; --gold: #E2B66A; --gold-soft: #3A3122;
+  --blue: #8DB3DA; --blue-soft: #1F2C38; --untap: #6F6A66; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); padding: 0 16px 48px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+
+/* mockup controls (not part of the app) */
+.controls { max-width: 920px; margin: 14px auto 16px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; background: var(--surface);
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: 14px; }
+.controls .tag { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 100%; }
+.ver { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); letter-spacing: .04em; }
+
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; padding: 5px 11px; font-size: 13px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 600; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+.btn.main { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.btn.sm { padding: 3px 10px; font-size: 13px; }
+.textlink { border: 0; background: none; color: var(--accent); text-decoration: underline; padding: 2px 4px; font-size: 14px; }
+
+/* phone */
+.phone { position: relative; max-width: 420px; margin: 0 auto; background: color-mix(in srgb, var(--tint) 10%, var(--surface)); border: 1px solid var(--line); border-radius: 28px;
+  height: 780px; overflow: hidden; display: flex; flex-direction: column; transition: background-color 1s ease; }
+.head { display: flex; align-items: center; gap: 8px; padding: 14px 16px 6px; }
+.head .back { border: 0; background: none; font-size: 22px; line-height: 1; padding: 2px 6px; color: var(--muted); }
+.head h1 { font: 600 22px/1.2 var(--font-head); margin: 0; flex: 1; }
+.head .changed { font-size: 12px; color: var(--muted); }
+.jump { display: flex; gap: 6px; overflow-x: auto; padding: 4px 16px 10px; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.jump::-webkit-scrollbar { display: none; }
+.jump button { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.jump button[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.page { flex: 1; overflow-y: auto; padding: 0 16px 28px; position: relative; scroll-behavior: smooth; }
+
+.sec { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 22px 0 6px; scroll-margin-top: 8px; }
+.sec h2 { font: 600 19px/1.3 var(--font-head); margin: 0; }
+.card { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 4px 12px; }
+.row { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.row .name { font-weight: 700; }
+.row .hint { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.row .ctl { margin-top: 6px; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); margin-left: 6px; vertical-align: 2px; visibility: hidden; }
+.row.is-changed .dot { visibility: visible; }
+.sub { margin: 8px 0 2px; padding: 8px 10px; border-left: 3px solid var(--accent-soft); background: color-mix(in srgb, var(--accent-soft) 35%, transparent); border-radius: 0 10px 10px 0; }
+.sub[hidden] { display: none; }
+
+/* switch */
+.sw { position: relative; width: 44px; height: 26px; flex: none; border: 0; border-radius: 999px; background: var(--line); padding: 0; transition: background .2s; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .2s; }
+.sw[aria-checked="true"] { background: var(--accent); }
+.sw[aria-checked="true"]::after { transform: translateX(18px); }
+
+/* option cards */
+.opts { display: grid; gap: 8px; margin-top: 6px; }
+.opt { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 9px 11px; }
+.opt[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface)); }
+.opt .t { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.opt .t .radio { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--muted); flex: none; }
+.opt[aria-pressed="true"] .t .radio { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, transparent 50%); }
+.opt .d { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.def { font-size: 11px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-left: auto; }
+
+input[type="time"] { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; background: var(--surface); }
+select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; background: var(--surface); }
+
+/* tile preview (felt Chill tile from ../v6/assets) */
+.preview { display: flex; gap: 14px; align-items: center; padding: 12px; margin-top: 4px; border-radius: 14px; background: color-mix(in srgb, var(--tint) 18%, var(--bg)); transition: background-color 1s ease; }
+.preview .note { font-size: 13px; color: var(--muted); }
+.art { position: relative; width: 104px; height: 104px; flex: none; }
+.layer, .place, .idle, .layer img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.place { transform-origin: 0 0; }
+.layer img { display: block; pointer-events: none; user-select: none; }
+.bgwrap { filter: drop-shadow(0 3px 4px rgba(60, 40, 10, .35)); transition: filter .6s ease; }
+.shadow-drop .bgwrap { filter: drop-shadow(3px 7px 8px rgba(40, 25, 10, .42)); }
+.shadow-none .bgwrap { filter: none; }
+.shadow-soft .art::before { content: ""; position: absolute; left: 14%; right: 14%; bottom: 2%; height: 12%; border-radius: 50%; background: radial-gradient(closest-side, rgba(40,25,10,.38), transparent); }
+.shadow-soft .bgwrap { filter: none; }
+.glow-on .bgwrap { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--glow) 85%, transparent)) drop-shadow(0 0 16px color-mix(in srgb, var(--glow) 60%, transparent)); }
+.glow-on.shadow-drop .bgwrap { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--glow) 85%, transparent)) drop-shadow(0 0 16px color-mix(in srgb, var(--glow) 60%, transparent)) drop-shadow(3px 7px 8px rgba(40, 25, 10, .42)); }
+@keyframes breathe1 { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.012); } }
+@keyframes breathe2 { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.015, 1.03); } }
+@keyframes breathe3 { 0%,100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-1.5%) scale(1.02, 1.045); } }
+.idle-1 .idle.breathe { animation: breathe1 2.4s ease-in-out infinite; }
+.idle-2 .idle.breathe { animation: breathe2 2.2s ease-in-out infinite; }
+.idle-3 .idle.breathe { animation: breathe3 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .idle { animation: none !important; } }
+
+/* bar demo */
+.bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left; }
+.bar.run i { animation: drain var(--len, 2s) linear forwards; }
+@keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* untapped timeline */
+.tl { margin-top: 8px; }
+.tl .lane { display: flex; height: 26px; border-radius: 8px; overflow: hidden; font-size: 11px; font-weight: 700; }
+.tl .lane span { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; color: #fff; padding: 0 2px; }
+.tl .work { background: #7E9BB6; }
+.tl .hobby { background: #9C88CC; }
+.tl .lunch { background: #E0A25A; }
+.tl .lunch.fromplan { background: repeating-linear-gradient(135deg, #E0A25A 0 6px, #EBBE86 6px 12px); outline: 2px dashed #B3762F; outline-offset: -2px; color: #3A2610; }
+.tl .untap { background: repeating-linear-gradient(135deg, var(--untap) 0 5px, color-mix(in srgb, var(--untap) 60%, var(--surface)) 5px 10px); color: var(--ink); }
+.tl .plan { display: flex; height: 14px; margin-bottom: 3px; font-size: 10px; color: var(--muted); }
+.tl .plan span { display: flex; align-items: center; justify-content: center; }
+.tl .plan .pl { border: 1px dashed var(--muted); border-radius: 4px; }
+.tl .ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.tl .cap { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* small pieces */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+.pop { font-weight: 800; color: var(--gold); }
+.wallet { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px; font-weight: 800; background: var(--gold-soft); color: var(--gold); font-size: 14px; }
+.wallet.neutral { background: var(--accent-soft); color: var(--accent); }
+.themes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 6px; }
+.theme { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; text-align: left; background: var(--surface); }
+.theme[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.theme.locked { opacity: .55; cursor: default; }
+.theme .nm { font-weight: 700; }
+.theme .st { font-size: 12px; color: var(--muted); }
+.datarow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.reset { display: block; margin: 18px auto 0; }
+
+.toast { position: absolute; left: 50%; bottom: 18px; transform: translate(-50%, 20px); background: var(--ink); color: var(--surface); border-radius: 12px; padding: 8px 14px; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; max-width: 86%; text-align: center; z-index: 20; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.notes { max-width: 920px; margin: 18px auto 0; font-size: 14px; }
+.notes h3 { font: 600 17px var(--font-head); margin: 0 0 6px; }
+.notes li { margin-bottom: 6px; }
+@media (max-width: 440px) { .phone { border-radius: 18px; height: 720px; } }
+</style>
+</head>
+<body>
+
+<div class="controls" aria-label="Mockup controls">
+  <span class="tag">Mockup controls · not part of the app</span>
+  <span class="ver" id="ver">Settings v1 · 2026-11-17</span>
+  <label>Page <span class="seg" id="themeSeg"><button type="button" data-v="auto" aria-pressed="true">auto</button><button type="button" data-v="light" aria-pressed="false">light</button><button type="button" data-v="dark" aria-pressed="false">dark</button></span></label>
+  <span class="small muted">Nothing is saved. A small gold dot = changed from the default.</span>
+</div>
+
+<div class="phone" id="phone">
+  <div class="head">
+    <button class="back" type="button" aria-label="Back" onclick="location.href='../02g_tap/tap.html'">‹</button>
+    <h1>Settings</h1>
+    <span class="changed" id="changedCount"></span>
+  </div>
+  <nav class="jump" id="jump" aria-label="Jump to section">
+    <button type="button" data-to="s-tap">Tap screen</button>
+    <button type="button" data-to="s-day">Day &amp; sleep</button>
+    <button type="button" data-to="s-plans">Plans</button>
+    <button type="button" data-to="s-cats">Categories</button>
+    <button type="button" data-to="s-check">Checkout &amp; rewards</button>
+    <button type="button" data-to="s-data">Data &amp; calendar</button>
+  </nav>
+
+  <div class="page" id="page">
+
+    <!-- ============ TAP SCREEN ============ -->
+    <div class="sec" id="s-tap"><h2>Tap screen</h2><button class="textlink small" type="button" data-reset="tap">reset section</button></div>
+    <div class="card">
+      <div class="preview" id="pv">
+        <div class="art" id="art"></div>
+        <div class="note"><b>Preview</b><br>Shows Colour on tap, Idle motion and Shadow as you change them below.</div>
+      </div>
+
+      <div class="row" data-key="colour">
+        <div class="top"><span class="name">Colour on tap<span class="dot"></span></span></div>
+        <div class="hint">When you tap a tile, its colour shows up a little.</div>
+        <div class="ctl"><span class="seg" data-seg="colour"><button type="button" data-v="off">Off</button><button type="button" data-v="bg">A · background</button><button type="button" data-v="glow">B · glow</button><button type="button" data-v="both">A + B</button></span></div>
+      </div>
+      <div class="row" data-key="idle">
+        <div class="top"><span class="name">Idle motion<span class="dot"></span></span></div>
+        <div class="hint">How much the running tile moves while you wait.</div>
+        <div class="ctl"><span class="seg" data-seg="idle"><button type="button" data-v="0">Off</button><button type="button" data-v="1">Low</button><button type="button" data-v="2">Medium</button><button type="button" data-v="3">Strong</button></span></div>
+      </div>
+      <div class="row" data-key="shadow">
+        <div class="top"><span class="name">Tile shadow<span class="dot"></span></span></div>
+        <div class="ctl"><span class="seg" data-seg="shadow"><button type="button" data-v="none">None</button><button type="button" data-v="soft">Soft oval</button><button type="button" data-v="drop">Drop shadow</button></span></div>
+      </div>
+    </div>
+
+    <div class="sec"><h2 style="font-size:16px">Bar lengths</h2><span class="small muted">time before the default happens</span></div>
+    <div class="card" id="bars"></div>
+
+    <!-- ============ DAY & SLEEP ============ -->
+    <div class="sec" id="s-day"><h2>Day &amp; sleep</h2><button class="textlink small" type="button" data-reset="day">reset section</button></div>
+    <div class="card">
+      <div class="row" data-key="wake">
+        <div class="top"><span class="name">Wake-up<span class="dot"></span></span><input type="time" data-time="wake"></div>
+      </div>
+      <div class="row" data-key="bed">
+        <div class="top"><span class="name">Bedtime<span class="dot"></span></span><input type="time" data-time="bed"></div>
+        <div class="hint">At bedtime the Sleep tile comes up with its bar.</div>
+      </div>
+      <div class="row" data-key="daystart">
+        <div class="top"><span class="name">New day starts at<span class="dot"></span></span><input type="time" data-time="daystart"></div>
+        <div class="hint">Staying up past midnight still counts as the evening before. Morning steps start at the first open after this time.</div>
+      </div>
+      <div class="row" data-key="planahead">
+        <div class="top"><span class="name">When to plan ahead<span class="dot"></span></span></div>
+        <div class="hint">When the app offers "Adjust the plan". You can always skip it.</div>
+        <div class="opts" data-opts="planahead">
+          <button class="opt" type="button" data-v="evening"><span class="t"><span class="radio"></span>Evening, after checkout</span><span class="d">Plan tomorrow while today is fresh.</span></button>
+          <button class="opt" type="button" data-v="before"><span class="t"><span class="radio"></span>Morning, before the first tap</span><span class="d">Part of the morning steps ("Change the plan?").</span></button>
+          <button class="opt" type="button" data-v="after"><span class="t"><span class="radio"></span>Morning, after the first tap</span><span class="d">Get going first (coffee is logged), plan after.</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec"><h2 style="font-size:16px">Untapped time</h2></div>
+    <div class="card">
+      <div class="row" data-key="untap">
+        <div class="hint" style="margin-top:0">What the app logs while <b>no activity is running</b> (the Stuck "?" tile is showing and you haven't tapped yet).<br>
+          Example: you tapped <b>Work</b> at 11:30, stopped tapping at 11:50, tapped <b>Hobby</b> at 12:40. The plan said <b>Lunch 12:00–12:30</b>.</div>
+        <div class="opts" data-opts="untap">
+          <button class="opt" type="button" data-v="A"><span class="t"><span class="radio"></span>A · Strict</span><span class="d">Every untapped minute is logged as "Untapped". You assign it in the evening checkout. Most honest, most checkout work.</span></button>
+          <button class="opt" type="button" data-v="B"><span class="t"><span class="radio"></span>B · Short gaps vanish</span><span class="d">Gaps shorter than a limit go to the next (or previous) activity. Longer gaps = untapped, assigned in the checkout.</span></button>
+          <button class="opt" type="button" data-v="C"><span class="t"><span class="radio"></span>C · Plan fills in<span class="def">default</span></span><span class="d">"Too lazy to tap?" Untapped time is logged as what the plan said, marked "from plan". The checkout shows these as already approved, with one tap for "wrong". Where nothing was planned it stays untapped.</span></button>
+        </div>
+        <div class="sub" id="untapB" hidden>
+          <div class="top" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="small"><b>Gaps shorter than</b></span>
+            <span class="seg" data-seg="gap"><button type="button" data-v="5">5 min</button><button type="button" data-v="10">10 min</button><button type="button" data-v="15">15 min</button><button type="button" data-v="30">30 min</button><button type="button" data-v="60">1 h</button></span></div>
+          <div class="top" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px"><span class="small"><b>… go to the</b></span>
+            <span class="seg" data-seg="gapto"><button type="button" data-v="next">next activity</button><button type="button" data-v="prev">previous activity</button></span></div>
+        </div>
+        <div class="tl" id="tl"></div>
+      </div>
+    </div>
+
+    <!-- ============ PLANS ============ -->
+    <div class="sec" id="s-plans"><h2>Plans</h2><button class="textlink small" type="button" data-reset="plans">reset section</button></div>
+    <div class="card">
+      <div class="row" data-key="autofix">
+        <div class="top"><span class="name">Week Auto-fix steps<span class="dot"></span></span></div>
+        <div class="hint">How big each + / − step is in the week view. "Auto" = 1 h → 30 → 15 → 5 min as the imbalance gets smaller.</div>
+        <div class="ctl"><span class="seg" data-seg="autofix"><button type="button" data-v="auto">Auto</button><button type="button" data-v="15">15 min</button><button type="button" data-v="30">30 min</button><button type="button" data-v="60">1 h</button></span></div>
+      </div>
+      <div class="row" data-key="chains">
+        <div class="top"><span class="name">Suggestion chains<span class="dot"></span></span><button class="sw" type="button" role="switch" data-sw="chains" aria-label="Suggestion chains"></button></div>
+        <div class="hint">Chains like "Food (lunch) → Chores (dishes) → Chill (TV)" are offered as "next". Made on the Categories page, Chains tab.</div>
+        <div class="sub" id="chainsSub">
+          <div class="small"><b>Suggest chains</b></div>
+          <div class="opts" data-opts="chainwhen">
+            <button class="opt" type="button" data-v="unplanned"><span class="t"><span class="radio"></span>Only in unplanned time</span><span class="d">The plan has nothing here → "next" offers a chain.</span></button>
+            <button class="opt" type="button" data-v="also"><span class="t"><span class="radio"></span>Also inside planned blocks</span><span class="d">E.g. a planned "Chores 2 h" block is split into a chain.</span></button>
+            <button class="opt" type="button" data-v="pick"><span class="t"><span class="radio"></span>Only when I open "pick"</span><span class="d">"next" stays plan-only; chains wait in the pick list.</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CATEGORIES ============ -->
+    <div class="sec" id="s-cats"><h2>Categories</h2><button class="textlink small" type="button" data-reset="cats">reset section</button></div>
+    <div class="card">
+      <div class="row" data-key="selfcare">
+        <div class="top"><span class="name">Self care: how thorough?<span class="dot"></span></span></div>
+        <div class="hint">Hygiene, toilet time, calming down after a meltdown.</div>
+        <div class="opts" data-opts="selfcare">
+          <button class="opt" type="button" data-v="log"><span class="t"><span class="radio"></span>Log it</span><span class="d">Self care gets tapped like any activity.</span></button>
+          <button class="opt" type="button" data-v="dontcare"><span class="t"><span class="radio"></span>Don't care</span><span class="d">Not tapped. Counted automatically in the short gaps between activities.</span></button>
+        </div>
+        <div class="sub" id="selfcareSub">
+          <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="small"><b>Toilet time as its own line</b><br><span class="muted">"an hour a day, a chore you HAVE to do"</span></span><button class="sw" type="button" role="switch" data-sw="toilet" aria-label="Toilet time as its own line"></button></div>
+          <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="small"><b>Long baths count as</b></span>
+            <span class="seg" data-seg="bath"><button type="button" data-v="chores">Chores</button><button type="button" data-v="chill">Chill</button></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CHECKOUT & REWARDS ============ -->
+    <div class="sec" id="s-check"><h2>Checkout &amp; rewards</h2><button class="textlink small" type="button" data-reset="check">reset section</button></div>
+    <div class="card">
+      <div class="row" data-key="comments">
+        <div class="top"><span class="name">Checkout comments<span class="dot"></span></span><button class="sw" type="button" role="switch" data-sw="comments" aria-label="Checkout comments"></button></div>
+        <div class="hint">Each answer pops a short line: <span class="pop">Sweet! +1</span> · <span class="pop">Noted!</span> · <span class="pop">Damn. −1</span></div>
+      </div>
+      <div class="row" data-key="sounds">
+        <div class="top"><span class="name">Sounds<span class="dot"></span></span><button class="sw" type="button" role="switch" data-sw="sounds" aria-label="Sounds"></button></div>
+        <div class="hint">Sounds are not built yet (planned).</div>
+        <div class="sub" id="soundsSub">
+          <div class="small"><b>Play a sound for</b></div>
+          <div class="chips" style="margin-top:4px" id="soundTypes"></div>
+          <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="small"><b>Sound pack</b></span>
+            <span><select data-sel="pack"><option value="felt">Felt · soft pops</option><option value="synth" disabled>Synth · locked (Rewards)</option><option value="chalk" disabled>Chalk · locked (Rewards)</option><option value="silly" disabled>Silly · locked (Rewards)</option></select>
+            <button class="textlink" type="button" data-toast="▶ Sounds are not built yet.">▶</button></span></div>
+        </div>
+      </div>
+      <div class="row" data-key="theme">
+        <div class="top"><span class="name">Tile theme<span class="dot"></span></span></div>
+        <div class="hint">Themes you own. More are unlocked on the Rewards page by being thorough.</div>
+        <div class="themes" data-opts="theme">
+          <button class="theme" type="button" data-v="felt"><span class="nm">Felt</span><br><span class="st">main style</span></button>
+          <button class="theme" type="button" data-v="chalk"><span class="nm">Chalk</span><br><span class="st">night theme</span></button>
+          <button class="theme locked" type="button" data-locked="Lino"><span class="nm">Lino</span><br><span class="st">locked</span></button>
+          <button class="theme locked" type="button" data-locked="Riso"><span class="nm">Riso</span><br><span class="st">locked</span></button>
+        </div>
+      </div>
+      <div class="row" data-key="plain">
+        <div class="top"><span class="name">Plain rewards<span class="dot"></span></span><button class="sw" type="button" role="switch" data-sw="plain" aria-label="Plain rewards"></button></div>
+        <div class="hint">Rewards in a neutral look instead of the tile theme's look.</div>
+        <div class="ctl"><span class="wallet" id="walletPv"></span></div>
+      </div>
+    </div>
+
+    <!-- ============ DATA & CALENDAR ============ -->
+    <div class="sec" id="s-data"><h2>Data &amp; calendar</h2><button class="textlink small" type="button" data-reset="data">reset section</button></div>
+    <div class="card">
+      <div class="row" data-key="calsync">
+        <div class="top"><span class="name">Calendar sync<span class="dot"></span></span></div>
+        <div class="hint">Imports your calendar dates into Plans.</div>
+        <div class="ctl"><span class="seg" data-seg="calsync"><button type="button" data-v="off">Off</button><button type="button" data-v="daily">Daily</button><button type="button" data-v="monthly">1st of the month</button></span></div>
+        <div class="hint" id="calHint"></div>
+        <div class="sub" id="calSub">
+          <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="small"><b>Also add my plans to the calendar</b><br><span class="muted">sent once with "Plan done"</span></span><button class="sw" type="button" role="switch" data-sw="twoway" aria-label="Two-way calendar sync"></button></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="top"><span class="name">Backup</span></div>
+        <div class="hint">All your data in one file. Use it to move to another phone or PC, or as a backup. Last export: <b>never</b>.</div>
+        <div class="datarow"><button class="btn sm main" type="button" data-toast="Saved time-budget-backup-2026-11-17.json (mockup: no file).">Export data</button><button class="btn sm" type="button" data-toast="Import asks before it replaces anything (mockup: no file).">Import data…</button></div>
+      </div>
+      <div class="row">
+        <div class="top"><span class="name">Setup questions</span></div>
+        <div class="hint">The 6 skippable questions from the start. Answering again suggests a new starter setup; nothing changes until you say yes.</div>
+        <div class="datarow"><button class="btn sm" type="button" data-toast="Opens the setup questions (screen not designed yet).">Answer again</button></div>
+      </div>
+    </div>
+
+    <button class="btn reset" type="button" data-reset="all">Reset all settings to defaults</button>
+    <p class="small muted" style="text-align:center">Settings v1 · mockup</p>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+</div>
+
+<div class="notes">
+  <h3>What's in settings v1</h3>
+  <ul>
+    <li><b>Grouped by screen</b>: Tap screen · Day &amp; sleep · Plans · Categories · Checkout &amp; rewards · Data &amp; calendar. The chips at the top jump to a section.</li>
+    <li><b>Defaults</b> = what the app uses today (bars 2 / 1 / 3 / 5 min, wake 07:00, bedtime 22:30, day starts 04:00, Colour on tap A, idle medium, drop shadow). A gold dot marks every setting you changed; each section has "reset section".</li>
+    <li><b>Untapped time:</b> A / B / C as a setting, C as the default for now. The coloured strip under it shows how the example would be logged. Pick B to see its limit and next/previous choice.</li>
+    <li><b>My guesses, please check:</b> "Suggest chains" options (never designed before); Self care split into "Log it" (toilet line + bath choice) / "Don't care"; Chalk shown as owned.</li>
+  </ul>
+</div>
+
+<script>
+(function () {
+const $ = id => document.getElementById(id);
+const A = '../v6/assets/';
+
+// ---------- defaults (= app constants from 04b + approved mockup defaults) ----------
+const DEF = {
+  colour: 'bg', idle: '2', shadow: 'drop',
+  bar_suggest: '120', bar_morning: '60', bar_first: '180', bar_bed: '300',
+  wake: '07:00', bed: '22:30', daystart: '04:00', planahead: 'before',
+  untap: 'C', gap: '10', gapto: 'next',
+  autofix: 'auto', chains: true, chainwhen: 'unplanned',
+  selfcare: 'log', toilet: false, bath: 'chill',
+  comments: true, sounds: false, snd_good: true, snd_neutral: true, snd_bad: false, pack: 'felt', theme: 'felt', plain: false,
+  calsync: 'off', twoway: false
+};
+const SECTIONS = {
+  tap: ['colour', 'idle', 'shadow', 'bar_suggest', 'bar_morning', 'bar_first', 'bar_bed'],
+  day: ['wake', 'bed', 'daystart', 'planahead', 'untap', 'gap', 'gapto'],
+  plans: ['autofix', 'chains', 'chainwhen'],
+  cats: ['selfcare', 'toilet', 'bath'],
+  check: ['comments', 'sounds', 'snd_good', 'snd_neutral', 'snd_bad', 'pack', 'theme', 'plain'],
+  data: ['calsync', 'twoway']
+};
+// which row (data-key) shows the gold dot for which values
+const ROWKEY = { gap: 'untap', gapto: 'untap', chainwhen: 'chains', toilet: 'selfcare', bath: 'selfcare', snd_good: 'sounds', snd_neutral: 'sounds', snd_bad: 'sounds', pack: 'sounds', twoway: 'calsync' };
+let S = { ...DEF };
+
+// ---------- bar rows ----------
+const BARS = [
+  ['bar_suggest', 'Suggestion ("next" / "pick")', 'Runs out → Stuck "?" tile: "Timer not running – what\'s up?"', [60, 120, 180, 300]],
+  ['bar_morning', 'Morning "Change the plan?"', 'Runs out → Auto-adjust, the first activity comes up.', [30, 60, 120, 180]],
+  ['bar_first', 'First tile of the day', 'Runs out → it starts by itself (counted from when it showed).', [60, 180, 300, 600]],
+  ['bar_bed', 'Bedtime (Sleep tile)', 'Runs out → Sleep starts.', [120, 300, 600, 900]]
+];
+const fmt = s => s < 60 ? s + ' s' : (s / 60) + ' min';
+$('bars').innerHTML = BARS.map(([k, n, h, vals]) => `<div class="row" data-key="${k}">
+  <div class="top"><span class="name">${n}<span class="dot"></span></span><button class="textlink small" type="button" data-demo="${k}">▶ show</button></div>
+  <div class="hint">${h}</div>
+  <div class="ctl"><span class="seg" data-seg="${k}">${vals.map(v => `<button type="button" data-v="${v}">${fmt(v)}</button>`).join('')}</span></div>
+  <div class="bar" id="bar-${k}"><i></i></div></div>`).join('');
+
+// ---------- sound types ----------
+$('soundTypes').innerHTML = [['snd_good', 'good answers'], ['snd_neutral', '"Noted"'], ['snd_bad', '"Damn."']]
+  .map(([k, n]) => `<button class="chip" type="button" data-chip="${k}">${n}</button>`).join('');
+
+// ---------- tile preview: felt Chill tile (a03), placement copied from v9_2 ----------
+const BOX = [[77,43,434,376],[102,39,409,337],[240,163,488,347]];
+const ELS = [{ e: 2, r: [95,90,200,190], a: 'c' }, { e: 1, r: [120,200,395,420], a: 'b', idle: 'breathe' }, { e: 3, r: [320,240,432,330], a: 'c' }];
+const pct = px => (px / 512 * 100).toFixed(2) + '%';
+function placeOf(box, r, a) {
+  const bw = box[2] - box[0], bh = box[3] - box[1];
+  const s = Math.min((r[2] - r[0]) / bw, (r[3] - r[1]) / bh);
+  const tx = (r[0] + r[2]) / 2 - s * (box[0] + box[2]) / 2;
+  const ty = a === 'c' ? (r[1] + r[3]) / 2 - s * (box[1] + box[3]) / 2 : r[3] - s * box[3];
+  return { s, tx, ty };
+}
+$('art').innerHTML = `<div class="layer bgwrap" style="transform:scale(1.22)"><img src="${A}background_rgba_00003_.png" alt=""></div>` +
+  ELS.map(el => { const b = BOX[el.e - 1], p = placeOf(b, el.r, el.a);
+    return `<div class="layer"><div class="place" style="transform:translate(${pct(p.tx)}, ${pct(p.ty)}) scale(${p.s.toFixed(4)})"><div class="idle ${el.idle || ''}" style="transform-origin:50% 90%"><img src="${A}a03_e${el.e}_00001_.png" alt=""></div></div></div>`; }).join('');
+
+// ---------- untapped timeline (11:30 → 12:50 = 80 min) ----------
+function seg(cls, min, label) { return `<span class="${cls}" style="flex:${min}">${label}</span>`; }
+function timeline() {
+  const plan = `<div class="plan"><span style="flex:30"></span><span class="pl" style="flex:30">plan: Lunch</span><span style="flex:20"></span></div>`;
+  let lane, cap;
+  if (S.untap === 'A') {
+    lane = seg('work', 20, 'Work') + seg('untap', 50, 'Untapped 50 min') + seg('hobby', 10, 'Hobby');
+    cap = 'Checkout asks: what were these 50 min?';
+  } else if (S.untap === 'B') {
+    const lim = +S.gap;
+    if (50 < lim) {
+      lane = S.gapto === 'next' ? seg('work', 20, 'Work') + seg('hobby', 60, 'Hobby (incl. 50 min gap)') : seg('work', 70, 'Work (incl. 50 min gap)') + seg('hobby', 10, 'Hobby');
+      cap = `The 50 min gap is shorter than ${fmt(lim * 60)}, so it goes to the ${S.gapto === 'next' ? 'next activity (Hobby)' : 'previous activity (Work)'}. Nothing to assign.`;
+    } else {
+      lane = seg('work', 20, 'Work') + seg('untap', 50, 'Untapped 50 min') + seg('hobby', 10, 'Hobby');
+      cap = `50 min is longer than ${fmt(lim * 60)} → untapped, assigned in the checkout. A gap of 8 min would go to the ${S.gapto === 'next' ? 'next' : 'previous'} activity.`;
+    }
+  } else {
+    lane = seg('work', 20, 'Work') + seg('untap', 10, '10') + seg('lunch fromplan', 30, 'Lunch · from plan') + seg('untap', 10, '10') + seg('hobby', 10, 'Hobby');
+    cap = 'Lunch 12:00–12:30 is logged from the plan (pre-approved, tap "wrong" in the checkout to change it). The 2 × 10 min around it had no plan → untapped.';
+  }
+  $('tl').innerHTML = plan + `<div class="lane">${lane}</div><div class="ticks"><span>11:30</span><span>11:50</span><span>12:10</span><span>12:30</span><span>12:50</span></div><div class="cap">${cap}</div>`;
+}
+
+// ---------- render ----------
+const eq = (a, b) => String(a) === String(b);
+function render() {
+  document.querySelectorAll('[data-seg]').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', eq(S[g.dataset.seg], b.dataset.v))));
+  document.querySelectorAll('[data-opts]').forEach(g => g.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', eq(S[g.dataset.opts], b.dataset.v))));
+  document.querySelectorAll('[data-sw]').forEach(b => b.setAttribute('aria-checked', !!S[b.dataset.sw]));
+  document.querySelectorAll('[data-chip]').forEach(b => { b.style.background = S[b.dataset.chip] ? 'var(--accent)' : ''; b.style.color = S[b.dataset.chip] ? 'var(--surface)' : ''; b.setAttribute('aria-pressed', !!S[b.dataset.chip]); });
+  document.querySelectorAll('[data-time]').forEach(i => { i.value = S[i.dataset.time]; });
+  document.querySelectorAll('[data-sel]').forEach(i => { i.value = S[i.dataset.sel]; });
+
+  // sub panels
+  $('untapB').hidden = S.untap !== 'B';
+  $('chainsSub').hidden = !S.chains;
+  $('selfcareSub').hidden = S.selfcare !== 'log';
+  $('soundsSub').hidden = !S.sounds;
+  $('calSub').hidden = S.calsync === 'off';
+  $('calHint').textContent = { off: '', daily: 'Checks for new dates once a day.', monthly: 'Imports the whole month on the 1st. The month view then shows a "Resync" button for new dates.' }[S.calsync];
+
+  // preview
+  const pv = $('pv');
+  pv.className = `preview idle-${S.idle} shadow-${S.shadow}${(S.colour === 'glow' || S.colour === 'both') ? ' glow-on' : ''}`;
+  document.documentElement.style.setProperty('--tint', (S.colour === 'bg' || S.colour === 'both') ? '#E0B45F' : 'transparent');
+
+  // wallet preview
+  const w = $('walletPv');
+  w.className = 'wallet' + (S.plain ? ' neutral' : '');
+  w.textContent = S.plain ? '● 128 points' : (S.theme === 'chalk' ? '✎ 128 chalk marks' : '✚ 128 stitches');
+
+  timeline();
+
+  // changed dots
+  const changedRows = new Set();
+  Object.keys(DEF).forEach(k => { if (!eq(S[k], DEF[k])) changedRows.add(ROWKEY[k] || k); });
+  document.querySelectorAll('.row[data-key]').forEach(r => r.classList.toggle('is-changed', changedRows.has(r.dataset.key)));
+  $('changedCount').textContent = changedRows.size ? `${changedRows.size} changed` : '';
+}
+
+// ---------- events ----------
+let tt;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2600); }
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const g = b.closest('[data-seg]'), o = b.closest('[data-opts]');
+  if (b.closest('#themeSeg')) {
+    b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (b.dataset.v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', b.dataset.v);
+    return;
+  }
+  if (b.dataset.locked) { toast(`${b.dataset.locked} is locked. Unlock it on the Rewards page by being thorough.`); return; }
+  if (g && b.dataset.v !== undefined) { S[g.dataset.seg] = b.dataset.v; render(); return; }
+  if (o && b.dataset.v !== undefined) { S[o.dataset.opts] = b.dataset.v; render(); return; }
+  if (b.dataset.sw) { S[b.dataset.sw] = !S[b.dataset.sw]; render(); return; }
+  if (b.dataset.chip) { S[b.dataset.chip] = !S[b.dataset.chip]; render(); return; }
+  if (b.dataset.toast) { toast(b.dataset.toast); return; }
+  if (b.dataset.demo) {
+    const bar = $('bar-' + b.dataset.demo), secs = +S[b.dataset.demo];
+    bar.classList.remove('run'); void bar.offsetWidth;
+    bar.style.setProperty('--len', (secs / 30) + 's'); bar.classList.add('run');
+    toast(`${fmt(secs)} shown 30× faster.`); return;
+  }
+  if (b.dataset.reset) {
+    const keys = b.dataset.reset === 'all' ? Object.keys(DEF) : SECTIONS[b.dataset.reset];
+    keys.forEach(k => { S[k] = DEF[k]; }); render();
+    toast(b.dataset.reset === 'all' ? 'All settings back to defaults.' : 'Section back to defaults.'); return;
+  }
+  if (b.dataset.to) { $(b.dataset.to).scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.time) { S[t.dataset.time] = t.value; render(); }
+  if (t.dataset.sel) { S[t.dataset.sel] = t.value; render(); }
+});
+
+// highlight the jump chip of the section in view
+const page = $('page'), chips = [...document.querySelectorAll('#jump button')];
+page.addEventListener('scroll', () => {
+  let cur = chips[0];
+  chips.forEach(c => { if ($(c.dataset.to).offsetTop - page.scrollTop < 80) cur = c; });
+  chips.forEach(c => c.setAttribute('aria-current', c === cur));
+}, { passive: true });
+chips[0].setAttribute('aria-current', 'true');
+
+render();
+})();
+</script>
+<script src="../_shared/nav.js"></script>
+</body>
+</html>

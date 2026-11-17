@@ -519,7 +519,7 @@ function bind() {
     document.querySelectorAll('.seg-b.sel').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); $('pick').textContent = b.dataset.p;
   });
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const k = b.dataset.open; state.open.has(k) ? state.open.delete(k) : state.open.add(k); const y = scrollY; render(); scrollTo(0, y); });
-  document.querySelectorAll('[data-goal]').forEach(b => b.onclick = () => toast('→ Goals page, goal "' + b.dataset.goal + '" (designed in step 02b Categories)'));
+  document.querySelectorAll('[data-goal]').forEach(b => b.onclick = () => { const c = CATS.find(x => x.name === b.dataset.goal); location.href = '../02b_categories/categories.html#cat=' + (c ? c.tile : 'sleep'); });  // 02j: real link to the Goals page (was a toast)
   document.querySelectorAll('.col').forEach(b => b.onclick = () => { state.sel = +b.dataset.i; render(); });
   document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { state.view = 'day'; render(); });
 }
@@ -529,5 +529,6 @@ $('theme').onchange = () => { const v = $('theme').value; if (v === 'auto') docu
 render();
 })();
 </script>
+<script src="../_shared/nav.js"></script>
 </body>
 </html>

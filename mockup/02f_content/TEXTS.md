@@ -104,10 +104,46 @@ Only "Sweet! +1", "Damn. −1" and "Noted!" are v9.1; the rest is draft.
 - `plans.autofix` Auto-fix also changes days you planned by hand. Only fixed times never change. · draft
 - `plans.unbalanced` This week is out of balance. That's allowed. Fix it here, or catch up next week. · draft
 
-## 7. Settings text (one-line helpers)
-- Data: `Export data` · `Import data` · Everything is saved in this browser only. Export a file to keep a backup. · draft
-- Rules: `Rules` (opens the rules page) · `Show the tour again` · draft
-- Checkout comments: `Show a comment after each answer` · draft
+## 7. Settings texts (content v4, draft; aligned with `02e_settings\settings.html` v1; 02e owns layout + the setting list, this file owns the words)
+Label · options · one-line helper. Helpers stay one line.
+### 7a. Tap screen
+- `set.idle` **Tile wiggle** · Off · Low · Medium · Strong · How much a tile moves while it waits.
+- `set.colour` **Colour on tap** · Off · Background · Glow · Both · A soft colour change when you tap a tile.
+- `set.shadow` **Tile shadow** · None · Soft oval · Drop shadow · The shadow under each tile.
+- `set.chains` **Suggestion chains** · On · Off · When: only in unplanned time · also inside planned blocks · only in "pick" · "next" suggests what usually follows. (02e's guess, waits for Samuel.)
+### 7b. Bar lengths (each bar runs out into a default, because time keeps running)
+- `set.bar.suggest` **Suggestion waits** · 1 · 2 · 3 · 5 min · How long a suggestion waits for your tap before it becomes a gap.
+- `set.bar.plan` **"Change the plan?" waits** · 30 s · 1 · 2 · 3 min · Runs out → auto-adjust.
+- `set.bar.first` **First tile waits** · 1 · 3 · 5 · 10 min
+- `set.bar.bed` **Bedtime waits** · 2 · 5 · 10 · 15 min
+- (each row gets a "runs out → …" line, text from 02e)
+### 7c. Untapped time (all three are a setting; default C)
+- `set.untapped` **Untapped time** · helper: Time with no tap is never lost. You pick where it goes.
+  - A · **All to checkout** · All untapped time waits for you in the evening checkout.
+  - B · **Short gaps join a tile** · Gaps up to your limit join the tile before or after. Longer ones wait in the checkout. Sub-settings: **Gap limit** 5 · 10 · 15 · 30 min · 1 h, and **Joins** next activity · previous activity.
+  - C · **From the plan** (default) · Untapped time counts as what you planned, already approved. Wrong? One tap in the checkout. Time with no plan stays untapped.
+### 7d. Day and sleep
+- `set.wake` **Wake-up** · 07:00 · `set.bed` **Bedtime** · 22:30 · they move together unless you lock one.
+- `set.dayStart` **New day starts at** · 04:00 · Time before this still belongs to yesterday.
+### 7e. Planning
+- `set.planAhead` **Plan ahead** · Evening, after checkout · Morning, before the day · After the first tap · Always skippable.
+- `set.autofix` **Auto-fix step** · Auto · 15 min · 30 min · 1 h · How big each + / − nudge is. (The rule "Auto-fix also changes hand-planned days" is a decision, not a setting: it stays in the Plans hint `plans.autofix`.)
+### 7f. Checkout and rewards
+- `set.comments` **Comment after each answer** · On · Off · "Sweet! +1", "Damn. −1" and friends.
+- `set.sounds` **Sounds** · On · Off, then per answer: good · "Noted" · "Damn." · A tiny sound per answer.
+- `set.soundPack` **Sound pack** · Felt · Synth · Chalk · Silly · Locked ones unlock with rewards.
+- `set.theme` **Theme** · Felt (+ unlocked) · The look of your tiles and rewards.
+- `set.plainRewards` **Plain rewards** · On · Off · Neutral look instead of the theme's.
+### 7g. Self care
+- `set.selfcare` **Log it** · On · Off · On: toilet time gets its own line and long baths count as Chores or Chill. Off ("Don't care"): it's counted between activities. No judgement either way.
+### 7h. Data and calendar
+- `set.calSync` **Calendar sync** · Off · Daily · First day of the month · Brings your dates in, so planning gets easier.
+- `set.calPush` **Also add my plans to the calendar** · On · Off
+- `set.export` `Export data` · `Import data` · Everything is saved in this browser only. Export a file to keep a backup.
+- `set.setup` **Setup questions** · `Answer again`
+### 7i. About (from 02f; 02e adds these in its v2)
+- `set.rules` `Rules` (opens the rules page) · `Show the tour again`
+- Open (Samuel decides, via 02e): Self care + Theme sit in Settings in 02e v1; they might move to Categories / Rewards.
 
 ## 8. Empty and error states
 - `empty.firstOpen` Nothing yet. Tap a tile, the clock is already running. · draft

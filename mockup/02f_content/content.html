@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Time Budget – content v1</title>
+<title>Time Budget – content v4</title>
 <style>
 :root { --bg:#F4F6F3; --surface:#FFFFFF; --ink:#1D2927; --muted:#5E6D68; --line:#DCE3DF; --accent:#3D6B5E; --accent-soft:#DDEAE4; --warn:#9A4F36; --warn-soft:#F5E4DC; --good:#2F7A4F;
   --font-ui:"Figtree",system-ui,"Segoe UI",sans-serif; --font-head:"Literata",Georgia,serif; }
@@ -62,11 +62,12 @@ p { margin:0 0 12px; }
 </head>
 <body>
 <div class="wrap">
-<p class="mock">MOCKUP 02f · content v1 · no app logic · felt look, images from v6</p>
+<p class="mock">MOCKUP 02f · content v4 · no app logic · felt look, images from v6 + app (Sleep tile)</p>
 <div class="tabs" id="tabs">
   <button data-t="onb" class="on">Onboarding</button>
   <button data-t="rules">Rules</button>
   <button data-t="texts">In-app texts</button>
+  <button data-t="set">Settings</button>
 </div>
 
 <section id="onb"></section>
@@ -100,11 +101,22 @@ p { margin:0 0 12px; }
   <div class="sec"><h3>Checkout comments (tap one)</h3><div class="pop" id="pop"></div><div class="chips" id="cc"></div></div>
   <div class="sec"><h3>Closing</h3><div class="msg" style="text-align:center;font-family:var(--font-head);font-size:22px">☾ Nighty night!<br><span class="muted" style="font-family:var(--font-ui);font-size:14px">You can close the app. Sleep keeps counting.</span></div></div>
 </section>
+<section id="set" class="hidden">
+  <h1>Settings texts</h1>
+  <p class="muted">Draft words only: label, options, one-line helper. Layout is up to the Settings design chat. Full list: <b>TEXTS.md §7</b>.</p>
+  <div id="setlist"></div>
+</section>
 </div>
 
 <script>
 const A = '../v6/assets/';
-const BG_SCALE = {1:1, 2:1.037, 3:1.22};
+const AA = '../../app/assets/';
+// real felt Sleep + Stuck tiles, placement copied from the app (static, no animation)
+const FELT2 = {
+  stuck: { clip:'inset(12.3% 11.5% 12.9% 11.7% round 7%)', els:[['question','translate(23.4%, -11.7%) scale(0.432)'],['person','translate(-7.2%, 7.5%) scale(0.588)'],['yarn','translate(24.4%, 15.6%) scale(0.419)']] },
+  sleep: { clip:'inset(12.9% 12.3% 14.5% 12.3% round 7%)', els:[['moon','translate(-18.8%, -17.8%) scale(0.372)'],['star','translate(8.5%, -19.8%) scale(0.37)'],['sleeper','translate(0.1%, 19.2%) scale(0.719)']] }
+};
+const BG_SCALE ={1:1, 2:1.037, 3:1.22};
 const BOX = {
   a09:[[102,29,405,481],[55,119,376,440],[303,168,453,355]],
   a06:[[32,47,479,453],[122,284,391,486],[246,71,485,327]],
@@ -125,8 +137,9 @@ const bg = n => `<div class="layer" style="transform:scale(${BG_SCALE[n]})"><img
 const pct = px => (px/512*100).toFixed(2)+'%';
 function art(id, size) {
   const s0 = size ? ` style="width:${size}px;height:${size}px"` : '';
-  if (id==='sleep') return `<div class="stage"${s0}>${bg(3)}<div class="tile-text">☾</div><div class="ph">PLACEHOLDER · Sleep tile</div></div>`;
-  if (id==='stuck') return `<div class="stage"${s0}>${bg(2)}<div class="tile-text">?</div><div class="ph">PLACEHOLDER · Stuck tile</div></div>`;
+  if (FELT2[id]) { const f = FELT2[id];
+    return `<div class="stage"${s0}><div class="layer" style="clip-path:${f.clip}"><img src="${AA}${id}_background.png" alt=""></div>` +
+      f.els.map(([n,pl]) => `<div class="layer" style="transform:${pl}"><img src="${AA}${id}_${n}.png" alt=""></div>`).join('') + `</div>`; }
   let h = bg(bgOf(id));
   TILES[id].els.forEach(el => {
     const b = BOX[id][el.e-1], r = el.r, bw=b[2]-b[0], bh=b[3]-b[1];
@@ -163,7 +176,7 @@ function drawOnb() {
     body += s.after.map(t=>`<p class="muted">${t}</p>`).join('');
   }
   if (s.demo==='check') {
-    body += `<div class="msg"><b>14:10–15:00</b> · not sure what this was<div class="chips"><button class="chip" data-ck="Sweet! +1">It was Chores</button><button class="chip" data-ck="Noted! +0">TBH? No idea</button><button class="chip" data-ck="Sweet! +1">Sorry, forgot to tap</button></div></div><div class="pop" id="pop2"></div>`;
+    body += `<div class="msg"><b>14:10–15:00</b> · not sure what this was<div class="chips"><button class="chip" data-ck="Sweet! +1">It was Chores</button><button class="chip" data-ck="Noted! +0">TBH? No idea</button><button class="chip" data-ck="Fair enough. +0">Sorry, forgot to tap</button></div></div><div class="pop" id="pop2"></div>`;
   }
   const dots = SLIDES.map((_,i)=>`<i class="${i===step?'on':''}"></i>`).join('');
   onb.innerHTML = `<div class="dots">${dots}</div><div class="card">${body}<div class="row"><button class="btn ghost" data-go="skip">Skip tour</button><span>${step>0?'<button class="btn ghost" data-go="back">Back</button>':''}<button class="btn" data-go="next">${step===SLIDES.length-1?'Done':'Next'}</button></span></div></div>`;
@@ -185,12 +198,53 @@ document.addEventListener('click', e => {
   if (t.dataset.cc) { document.getElementById('pop').textContent = t.dataset.cc; }
 });
 function show(id) {
-  ['onb','rules','texts'].forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
+  ['onb','rules','texts','set'].forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t===id));
 }
-const CC = ['Sweet! +1','Damn. −1','Noted! +0','Nice, that matches the plan. +1','Fair enough. +0','Honest answer. +1'];
+const CC = ['Sweet! +1','Damn. −1','Noted! +0','Nice one. +1','Fair enough. +0','Honest answer. +1'];
 document.getElementById('cc').innerHTML = CC.map(c=>`<button class="chip" data-cc="${c}">${c.replace(/ [+−]\d$/,'')}</button>`).join('');
+const SET = [
+ ['Tap screen', [
+  ['Tile wiggle', ['Off','Low','Medium','Strong'], 'How much a tile moves while it waits.'],
+  ['Colour on tap', ['Off','Background','Glow','Both'], 'A soft colour change when you tap a tile.'],
+  ['Tile shadow', ['None','Soft oval','Drop shadow'], 'The shadow under each tile.'],
+  ['Suggestion chains', ['On','Off','Only in unplanned time','Also inside planned blocks','Only in "pick"'], '"next" suggests what usually follows. (Draft, waits for Samuel.)']]],
+ ['Bar lengths', [
+  ['Suggestion waits', ['1 min','2 min','3 min','5 min'], 'How long a suggestion waits for your tap before it becomes a gap.'],
+  ['"Change the plan?" waits', ['30 s','1 min','2 min','3 min'], 'Runs out → auto-adjust.'],
+  ['First tile waits', ['1 min','3 min','5 min','10 min'], 'Runs out → the first tile starts.'],
+  ['Bedtime waits', ['2 min','5 min','10 min','15 min'], 'Runs out → Sleep.']]],
+ ['Untapped time', [
+  ['Where does it go?', ['All to checkout','Short gaps join a tile','From the plan (default)'], 'Time with no tap is never lost. You pick where it goes.'],
+  ['', [], '<b>All to checkout:</b> all untapped time waits for you in the evening checkout.<br><b>Short gaps join a tile:</b> gaps up to your limit join the tile before or after, longer ones wait in the checkout.<br><b>From the plan:</b> untapped time counts as what you planned, already approved. Wrong? One tap in the checkout. Time with no plan stays untapped.'],
+  ['Gap limit (short gaps)', ['5 min','10 min','15 min','30 min','1 h'], 'Gaps up to this join a tile.'],
+  ['Joins', ['Next activity','Previous activity'], 'Which tile a short gap goes to.']]],
+ ['Day and sleep', [
+  ['Wake-up · Bedtime', ['07:00','22:30'], 'They move together unless you lock one.'],
+  ['New day starts at', ['04:00'], 'Time before this still belongs to yesterday.']]],
+ ['Planning', [
+  ['Plan ahead', ['Evening, after checkout','Morning, before the day','After the first tap'], 'Always skippable.'],
+  ['Auto-fix step', ['Auto','15 min','30 min','1 h'], 'How big each + / − nudge is.']]],
+ ['Checkout and rewards', [
+  ['Comment after each answer', ['On','Off'], '"Sweet! +1", "Damn. −1" and friends.'],
+  ['Sounds', ['On','Off','Good','Noted','Damn.'], 'A tiny sound per answer.'],
+  ['Sound pack', ['Felt','Synth','Chalk','Silly'], 'Locked ones unlock with rewards.'],
+  ['Theme', ['Felt'], 'The look of your tiles and rewards.'],
+  ['Plain rewards', ['On','Off'], 'Neutral look instead of the theme\'s.']]],
+ ['Self care', [
+  ['Log it', ['On','Off'], 'On: toilet time gets its own line, long baths count as Chores or Chill. Off ("Don\'t care"): counted between activities. No judgement either way.']]],
+ ['Data and calendar', [
+  ['Calendar sync', ['Off','Daily','First day of the month'], 'Brings your dates in, so planning gets easier.'],
+  ['Also add my plans to the calendar', ['On','Off'], ''],
+  ['Export data / Import data', [], 'Everything is saved in this browser only. Export a file to keep a backup.'],
+  ['Setup questions', ['Answer again'], '']]],
+ ['About', [
+  ['Rules', ['Show the tour again'], 'Opens the rules page.']]]
+];
+document.getElementById('setlist').innerHTML = SET.map(([h,rows]) => `<div class="sec"><h3>${h}</h3>` + rows.map(([l,o,hp]) =>
+  `<div class="msg">${l?`<b>${l}</b>`:''}${o.length?`<div class="chips">${o.map(x=>`<span class="chip">${x}</span>`).join('')}</div>`:''}<div class="muted" style="margin-top:6px">${hp}</div></div>`).join('') + `</div>`).join('');
 drawOnb();
 </script>
+<script src="../_shared/nav.js"></script>
 </body>
 </html>

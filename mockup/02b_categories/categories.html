@@ -463,9 +463,9 @@ document.addEventListener('change', e => {
 // Entry point from Overviews goal stamps: categories.html#cat=a09 (optional &sub=Client%20work)
 function fromHash() {
   const p = new URLSearchParams(location.hash.slice(1)), id = p.get('cat');
-  if (!id || !CATS[id]) return;
+  if (!id || !(CATS[id] || id === 'sleep')) return;  // 02j: also #cat=sleep (Bedtime goal stamp in Overviews)
   S.tab = 'goals'; S.cat = id;
-  S.sub = (p.get('sub') && findSub(id, p.get('sub'))) ? p.get('sub') : (CATS[id].subs[0] || {}).n || null;
+  S.sub = id === 'sleep' ? null : (p.get('sub') && findSub(id, p.get('sub'))) ? p.get('sub') : (CATS[id].subs[0] || {}).n || null;
   render();
 }
 window.addEventListener('hashchange', fromHash);
@@ -473,5 +473,6 @@ render();
 fromHash();
 })();
 </script>
+<script src="../_shared/nav.js"></script>
 </body>
 </html>
