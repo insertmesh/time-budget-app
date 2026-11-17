@@ -30,4 +30,3 @@ function art(id) {
 }
 document.querySelectorAll('[data-art]').forEach(e=>{ e.outerHTML = art(e.dataset.art); });
 function toast(m){ let e=document.getElementById('toast'); if(!e){e=document.createElement('div');e.id='toast';document.body.appendChild(e);} e.textContent=m; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),1800); }
-document.querySelectorAll('[data-soon]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); toast('Mockup: this would open the app.'); }));

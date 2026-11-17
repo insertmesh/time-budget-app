@@ -4,17 +4,17 @@
 <link rel="stylesheet" href="web.css">
 </head><body>
 <div class="wrap">
-<p class="mock">MOCKUP 02h · web v8 · subpage · draft, no real links · examples are invented scenes</p>
+<p class="mock">MOCKUP 02h · web v8 · subpage · draft · examples are invented scenes</p>
 <nav class="top"><a class="home" href="web.html">Time Budget</a><div>
 <a href="how.html">How to play</a><a href="rules.html">House rules</a><a href="loop.html">You've got time!</a><a href="why.html">Why though?</a><a href="start.html">Start here</a><a href="faq.html">FAQ</a></div></nav>
 <div class="pagehead"><span data-art="a06"></span><h1>Start here</h1>
 <p class="sub">Pick how you want to begin. You can change your mind at any time.</p></div>
-<div class="callout"><strong>Impatient?</strong> Skip all of this. <a class="more" href="#" data-soon>Open the app</a>, tap a tile, done. That is the whole tour.</div>
+<div class="callout"><strong>Impatient?</strong> Skip all of this. <a class="more" href="../../app/index.html">Open the app</a>, tap a tile, done. That is the whole tour.</div>
 <p class="muted">Not a test and not a diagnosis. Everyone's brain does time a little differently, and ADHD and autism are not the same for everyone either. Mockup: nothing is saved.</p>
 <div id="path"></div>
 <div id="quiz"></div>
 <div id="result"></div>
-<footer><a href="web.html">Back to the start page</a><a href="#" data-soon>Open the app</a></footer>
+<footer><a href="web.html">Back to the start page</a><a href="../../app/index.html">Open the app</a></footer>
 </div>
 <script src="web.js"></script>
 <script>
@@ -47,9 +47,8 @@ function go(p){
 function again(){ for(const k in ans) delete ans[k]; showPaths(); }
 function card(title, intro, items, extra=''){
   document.getElementById('result').innerHTML = `<div class="card"><h2>${title}</h2><p class="muted">${intro}</p><ul class="plan">${items.map(x=>`<li>${x}</li>`).join('')}</ul>${extra}
-  <div class="row"><a class="btn" href="#" data-soon>Open the app</a><button class="skip" id="again">Start over</button></div></div>`;
+  <div class="row"><a class="btn" href="../../app/index.html">Open the app</a><button class="skip" id="again">Start over</button></div></div>`;
   document.getElementById('again').onclick=again;
-  document.querySelectorAll('[data-soon]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); toast('Mockup: this would open the app.'); }));
 }
 function quick(){
   card("Quick start: 3 steps","That's all you need today. Everything else can wait.",[
