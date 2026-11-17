@@ -460,7 +460,7 @@ document.addEventListener('change', e => {
   else return;
   render();
 });
-// Entry point from Overviews goal stamps: categories_v3.html#cat=a09 (optional &sub=Client%20work)
+// Entry point from Overviews goal stamps: categories.html#cat=a09 (optional &sub=Client%20work)
 function fromHash() {
   const p = new URLSearchParams(location.hash.slice(1)), id = p.get('cat');
   if (!id || !CATS[id]) return;

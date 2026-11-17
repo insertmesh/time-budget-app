@@ -1,7 +1,7 @@
 # Time Budget SAM-10 – all app texts (v1, draft)
 
 Tone: friendly, short, a bit cheeky, plain English. Never preachy, never productivity-shaming. Time is data, not a verdict.
-Status: `draft` = written for the content mockup (`content_v1.html`), `v9.2` = text already in the tap-flow mockup (kept as is), `new` = not in any mockup yet.
+Status: `draft` = written for the content mockup (`content.html`), `v9.2` = text already in the tap-flow mockup (kept as is), `new` = not in any mockup yet.
 Later build steps: copy from here, keep the keys (`[tap.next]` etc.) as constants in the code.
 
 ## 0. Philosophy (source of all other texts)

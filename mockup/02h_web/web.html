@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Time Budget – web v8</title>
-<link rel="stylesheet" href="web_v8.css">
+<link rel="stylesheet" href="web.css">
 </head>
 <body>
 <div class="wrap">
 <p class="mock">MOCKUP 02h · web v8 · draft, no real links · felt look, images from v6</p>
-<nav><b>Time Budget</b><div><a href="#how">How to play</a><a href="#rules">House rules</a><a href="#loop">You've got time!</a><a href="#why">Why though?</a><a href="v8_start.html">Start here</a><a href="v8_faq.html">FAQ</a></div></nav>
+<nav><b>Time Budget</b><div><a href="#how">How to play</a><a href="#rules">House rules</a><a href="#loop">You've got time!</a><a href="#why">Why though?</a><a href="start.html">Start here</a><a href="faq.html">FAQ</a></div></nav>
 
 <section class="hero">
   <h1>Time is always running, whether you plan for it or not.</h1>
   <p class="sub">A time budget. Like a money budget, but for your hours.</p>
-  <div class="btns"><a class="btn" href="v8_start.html">Start here</a><button class="btn alt" data-soon>Open the app</button><a class="btn alt" href="#how">How it works</a></div>
+  <div class="btns"><a class="btn" href="start.html">Start here</a><button class="btn alt" data-soon>Open the app</button><a class="btn alt" href="#how">How it works</a></div>
   <div class="grid4" id="demo"></div>
   <div class="now" id="now">Nothing running yet.<small>Tap a tile. The clock is already running.</small></div>
   <p class="muted" style="margin-top:10px">Demo clock: <span class="clock" id="clk">0:00</span></p>
@@ -31,14 +31,14 @@
   <p class="muted">Tap a step to open it.</p>
   <div class="steps" id="steps"></div>
   <p><strong>Too lazy to tap?</strong> If everything goes to plan, you don't need to. You only tap where the day splits from the plan.</p>
-  <a class="more" href="v8_how.html">I still don&#39;t understand the game… →</a>
+  <a class="more" href="how.html">I still don&#39;t understand the game… →</a>
 </section>
 
 <section id="rules">
   <h2>House rules</h2>
   <p class="muted">Tap a rule to open it.</p>
   <div class="why" id="ruleList"></div>
-  <a class="more" href="v8_rules.html">Read more, with examples →</a>
+  <a class="more" href="rules.html">Read more, with examples →</a>
   <p class="muted" style="margin-top:12px">Want to know where these come from? <a href="#why">Why though?</a></p>
 </section>
 
@@ -48,7 +48,7 @@
   <div class="loop" aria-label="The loop"><span>Tap</span><i>→</i><span>See it</span><i>→</i><span>Decide</span><i>→</i><span>Adjust</span><i>→</i><span>Tap</span></div>
   <div class="why" id="loopList"></div>
   <p class="quote" style="margin-top:18px">It's just data and we make it visible. We can make it more fun to play with too, but in the end, what you do with it is your choice.</p>
-  <a class="more" href="v8_loop.html">Read more, with examples (and goals with a date) →</a>
+  <a class="more" href="loop.html">Read more, with examples (and goals with a date) →</a>
 </section>
 
 <section id="who">
@@ -68,15 +68,15 @@
   <h2>Why though?</h2>
   <p class="muted" style="margin-top:-6px">Lost in time? Start here.</p>
   <p>The long version, for the skeptical you: why time is hard to see, why everyone guesses wrong, what the research says (and doesn't), and what a time budget could give you without becoming a cage. Nine short chapters, sources at the end.</p>
-  <a class="btn alt" href="v8_why.html">Read the long version</a>
+  <a class="btn alt" href="why.html">Read the long version</a>
 </section>
 
-<section id="faq"><h2>FAQ</h2><div class="why"><details><summary>Do I have to plan?</summary><p>No. Planning is always skippable, and you can use the app with taps only. Pick "Quick start" on the Start here page and you never see a plan.</p></details><details><summary>What if I forget to tap?</summary><p>Then the last tile kept running. The gap is data, not a failure. At night the app asks about the unclear bits, and "Sorry, forgot to tap" and "TBH? No idea" are both fine answers.</p></details><details><summary>Where does my data go?</summary><p>Version 1 saves everything in your browser. No account, nothing is sent anywhere. Export a backup file any time. What is it for? Looking back at where your hours went, and suggestions for changes. Suggestions you can ignore.</p></details><details><summary>What if I try it and hate it?</summary><p>Close it. Export your data first if you want to keep it. Nothing else happens, nobody is notified, there are no streaks to lose.</p></details></div><a class="more" href="v8_faq.html">All questions →</a></section>
+<section id="faq"><h2>FAQ</h2><div class="why"><details><summary>Do I have to plan?</summary><p>No. Planning is always skippable, and you can use the app with taps only. Pick "Quick start" on the Start here page and you never see a plan.</p></details><details><summary>What if I forget to tap?</summary><p>Then the last tile kept running. The gap is data, not a failure. At night the app asks about the unclear bits, and "Sorry, forgot to tap" and "TBH? No idea" are both fine answers.</p></details><details><summary>Where does my data go?</summary><p>Version 1 saves everything in your browser. No account, nothing is sent anywhere. Export a backup file any time. What is it for? Looking back at where your hours went, and suggestions for changes. Suggestions you can ignore.</p></details><details><summary>What if I try it and hate it?</summary><p>Close it. Export your data first if you want to keep it. Nothing else happens, nobody is notified, there are no streaks to lose.</p></details></div><a class="more" href="faq.html">All questions →</a></section>
 
 <footer><a href="#" data-soon>Open the app</a><a href="#rules">House rules</a><a href="#loop">You've got time!</a><p style="margin-top:10px">Time Budget · version 1 · works in your browser, on a Windows PC for now.</p></footer>
 </div>
 
-<script src="web_v8.js"></script>
+<script src="web.js"></script>
 <script>
 document.getElementById('demo').innerHTML = ['a09','a06','a01','a03'].map(t=>`<button class="tile" data-tap="${t}">${art(t)}<span class="title">${TILES[t].title}</span></button>`).join('');
 const STEPS = [
