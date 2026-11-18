@@ -394,8 +394,7 @@ function onLoad(entry) {
 function route(k, href) {
   const st = S.stacks[S.tab];
   if (st.length > 1 && st[st.length - 2].id === k) return back();
-  if (k === 'tap' && st.length > 1) return back();
-  if (S.stacks[k] && k !== S.tab) return goTab(k);
+  if (S.stacks[k] && k !== S.tab) return goTab(k);   // a link to Tap / Plans / … switches to that tab
   push(k, href);
 }
 

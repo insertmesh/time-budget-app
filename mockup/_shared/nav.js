@@ -47,7 +47,18 @@
     return hit;
   }
 
-  if (embedded) { document.documentElement.classList.add('tbn-embed'); return; }
+  if (embedded) {
+    document.documentElement.classList.add('tbn-embed');
+    // tell the app frame which page is open (works from disk too), so links inside a screen can be routed the app's way
+    try { window.parent.postMessage({ tbAt: location.href }, '*'); } catch (e) {}
+    // "#tbshow=rules" → open that review tab of the page (Content) and hide the review tabs
+    var show = /(?:^#|&)tbshow=(\w+)/.exec(location.hash);
+    if (show) {
+      var tb = document.querySelector('#tabs [data-t="' + show[1] + '"]'); if (tb) tb.click();
+      var tabs = document.getElementById('tabs'); if (tabs) tabs.style.display = 'none';
+    }
+    return;
+  }
 
   var nav = document.createElement('nav');
   nav.className = 'tbn';
