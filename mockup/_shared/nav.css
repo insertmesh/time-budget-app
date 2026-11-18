@@ -16,3 +16,21 @@
 }
 @media (max-width: 952px) { .tbn.tbn-gap { margin-left: 16px; margin-right: 16px; } }
 @media (max-width: 560px) { .tbn-tag { display: none; } }
+
+/* ===== Embed mode (2026-11-18, step 02k) =====
+   When an app mockup is shown INSIDE the phone of 02k_navigation/navigation.html (an iframe), nav.js adds
+   class "tbn-embed" to <html>. Then only the app screen shows: review controls, notes and the review bar are hidden,
+   the page's own phone frame fills the iframe. Opening a mockup on its own is unchanged. */
+html.tbn-embed body { padding: 0 !important; margin: 0 !important; }
+html.tbn-embed .tbn,
+html.tbn-embed .controls,
+html.tbn-embed .layout-note,
+html.tbn-embed .notes,
+html.tbn-embed .mock,
+html.tbn-embed .wrap > h1 > .note,
+html.tbn-embed .wrap > .sub { display: none !important; }
+html.tbn-embed .phone { max-width: none !important; width: 100% !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important; min-height: 100vh; }
+html.tbn-embed #phone:has(> .page) { height: 100vh !important; display: flex; flex-direction: column; }   /* Rewards, Settings: fixed-height screens */
+html.tbn-embed #phone:has(> .page) > nav.tabs { order: -1; border-top: 0; border-bottom: 1px solid var(--line, #dce3df); }  /* Rewards: page tabs at the top */
+html.tbn-embed #phone > .head > .back { display: none !important; }   /* Settings: the app's own bar handles "back" */
+html.tbn-embed .wrap { max-width: none !important; }

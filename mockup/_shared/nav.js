@@ -6,6 +6,9 @@
    Works from disk (double-click) and on GitHub Pages: all links are relative to the mockup folder.
    Not used by the web page set (02h_web), which has its own menu. */
 (function () {
+  // Embed mode (02k): inside the navigation mockup's phone (an iframe) only the app screen shows, no review bar.
+  var embedded = false;
+  try { embedded = window.self !== window.top; } catch (e) { embedded = true; }
   var me = document.currentScript;
   var base = me ? me.src.replace(/_shared\/nav\.js(\?.*)?$/, '') : '../';
 
@@ -43,6 +46,8 @@
     });
     return hit;
   }
+
+  if (embedded) { document.documentElement.classList.add('tbn-embed'); return; }
 
   var nav = document.createElement('nav');
   nav.className = 'tbn';

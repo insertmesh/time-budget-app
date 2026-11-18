@@ -7,7 +7,9 @@
 <!--
   Step 02k_app_navigation (2026-11-18): how the REAL app moves between its screens.
   Samuel's direction (round 1): 1A bottom tab bar · 2A Tap · Plans · Overviews · Rewards · More · 3A check-in = automatic prompt + badge on Tap.
-  Screens inside the phone are simple stand-ins; each has a link to its full design mockup.
+  v2 (2026-11-18): the phone shows the REAL mockups in iframes; nav.js puts them in embed mode (no review controls, notes or bar).
+  Links inside a screen are routed through this navigation. Needs a web server (local or GitHub Pages); opened from disk the
+  routing can't see inside the frames. v1 with stand-in screens = archive\navigation_v1.html.
   The strip at the very top (nav.js) is only the mockup review bar from 02j, NOT the app's navigation.
   Images load from ../v6/assets/ (keep the folders together). Mockup only: nothing is saved.
 -->
@@ -198,75 +200,82 @@ table { border-collapse: collapse; width: 100%; font-size: 13px; }
 td, th { border-bottom: 1px solid var(--line); padding: 6px 6px 6px 0; text-align: left; vertical-align: top; }
 th { color: var(--muted); font-weight: 600; }
 .ask { border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--accent-soft); border-radius: 0 10px 10px 0; margin-top: 6px; }
+
+/* v2: real mockups inside the phone */
+.subhead { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 12px 6px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.subhead b { font: 600 17px/1.2 var(--font-head); }
+.frames { flex: 1; position: relative; background: var(--surface); }
+.frames iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--surface); }
+.frames iframe.off { display: none; }
+.phone.covered .tabbar, .phone.covered .pill { display: none; }
 </style>
 </head>
 <body>
 <div class="controls">
-  <span class="tag"><span>Mockup controls (not part of the app)</span><span class="ver">Navigation v1 · 2026-11-18</span></span>
+  <span class="tag"><span>Mockup controls (not part of the app)</span><span class="ver">Navigation v2 · 2026-11-18</span></span>
   <label>Bar look <span class="seg" id="lookSeg"><button type="button" data-v="plain" aria-pressed="true">plain</button><button type="button" data-v="felt" aria-pressed="false">felt</button></span></label>
   <label>Tap button icon <span class="seg" id="iconSeg"><button type="button" data-v="tile" aria-pressed="true">running tile</button><button type="button" data-v="plain" aria-pressed="false">plain icon</button></span></label>
   <label><input type="checkbox" id="pillChk" checked> "Now running" strip on other screens</label>
-  <button class="btn" type="button" id="checkoutBtn">It's 21:45 → evening checkout</button>
+  <span class="tag" style="margin-top:4px"><span>Tap screen moments (the tap mockup's own demo buttons)</span></span>
+  <button class="btn" type="button" data-tapdemo="openCheckout">Evening checkout</button>
+  <button class="btn" type="button" data-tapdemo="jumpBed">Bedtime 22:30</button>
+  <button class="btn" type="button" data-tapdemo="jumpMorning">Next morning 11:00</button>
+  <button class="btn" type="button" data-tapdemo="reset">Reset day</button>
+  <span class="tag" style="margin-top:4px"><span>Navigation</span></span>
   <button class="btn" type="button" id="sysBack" title="Android back button / edge swipe">◁ Phone back</button>
-  <button class="btn" type="button" id="resetBtn">Reset</button>
+  <button class="btn" type="button" id="resetBtn">Reset navigation</button>
   <label>Page <span class="seg" id="themeSeg"><button type="button" data-v="auto" aria-pressed="true">auto</button><button type="button" data-v="light" aria-pressed="false">light</button><button type="button" data-v="dark" aria-pressed="false">dark</button></span></label>
 </div>
 
 <div class="wrap">
   <div class="phone" id="phone">
-    <div class="screen" id="screen"></div>
+    <div class="subhead" id="subhead" hidden></div>
+    <div class="frames" id="frames"></div>
     <button type="button" class="pill" id="pill" hidden></button>
     <nav class="tabbar" id="tabbar" aria-label="App navigation"></nav>
-    <div id="overlay"></div>
     <div id="toastHost"></div>
   </div>
 
   <div class="doc">
-    <h2>How the app moves (v1)</h2>
+    <h2>New in v2</h2>
+    <p style="margin:0">The screens in the phone are now the <b>real designed mockups</b> (Tap 02g, Plans 02a, Overviews 02c, Rewards 02d, Categories / Goals 02b, Settings 02e, Rules + tour 02f), not stand-ins. Inside the phone their review controls and notes are hidden. To see those, open a page on its own from the review bar at the top. Links inside a screen go through the app navigation: e.g. Tap → "Adjust in Plans" switches to the Plans tab, an Overviews goal stamp opens Goals inside Overviews.</p>
+
+    <h2>How the app moves</h2>
     <ol>
       <li><b>Bottom bar, 5 buttons:</b> Tap · Plans · Overviews · Rewards · More. Same place on every main screen, always with labels (icons alone are guesswork).</li>
-      <li><b>Tap is home.</b> The app always opens on Tap. The Tap button shows the <b>running tile</b> (a mini Work patch while Work runs), so the bar also tells you what is running.</li>
-      <li><b>The timer never stops when you leave Tap.</b> On every other screen a thin strip above the bar shows "Work · 1:23:05 ›". Tapping it goes back to Tap.</li>
-      <li><b>Inside a tab, screens stack.</b> Opening something inside a tab (e.g. a goal stamp in Overviews) slides the new screen in with "‹ Overviews" at the top left. The bar stays.</li>
+      <li><b>Tap is home.</b> The app always opens on Tap. The Tap button can show the <b>running tile</b> (a mini Work patch while Work runs), so the bar also tells you what is running.</li>
+      <li><b>The timer never stops when you leave Tap.</b> On every other screen a thin strip above the bar shows the running activity and its clock. Tapping it goes back to Tap.</li>
+      <li><b>Inside a tab, screens stack.</b> Opening something inside a tab (e.g. a goal stamp in Overviews) shows the new screen with "‹ Overviews" at the top left. The bar stays.</li>
       <li><b>Each tab remembers where you were</b> (Plans stays on Week, Overviews on Month). Tapping the button of the tab you are already on goes back to that tab's first screen.</li>
       <li><b>Back (‹ or the phone's back / edge swipe):</b> one screen up inside the tab → on a tab's first screen: back to Tap → on Tap: leaves the app (timer keeps running).</li>
       <li><b>No swiping between tabs.</b> Sideways swipes would fire by accident while you tap tiles. Only the back edge swipe works.</li>
-      <li><b>Page tabs move to the top.</b> Day / Week / Month (Plans, Overviews) and Checkout / Progress / Rewards (Rewards) become a switch under the title, so there is only ever one bar at the bottom.</li>
-      <li><b>Leaving Plans with unsaved changes</b> (any bar button, back, or the strip) asks first: Save · Review · Revert (Decision 2026-11-13). Try it: Plans → "+15 min Hobby" → tap another button.</li>
-      <li><b>Evening check-in (3A):</b> at checkout time it opens by itself over everything (the bar is covered). "Later ✕" closes it; the Tap button keeps a red number badge (open times), and Tap shows "3 times need you · sort now". Sorting the last one removes the badge.</li>
+      <li><b>Page tabs move to the top.</b> Rewards' Checkout / Progress / Rewards sit at the top inside the app (done here already), so there is only ever one bar at the bottom.</li>
+      <li><b>Leaving Plans with unsaved changes</b> asks first: Save · Review · Revert (Decision 2026-11-13, designed in Plans v7).</li>
+      <li><b>Evening check-in (3A):</b> at checkout time it opens by itself over everything (the bar is hidden while it is open). Closing it with times still open leaves a red number badge on the Tap button and a "… need you · sort now" button on the tap screen. Try: "Evening checkout" → close it → look at the bar.</li>
       <li><b>Full-screen moments cover the bar:</b> evening checkout, morning check-in, "Nighty night!", onboarding / tour. They end by finishing or closing, never by a tab tap.</li>
     </ol>
 
     <h2>Map</h2>
     <div class="map">
       <div class="col"><b>Tap</b><span>tile · next · pick</span><span class="over">Evening checkout (over)</span><span class="over">Morning check-in (over)</span><span class="over">Nighty night (over)</span></div>
-      <div class="col"><b>Plans</b><span>Day · Week · Month · Templates</span><span>› Goals (from a block)</span></div>
+      <div class="col"><b>Plans</b><span>Day · Week · Month · Templates</span></div>
       <div class="col"><b>Overviews</b><span>Day · Week · Month</span><span>› Goals (from a stamp)</span></div>
-      <div class="col"><b>Rewards</b><span>Checkout · Progress · Rewards</span><span>› Mini game</span></div>
-      <div class="col"><b>More</b><span>› Categories</span><span>› Goals</span><span>› Settings</span><span>› Rules &amp; tour</span><span class="soon">› Journey (07)</span><span class="soon">› Yes-check (08)</span></div>
+      <div class="col"><b>Rewards</b><span>Checkout · Progress · Rewards</span></div>
+      <div class="col"><b>More</b><span>› Categories</span><span>› Goals</span><span>› Settings</span><span>› Rules</span><span>› Tour</span><span class="soon">› Check-in (06)</span><span class="soon">› Journey (07)</span><span class="soon">› Yes-check (08)</span></div>
     </div>
-    <p class="small muted" style="margin:6px 0 0">› = opens inside that tab with a back arrow. "(over)" = covers the whole screen, bar included.</p>
+    <p class="small muted" style="margin:6px 0 0">› = opens inside that tab with a back arrow. "(over)" = covers the whole screen, bar included. Italic = placeholder page, not designed yet.</p>
 
-    <h2>What changes in the existing mockups</h2>
+    <h2>Still to change in the screens themselves (when they are built)</h2>
     <table>
-      <tr><th>Screen</th><th>Today (mockup)</th><th>With this navigation</th></tr>
-      <tr><td>Settings</td><td>‹ goes to the tap screen</td><td>Lives under More; ‹ goes to More</td></tr>
-      <tr><td>Rewards</td><td>own bottom tabs Checkout / Progress / Rewards</td><td>same three as a switch under the title</td></tr>
-      <tr><td>Plans, Overviews</td><td>Day / Week / Month switch</td><td>unchanged (already at the top)</td></tr>
-      <tr><td>Overviews goal stamp</td><td>jumps to the Categories page</td><td>opens Goals inside Overviews, "‹ Overviews" back</td></tr>
-      <tr><td>Tap "Adjust in Plans" / "Plan tomorrow"</td><td>jumps to the Plans page</td><td>switches to the Plans tab; "Done → back to tapping" switches back to Tap</td></tr>
-      <tr><td>Categories / Goals</td><td>one page with two tabs</td><td>two rows under More (Goals also from Plans + Overviews)</td></tr>
-      <tr><td>Content (Rules, tour)</td><td>own mockup</td><td>More › Rules &amp; tour; the tour runs full-screen</td></tr>
+      <tr><th>Screen</th><th>Today (mockup)</th><th>In the app</th></tr>
+      <tr><td>Settings</td><td>‹ goes to the tap screen</td><td>Lives under More; ‹ goes to More (here: the app's own back bar)</td></tr>
+      <tr><td>Rewards</td><td>own bottom tabs</td><td>tabs at the top (here: moved by the app frame)</td></tr>
+      <tr><td>Categories / Goals</td><td>one page with tabs</td><td>two rows under More (Goals also from Overviews stamps)</td></tr>
+      <tr><td>Content</td><td>review tabs (Onboarding, Rules, texts, Settings texts)</td><td>More › Rules, More › Tour</td></tr>
     </table>
 
-    <h2>Your call (round 1)</h2>
-    <div class="ask">
-      1. Bar look: <b>plain</b> or <b>felt</b> (control at the top)?<br>
-      2. Tap button: <b>running tile</b> or <b>plain icon</b>?<br>
-      3. "Now running" strip on other screens: keep or drop?<br>
-      4. Anything in the 11 rules that feels wrong, or a screen in the wrong place on the map?<br>
-      Or: something else / I meant…
-    </div>
+    <h2>Your call (still open)</h2>
+    <div class="ask">Bar look <b>plain / felt</b> · Tap button <b>running tile / plain icon</b> · "now running" strip <b>on / off</b>. Decided when the navigation is built. Or: something else / I meant…</div>
   </div>
 </div>
 
@@ -275,7 +284,7 @@ th { color: var(--muted); font-weight: 600; }
 const $ = id => document.getElementById(id);
 const A = '../v6/assets/';
 
-/* ---------- felt tile art (static, positions from 02g tap.html) ---------- */
+/* ---------- felt tile art for the Tap button + strip (static, positions from 02g) ---------- */
 const BOX = {
   a01: [[102,29,405,481],[55,119,376,440],[303,168,453,355]], a02: [[22,23,489,489],[33,117,341,464],[266,167,470,370]],
   a03: [[77,43,434,376],[102,39,409,337],[240,163,488,347]],  a04: [[92,29,386,477],[56,29,477,487],[412,76,452,433]],
@@ -283,33 +292,28 @@ const BOX = {
   a08: [[99,57,399,456],[252,173,464,346],[164,11,344,155]],  a09: [[44,35,490,482],[35,99,482,437],[310,165,474,405]]
 };
 const TILES = {
-  a09: { t: 'Work',    els: [[2,[82,230,250,400],'b'],[1,[150,130,420,420],'b'],[3,[345,105,432,230],'c']] },
-  a08: { t: 'Commute', els: [[1,[110,95,410,425],'b',1]] },
-  a05: { t: 'Chores',  els: [[2,[82,190,200,425],'b'],[1,[160,95,350,425],'b'],[3,[325,215,432,325],'c']] },
-  a06: { t: 'Food',    els: [[2,[165,335,345,432],'b'],[1,[95,85,365,370],'b'],[3,[330,215,432,330],'c']] },
-  a01: { t: 'Family',  els: [[1,[170,100,385,425],'b'],[2,[82,245,250,425],'b'],[3,[350,300,428,405],'b']] },
-  a02: { t: 'Friends', els: [[1,[150,95,400,425],'b'],[2,[82,210,240,425],'b'],[3,[330,110,432,215],'c']] },
-  a04: { t: 'Hobby',   els: [[2,[82,120,225,425],'b'],[1,[160,95,375,425],'b'],[3,[380,130,425,410],'b']] },
-  a03: { t: 'Chill',   els: [[2,[95,90,200,190],'c'],[1,[120,200,395,420],'b'],[3,[320,240,432,330],'c']] }
+  a09: [[2,[82,230,250,400],'b'],[1,[150,130,420,420],'b'],[3,[345,105,432,230],'c']],
+  a08: [[1,[110,95,410,425],'b',1]],
+  a05: [[2,[82,190,200,425],'b'],[1,[160,95,350,425],'b'],[3,[325,215,432,325],'c']],
+  a06: [[2,[165,335,345,432],'b'],[1,[95,85,365,370],'b'],[3,[330,215,432,330],'c']],
+  a01: [[1,[170,100,385,425],'b'],[2,[82,245,250,425],'b'],[3,[350,300,428,405],'b']],
+  a02: [[1,[150,95,400,425],'b'],[2,[82,210,240,425],'b'],[3,[330,110,432,215],'c']],
+  a04: [[2,[82,120,225,425],'b'],[1,[160,95,375,425],'b'],[3,[380,130,425,410],'b']],
+  a03: [[2,[95,90,200,190],'c'],[1,[120,200,395,420],'b'],[3,[320,240,432,330],'c']]
 };
-const ORDER = ['a09','a08','a05','a06','a01','a02','a04','a03'];
+const BYNAME = { Work: 'a09', Commute: 'a08', Chores: 'a05', Food: 'a06', Family: 'a01', Friends: 'a02', Hobby: 'a04', Hobbies: 'a04', Chill: 'a03', Chilling: 'a03' };
 const BG_SCALE = { 1: 1, 2: 1.037, 3: 1.22 };
-const bgOf = id => ((parseInt(id.slice(1), 10) - 1) % 3) + 1;
 const pct = px => (px / 512 * 100).toFixed(2) + '%';
-function art(id, cls) {
-  const n = bgOf(id);
-  let h = `<span class="art ${cls || ''}"><span class="layer bgwrap" style="transform:scale(${BG_SCALE[n]})"><img src="${A}background_rgba_0000${n}_.png" alt=""></span>`;
-  TILES[id].els.forEach(([e, r, a, clip]) => {
-    const b = BOX[id][e - 1], bw = b[2] - b[0], bh = b[3] - b[1];
-    const s = Math.min((r[2] - r[0]) / bw, (r[3] - r[1]) / bh);
-    const tx = (r[0] + r[2]) / 2 - s * (b[0] + b[2]) / 2;
-    const ty = a === 'c' ? (r[1] + r[3]) / 2 - s * (b[1] + b[3]) / 2 : r[3] - s * b[3];
+function art(id) {
+  const n = ((parseInt(id.slice(1), 10) - 1) % 3) + 1;
+  let h = `<span class="art"><span class="layer bgwrap" style="transform:scale(${BG_SCALE[n]})"><img src="${A}background_rgba_0000${n}_.png" alt=""></span>`;
+  TILES[id].forEach(([e, r, a, clip]) => {
+    const b = BOX[id][e - 1], s = Math.min((r[2] - r[0]) / (b[2] - b[0]), (r[3] - r[1]) / (b[3] - b[1]));
+    const tx = (r[0] + r[2]) / 2 - s * (b[0] + b[2]) / 2, ty = a === 'c' ? (r[1] + r[3]) / 2 - s * (b[1] + b[3]) / 2 : r[3] - s * b[3];
     h += `<span class="layer${clip ? ' patchclip' : ''}"><span class="place" style="transform:translate(${pct(tx)}, ${pct(ty)}) scale(${s.toFixed(4)})"><img src="${A}${id}_e${e}_00001_.png" alt=""></span></span>`;
   });
   return h + '</span>';
 }
-
-/* ---------- icons ---------- */
 const ICON = {
   tap:   '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg>',
   plans: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M7 14h4M7 17h7"/></svg>',
@@ -318,210 +322,192 @@ const ICON = {
   more:  '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'
 };
 const TABS = [['tap','Tap'],['plans','Plans'],['overviews','Overviews'],['rewards','Rewards'],['more','More']];
-const LINK = {   // full design mockups (plain names, Decision 2026-11-17)
+
+/* ---------- the real mockups (plain names, Decision 2026-11-17) ---------- */
+const PAGE = {
   tap: '../02g_tap/tap.html', plans: '../02a_plans/plans.html', overviews: '../02c_overviews/overviews.html', rewards: '../02d_rewards/rewards.html',
   categories: '../02b_categories/categories.html', goals: '../02b_categories/categories.html#cat=a04', settings: '../02e_settings/settings.html',
-  rules: '../02f_content/content.html', journey: '../07_journey/journey.html', yes: '../08_yes_check/yes_check.html'
+  rules: '../02f_content/content.html', tour: '../02f_content/content.html',
+  checkin: '../06_checkin/checkin.html', journey: '../07_journey/journey.html', yes: '../08_yes_check/yes_check.html', more: null
+};
+const TITLE = { tap: 'Tap', plans: 'Plans', overviews: 'Overviews', rewards: 'Rewards', more: 'More', categories: 'Categories', goals: 'Goals',
+  settings: 'Settings', rules: 'Rules', tour: 'Tour', checkin: 'Check-in', journey: 'Journey', yes: 'Yes-check' };
+const MORE = [['categories','▤','Categories'],['goals','◎','Goals'],['settings','⚙','Settings'],['rules','?','Rules'],['tour','▶','Tour (onboarding)'],
+  ['checkin','☾','Check-in · placeholder (06)'],['journey','➶','Journey · placeholder (07)'],['yes','✓','Yes-check · placeholder (08)']];
+const fileOf = u => new URL(u, location.href).pathname;
+function keyOf(loc) {          // which screen is this URL?
+  const path = loc.pathname;
+  if (path.endsWith('02b_categories/categories.html')) return /cat=/.test(loc.hash) ? 'goals' : 'categories';
+  if (path.endsWith('02f_content/content.html')) return 'rules';
+  for (const k in PAGE) if (PAGE[k] && path === fileOf(PAGE[k])) return k;
+  return null;
+}
+// after a screen loads: Content shows one section only (Rules or Tour), its review tabs hidden
+const AFTER = {
+  rules(d) { const b = d.querySelector('#tabs [data-t="rules"]'); if (b) b.click(); const t = d.getElementById('tabs'); if (t) t.style.display = 'none'; },
+  tour(d)  { const b = d.querySelector('#tabs [data-t="onb"]'); if (b) b.click(); const t = d.getElementById('tabs'); if (t) t.style.display = 'none'; }
 };
 
 /* ---------- state ---------- */
+const VIEW = { look: 'plain', icon: 'tile', pill: true, theme: 'auto' };
 let S;
 function fresh() {
-  S = { tab: 'tap', stacks: { tap: ['tap'], plans: ['plans'], overviews: ['overviews'], rewards: ['rewards'], more: ['more'] },
-        seg: { plans: 'Day', overviews: 'Day', rewards: 'Checkout' }, cur: 'a09', since: Date.now() - (83 * 60 + 5) * 1000,
-        pick: false, dirty: false, hobby: 90, fromTap: false, open: [], closed: false, anim: 'tab' };
+  $('frames').innerHTML = '';
+  S = { tab: 'tap', stacks: {}, badge: 0, run: null, covered: false, sig: '' };
+  TABS.forEach(([k]) => S.stacks[k] = [{ id: k, url: PAGE[k] }]);
 }
-fresh();
-const VIEW = { look: 'plain', icon: 'tile', pill: true };
-const top = () => S.stacks[S.tab][S.stacks[S.tab].length - 1];
-const fmt = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
-const clk = () => fmt(Date.now() - S.since);
-const TITLE = { tap: 'Tap', plans: 'Plans', overviews: 'Overviews', rewards: 'Rewards', more: 'More', categories: 'Categories', goals: 'Goals', settings: 'Settings', rules: 'Rules & tour', game: 'Guess your week' };
+const cur = () => S.stacks[S.tab][S.stacks[S.tab].length - 1];
+const tapDoc = () => { const f = S.stacks.tap[0].frame; try { return f && f.contentDocument; } catch (e) { return null; } };
 
-/* ---------- screens ---------- */
-function head(id) {
-  const st = S.stacks[S.tab], i = st.indexOf(id);
-  const back = i > 0 ? `<button class="backbtn" data-act="back"><span class="chev">‹</span>${TITLE[st[i - 1]]}</button>` : '';
-  const full = LINK[id] ? `<a class="full" href="${LINK[id]}" target="_blank" rel="noopener">full design ↗</a>` : '';
-  return `<div class="head">${back}<h1>${TITLE[id]}</h1>${full}</div>`;
+function makeFrame(entry) {
+  const f = document.createElement('iframe');
+  f.title = TITLE[entry.id];
+  f.addEventListener('load', () => onLoad(entry));
+  if (entry.id === 'more') f.srcdoc = moreDoc(); else f.src = entry.url;
+  $('frames').appendChild(f);
+  entry.frame = f;
 }
-function pseg(key, opts) {
-  return `<div class="pseg">${opts.map(o => `<button type="button" data-seg="${key}" data-v="${o}" aria-pressed="${S.seg[key] === o}">${o}</button>`).join('')}</div>`;
+function moreDoc() {   // the More list (the only screen that is new in this step)
+  const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n);
+  return `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Literata:opsz,wght@7..72,600&display=swap">
+  <style>body{margin:0;padding:14px 16px;background:${v('--surface')};color:${v('--ink')};font:15px/1.5 Figtree,system-ui,sans-serif}
+  h1{font:600 22px/1.2 Literata,Georgia,serif;margin:0 0 8px}button{all:unset;box-sizing:border-box;display:flex;align-items:center;width:100%;padding:11px 2px;border-bottom:1px solid ${v('--line')};cursor:pointer;font-weight:600}
+  button i{font-style:normal;display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:${v('--accent-soft')};color:${v('--accent')};margin-right:10px}
+  button b{margin-left:auto;color:${v('--muted')};font-size:20px;font-weight:400}button.soon{color:${v('--muted')};font-weight:500;font-style:italic}
+  p{font-size:12px;color:${v('--muted')}}</style></head><body><h1>More</h1>
+  ${MORE.map(([k, i, l]) => `<button class="${/placeholder/.test(l) ? 'soon' : ''}" onclick="parent.postMessage({tbPush:'${k}'},'*')"><i>${i}</i>${l}<b>›</b></button>`).join('')}
+  <p>Export / import data and calendar sync stay inside Settings → Data &amp; calendar.</p></body></html>`;
 }
-const SCREENS = {
-  tap() {
-    const n = S.open.filter(o => !o.done).length;
-    let h = n ? `<button type="button" class="needs" data-act="checkout">${n} time${n > 1 ? 's' : ''} need${n > 1 ? '' : 's'} you · sort now ›</button>` : '';
-    h += `<div class="hero"><span class="label">Now</span><div class="stage">${art(S.cur, '" id="bigArt" style="width:196px;height:196px')}</div>
-      <div class="name">${TILES[S.cur].t}</div><div class="clock" data-clk>${clk()}</div></div>
-      <div class="nextrow"><button class="nextbtn" data-act="next">next: Food ›</button><button class="textlink" data-act="pick">${S.pick ? 'hide tiles' : 'pick'}</button></div>`;
-    if (S.pick) h += `<div class="grid8">${ORDER.map(id => `<button class="tile ${id === S.cur ? 'on' : ''}" data-tile="${id}">${art(id)}<span class="t">${TILES[id].t}</span></button>`).join('')}</div>`;
-    h += `<div class="card" style="margin-top:14px"><div class="row"><span>Late start? (from the morning flow)</span><button class="link" data-act="adjust">Adjust in Plans ›</button></div></div>
-      <p class="stub">Stand-in for the tap screen (02g v9.2). <a href="${LINK.tap}" target="_blank" rel="noopener">Full design ↗</a></p>`;
-    return h;
-  },
-  plans() {
-    let h = head('plans');
-    if (S.fromTap) h += `<div class="draft"><span>Opened from the tap screen</span><button data-act="doneTap">Done → back to tapping</button></div>`;
-    if (S.dirty) h += `<div class="draft"><span><b>Draft</b> · not saved yet</span><span><button class="q" data-act="undoPlan">Undo changes</button> <button data-act="savePlan">Plan done</button></span></div>`;
-    h += pseg('plans', ['Day', 'Week', 'Month', 'Templates']);
-    if (S.seg.plans === 'Day') {
-      h += `<div class="card"><h3>Today · Tue 18 Nov</h3>${[['07:30','Food','breakfast'],['08:00','Work','fixed'],['12:30','Food','lunch'],['13:15','Work',''],['17:00','Chores','dishes'],['19:00','Hobby', fm(S.hobby)],['21:45','Checkout','']].map(([t,a,d]) =>
-        `<div class="row"><span><b>${t}</b> ${a} <span class="muted small">${d}</span></span>${a === 'Hobby' ? `<button class="link" data-act="goals">Goal ›</button>` : ''}</div>`).join('')}</div>
-        <div class="chips"><button class="chip" data-act="hobbyPlus">+15 min Hobby (makes a change)</button></div>`;
-    } else h += `<div class="card muted">${S.seg.plans} view (see the full design). The tab remembers this choice when you leave and come back.</div>`;
-    return h + `<p class="stub">Stand-in for Plans (02a v7).</p>`;
-  },
-  overviews() {
-    let h = head('overviews') + pseg('overviews', ['Day', 'Week', 'Month']);
-    const rows = [['Work', 62, '#4F7CAC', '6 h 10'], ['Chores', 30, '#A87C4F', '1 h 40'], ['Hobby', 45, '#7A6BAE', '2 h'], ['Chill', 38, '#5E9C8F', '1 h 50']];
-    h += `<div class="card"><h3>${S.seg.overviews === 'Day' ? 'Today' : S.seg.overviews === 'Week' ? 'This week' : 'November'}: planned vs tapped</h3>${rows.map(([n, w, c, t]) =>
-      `<div class="small" style="display:flex;justify-content:space-between"><b>${n}</b><span class="muted">${t}</span></div><div class="bar"><i style="width:${w}%;background:${c}"></i></div>`).join('')}</div>
-      <div class="card"><h3>Goals</h3><div class="row"><span>Hobby · grow ▲ · 8 h / week</span><button class="link" data-act="goals">stamp ›</button></div><div class="row"><span>Work · reduce ▼</span><button class="link" data-act="goals">stamp ›</button></div></div>`;
-    return h + `<p class="stub">Stand-in for Overviews (02c v2).</p>`;
-  },
-  rewards() {
-    let h = head('rewards') + pseg('rewards', ['Checkout', 'Progress', 'Rewards']);
-    if (S.seg.rewards === 'Checkout') h += `<div class="card"><h3>Wallet</h3><div style="font:800 34px/1 var(--font-ui)">1 240 <span class="small muted">stitches</span></div><p class="small muted" style="margin:4px 0 0">Last checkout +18</p></div>`;
-    else if (S.seg.rewards === 'Progress') h += `<div class="card"><h3>Quilt</h3><p class="small muted" style="margin:0">17 patches sewn this month.</p></div><div class="card"><div class="row"><span>Guess your week</span><button class="link" data-act="game">Play ›</button></div></div>`;
-    else h += `<div class="card"><h3>Unlocks</h3><div class="row"><span>chalk_board theme</span><span class="muted small">3 000</span></div><div class="row"><span>lino_bold theme</span><span class="muted small">5 000</span></div></div>`;
-    return h + `<p class="stub">Stand-in for Rewards (02d v3). Its 3 bottom tabs became this switch.</p>`;
-  },
-  more() {
-    const it = [['categories','▤','Categories'],['goals','◎','Goals'],['settings','⚙','Settings'],['rules','?','Rules & tour'],['journey','➶','Journey · coming in 07',1],['yes','✓','Yes-check · coming in 08',1]];
-    return head('more') + `<div class="more-list">${it.map(([k, i, l, soon]) =>
-      `<button type="button" class="row${soon ? ' soon' : ''}" ${soon ? '' : `data-push="${k}"`}><span class="lefty"><span class="ic-sm">${i}</span>${l}</span>${soon ? '' : '<span class="chev">›</span>'}</button>`).join('')}</div>
-      <p class="stub">Export / import data and calendar sync stay inside Settings → Data &amp; calendar.</p>`;
-  },
-  categories() { return head('categories') + `<div class="card">${['Work','Commute','Chores','Food','Family','Friends','Hobby','Chill'].map(c => `<div class="row"><span>${c}</span><span class="muted small">subcategories ›</span></div>`).join('')}</div><p class="stub">Stand-in for Categories (02b v3).</p>`; },
-  goals() { return head('goals') + `<div class="card"><h3>Hobby</h3><div class="row"><span>Music making</span><b>5 h / week</b></div><div class="row"><span>Drawing</span><b>3 h / week</b></div><div class="row"><span>Direction</span><span>▲ grow (automatic)</span></div></div><p class="stub">Stand-in for Goals (02b v3). Opened from ${S.tab === 'more' ? 'More' : S.tab === 'plans' ? 'a Plans block' : 'an Overviews stamp'}: back returns there.</p>`; },
-  settings() { return head('settings') + `<div class="chips" style="margin-bottom:10px">${['Tap screen','Day & sleep','Alarms','Plans','Categories','Checkout & rewards','Data & calendar'].map(s => `<span class="chip">${s}</span>`).join('')}</div><div class="card"><div class="row"><span>Untapped time</span><b>C · plan fills in</b></div><div class="row"><span>Colour on tap</span><b>A · background</b></div></div><p class="stub">Stand-in for Settings (02e v2). ‹ now goes to More, not to Tap.</p>`; },
-  rules() { return head('rules') + `<div class="card"><h3>4 core rules</h3><p class="small" style="margin:0">Time is always running, whether you plan for it or not. …</p></div><div class="card"><div class="row"><span>Take the tour again</span><button class="link" data-act="tour">Start ›</button></div></div><p class="stub">Stand-in for Content (02f).</p>`; },
-  game() { return head('game') + `<div class="card muted">Mini game from Rewards → Progress (02d v3). Back returns to Rewards.</div>`; }
-};
-function fm(m) { return `${Math.floor(m / 60)} h${m % 60 ? ' ' + (m % 60) : ''}`; }
+window.addEventListener('message', e => { if (e.data && e.data.tbPush && PAGE[e.data.tbPush]) push(e.data.tbPush); });
 
-/* ---------- render ---------- */
-function render() {
-  const sc = $('screen');
-  sc.className = 'screen enter-' + S.anim;
-  sc.innerHTML = SCREENS[top()]();
-  sc.scrollTop = 0;
-  // tab bar
-  const n = S.open.filter(o => !o.done).length;
-  const bar = $('tabbar');
-  bar.className = 'tabbar' + (VIEW.look === 'felt' ? ' felt' : '');
-  bar.innerHTML = TABS.map(([k, l]) => {
-    const ic = k === 'tap' && VIEW.icon === 'tile' ? `<span class="ic tileic">${art(S.cur)}` : `<span class="ic">${ICON[k]}`;
-    const badge = k === 'tap' && n ? `<span class="badge" aria-label="${n} open times">${n}</span>` : '';
-    return `<button type="button" class="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${ic}${badge}</span>${l}</button>`;
-  }).join('');
-  // now-running strip
-  const p = $('pill');
-  p.hidden = !(VIEW.pill && S.tab !== 'tap');
-  if (!p.hidden) p.innerHTML = `${art(S.cur)}<span>${TILES[S.cur].t} · <b data-clk>${clk()}</b></span><span class="go">Tap ›</span>`;
-  S.anim = 'tab';
+function onLoad(entry) {
+  let w, d;
+  try { w = entry.frame.contentWindow; d = entry.frame.contentDocument; void w.location.pathname; } catch (e) { return; }  // from disk: no routing
+  if (entry.id === 'more') return;
+  applyTheme(d);
+  if (w.location.pathname === fileOf(entry.url)) { if (AFTER[entry.id]) AFTER[entry.id](d); return; }
+  // a link INSIDE the screen went to another screen: put this screen back, open the other one the app's way
+  const k = keyOf(w.location), href = w.location.href;
+  entry.frame.src = entry.url;
+  if (k) route(k, href);
 }
-setInterval(() => document.querySelectorAll('[data-clk]').forEach(e => e.textContent = clk()), 1000);
+function route(k, href) {
+  const st = S.stacks[S.tab];
+  if (st.length > 1 && st[st.length - 2].id === k) return back();
+  if (k === 'tap' && st.length > 1) return back();
+  if (S.stacks[k] && k !== S.tab) return goTab(k);
+  push(k, href);
+}
 
+/* ---------- moves ---------- */
+function goTab(k) {
+  if (k === S.tab) {                               // tapping the current tab: back to its first screen
+    const st = S.stacks[k];
+    if (st.length > 1) { st.splice(1).forEach(e => e.frame && e.frame.remove()); show(); }
+    else if (k === 'tap') toast('Already on Tap.');
+    return;
+  }
+  S.tab = k; show();
+}
+function push(id, url) { S.stacks[S.tab].push({ id, url: url || PAGE[id] }); show(); }
+function back() {
+  const st = S.stacks[S.tab];
+  if (st.length > 1) { const e = st.pop(); if (e.frame) e.frame.remove(); show(); }
+  else if (S.tab !== 'tap') goTab('tap');
+  else toast('Leaves the app. The timer keeps running.');
+}
 function toast(t) {
   $('toastHost').innerHTML = `<div class="toast">${t}</div>`;
   clearTimeout(toast.t); toast.t = setTimeout(() => $('toastHost').innerHTML = '', 2600);
 }
 
-/* leaving Plans with a draft asks first (Decision 2026-11-13) */
-function guard(then) {
-  if (!(S.dirty && S.tab === 'plans')) return then();
-  $('overlay').innerHTML = `<div class="dim"><div class="dialog" role="dialog" aria-label="Save your plan?"><h2>Save your plan?</h2>
-    <p class="small muted" style="margin:0">You changed today's plan (Hobby ${fm(S.hobby)}) and didn't press Plan done.</p>
-    <div class="opts"><button class="primary" data-dlg="save">Save changes now<small>then go on</small></button>
-    <button data-dlg="review">Review changes<small>stay in Plans</small></button>
-    <button data-dlg="revert">Revert to the last saved plan<small>then go on</small></button></div></div></div>`;
-  guard.then = then;
+/* ---------- draw ---------- */
+function show() {
+  const e = cur();
+  if (!e.frame) makeFrame(e);
+  [...$('frames').children].forEach(f => f.classList.toggle('off', f !== e.frame));
+  const st = S.stacks[S.tab], sh = $('subhead');
+  sh.hidden = st.length < 2;
+  if (!sh.hidden) sh.innerHTML = `<button class="backbtn" id="subBack"><span class="chev">‹</span>${TITLE[st[st.length - 2].id]}</button><b>${TITLE[e.id]}</b>`;
+  S.sig = ''; drawBar();
 }
-function goTab(k) {
-  if (k === S.tab) {                               // tapping the current tab: back to its first screen
-    if (S.stacks[k].length > 1) { S.stacks[k] = [k]; S.anim = 'pop'; render(); }
-    else if (k === 'tap') toast('Already on Tap.');
-    return;
-  }
-  guard(() => { if (S.tab === 'plans') S.fromTap = false; S.tab = k; render(); });
-}
-function push(id) { S.stacks[S.tab].push(id); S.anim = 'push'; render(); }
-function back() {
-  const st = S.stacks[S.tab];
-  if (st.length > 1) { st.pop(); S.anim = 'pop'; render(); }
-  else if (S.tab !== 'tap') goTab('tap');
-  else toast('Leaves the app. The timer keeps running.');
+function drawBar() {
+  const run = S.run, id = run && BYNAME[run.name.split(' · ')[0].trim()];
+  $('phone').classList.toggle('covered', S.covered);
+  const p = $('pill');
+  p.hidden = !(VIEW.pill && S.tab !== 'tap' && run);
+  if (!p.hidden) p.innerHTML = `${id ? art(id) : ''}<span>${run.name} · <b>${run.clock}</b></span><span class="go">Tap ›</span>`;
+  const sig = [S.tab, S.badge, VIEW.look, VIEW.icon, id].join('|');
+  if (sig === S.sig) return;
+  S.sig = sig;
+  const bar = $('tabbar');
+  bar.className = 'tabbar' + (VIEW.look === 'felt' ? ' felt' : '');
+  bar.innerHTML = TABS.map(([k, l]) => {
+    const ic = k === 'tap' && VIEW.icon === 'tile' && id ? `<span class="ic tileic">${art(id)}` : `<span class="ic">${ICON[k]}`;
+    const badge = k === 'tap' && S.badge ? `<span class="badge" aria-label="${S.badge} open times">${S.badge}</span>` : '';
+    return `<button type="button" class="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${ic}${badge}</span>${l}</button>`;
+  }).join('');
 }
 
-/* ---------- evening checkout (covers the bar) ---------- */
-function openCheckout() {
-  if (!S.open.length) S.open = [
-    { t: '07:12–08:00', q: 'Untapped before Work. What was it?', a: ['Food', 'Chill', 'TBH? No idea'] },
-    { t: '15:40–16:05', q: 'Stuck, no reason picked.', a: ['Meltdown', 'Problem solving', 'TBH? No idea'] },
-    { t: '19:00–19:20', q: 'Ran 20 min past the plan (Food).', a: ['Fine, keep', 'Was Chill', 'TBH? No idea'] }
-  ];
-  drawCheckout();
-}
-function drawCheckout() {
-  const left = S.open.filter(o => !o.done).length;
-  let h = `<div class="sheet" role="dialog" aria-label="Evening checkout"><div class="head"><h2>Evening checkout</h2>${left ? '<button class="btn" data-co="later">Later ✕</button>' : ''}</div>
-    <p class="small muted" style="margin:0">${left ? `${left} time${left > 1 ? 's' : ''} need${left > 1 ? '' : 's'} you. The tab bar is hidden until you finish or close.` : 'All sorted.'}</p>`;
-  if (!left) h += `<div class="stamp">Day closed<small>+18 stitches</small></div><div style="text-align:center"><button class="btn" data-co="later">Back to tapping</button></div>`;
-  S.open.forEach((o, i) => {
-    h += `<div class="entry ${o.done ? 'done' : ''}"><div class="top"><span>${o.t}</span>${o.done ? `<span class="small" style="color:var(--good)">✓ ${o.done}</span>` : ''}</div>`;
-    if (!o.done) h += `<div class="q">${o.q}</div><div class="chips">${o.a.map(a => `<button class="chip" data-co="ans" data-i="${i}" data-a="${a}">${a}</button>`).join('')}</div>`;
-    h += '</div>';
-  });
-  $('overlay').innerHTML = h + '</div>';
+/* ---------- watch the tap screen: running tile, clock, open checkout times ---------- */
+setInterval(() => {
+  const d = tapDoc(); if (!d || !d.body) return;
+  const name = d.querySelector('.hero .name'), clock = d.querySelector('.hero .clock');
+  S.run = name && name.textContent.trim() ? { name: name.textContent.trim(), clock: clock ? clock.textContent.trim() : '' } : null;
+  const sheet = d.getElementById('sheet'), open = !!(sheet && !sheet.hidden);
+  if (open && /Evening checkout/.test(sheet.textContent)) S.badge = sheet.querySelectorAll('.entry:not(.done)').length;
+  S.covered = S.tab === 'tap' && (open || !!d.querySelector('.nighty'));
+  // the "… need you · sort now" button on the tap screen while checkout times are open
+  let chip = d.getElementById('tbNeeds');
+  if (S.badge && !open) {
+    if (!chip) {
+      chip = d.createElement('button'); chip.id = 'tbNeeds'; chip.type = 'button';
+      chip.style.cssText = 'display:block;margin:0 auto 8px;border:1px solid var(--warn);background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:5px 12px;font:700 13px var(--font-ui);cursor:pointer';
+      chip.onclick = () => { const b = d.getElementById('openCheckout'); if (b) b.click(); };
+      const ph = d.getElementById('phone'); if (ph) ph.insertBefore(chip, ph.firstChild);
+    }
+    chip.textContent = `${S.badge} time${S.badge > 1 ? 's' : ''} need${S.badge > 1 ? '' : 's'} you · sort now ›`;
+  } else if (chip) chip.remove();
+  drawBar();
+}, 500);
+
+/* ---------- theme ---------- */
+function applyTheme(d) {
+  try { if (VIEW.theme === 'auto') d.documentElement.removeAttribute('data-theme'); else d.documentElement.setAttribute('data-theme', VIEW.theme); } catch (e) {}
 }
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
-  const t = e.target.closest('button, [data-act]'); if (!t) return;
+  const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.tab) return goTab(t.dataset.tab);
-  if (t.dataset.push) return push(t.dataset.push);
-  if (t.dataset.seg) { S.seg[t.dataset.seg] = t.dataset.v; S.anim = 'none'; return render(); }
-  if (t.dataset.tile) { S.cur = t.dataset.tile; S.since = Date.now(); S.pick = false; render(); const a = $('bigArt'); if (a) a.classList.add('press'); return; }
-  if (t.dataset.dlg) {
-    const d = t.dataset.dlg; $('overlay').innerHTML = '';
-    if (d === 'review') { S.seg.plans = 'Day'; S.stacks.plans = ['plans']; return render(); }
-    if (d === 'revert') S.hobby = 90;
-    S.dirty = false; return guard.then && guard.then();
-  }
-  if (t.dataset.co) {
-    if (t.dataset.co === 'later') { $('overlay').innerHTML = ''; return render(); }
-    S.open[+t.dataset.i].done = t.dataset.a; drawCheckout(); return render();
-  }
-  if (t.id === 'pill') return guard(() => { if (S.tab === 'plans') S.fromTap = false; S.tab = 'tap'; render(); });
-  switch (t.dataset.act) {
-    case 'back': return back();
-    case 'pick': S.pick = !S.pick; S.anim = 'none'; return render();
-    case 'next': S.cur = 'a06'; S.since = Date.now(); render(); $('bigArt').classList.add('press'); return toast('(Mockup: starts at once. The real flow proposes first, see 02g.)');
-    case 'checkout': return openCheckout();
-    case 'adjust': S.fromTap = true; S.seg.plans = 'Day'; S.stacks.plans = ['plans']; S.tab = 'plans'; return render();
-    case 'doneTap': return guard(() => { S.fromTap = false; S.tab = 'tap'; render(); });
-    case 'goals': return push('goals');
-    case 'game': return push('game');
-    case 'hobbyPlus': S.hobby += 15; S.dirty = true; S.anim = 'none'; return render();
-    case 'savePlan': S.dirty = false; S.anim = 'none'; render(); return toast('Plan saved.');
-    case 'undoPlan': S.dirty = false; S.hobby = 90; S.anim = 'none'; return render();
-    case 'tour': return toast('The tour runs full-screen over the bar (02f onboarding).');
+  if (t.id === 'subBack') return back();
+  if (t.id === 'pill') return goTab('tap');
+  if (t.dataset.tapdemo) {
+    if (t.dataset.tapdemo === 'reset') S.badge = 0;
+    goTab('tap');
+    const run = () => { const d = tapDoc(), b = d && d.getElementById(t.dataset.tapdemo); if (b) b.click(); else toast('Tap screen not reachable (opened from disk? Use the GitHub link or the local server).'); };
+    const d = tapDoc(); if (d && d.readyState === 'complete' && d.getElementById('phone')) run(); else setTimeout(run, 800);
   }
 });
-$('sysBack').onclick = () => { if ($('overlay').innerHTML) { $('overlay').innerHTML = ''; return render(); } back(); };
-$('checkoutBtn').onclick = () => { $('overlay').innerHTML = ''; openCheckout(); };
-$('resetBtn').onclick = () => { $('overlay').innerHTML = ''; fresh(); render(); };
-$('pillChk').onchange = e => { VIEW.pill = e.target.checked; S.anim = 'none'; render(); };
+$('sysBack').onclick = () => {
+  const d = tapDoc();
+  if (S.tab === 'tap' && d) { const c = d.querySelector('[data-closesheet]'), sh = d.getElementById('sheet'); if (c && sh && !sh.hidden) return c.click(); }
+  back();
+};
+$('resetBtn').onclick = () => { fresh(); show(); };
+$('pillChk').onchange = e => { VIEW.pill = e.target.checked; drawBar(); };
 function segCtl(id, fn) {
   $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
     $(id).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); fn(b.dataset.v); });
 }
-segCtl('lookSeg', v => { VIEW.look = v; S.anim = 'none'; render(); });
-segCtl('iconSeg', v => { VIEW.icon = v; S.anim = 'none'; render(); });
-segCtl('themeSeg', v => { if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v); });
-render();
+segCtl('lookSeg', v => { VIEW.look = v; S.sig = ''; drawBar(); });
+segCtl('iconSeg', v => { VIEW.icon = v; S.sig = ''; drawBar(); });
+segCtl('themeSeg', v => {
+  VIEW.theme = v;
+  if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
+  TABS.forEach(([k]) => S.stacks[k].forEach(en => { if (!en.frame) return; if (en.id === 'more') en.frame.srcdoc = moreDoc(); else try { applyTheme(en.frame.contentDocument); } catch (er) {} }));
+});
+fresh(); show();
 })();
 </script>
 <script src="../_shared/nav.js"></script>
