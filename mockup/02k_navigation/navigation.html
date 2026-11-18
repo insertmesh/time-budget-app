@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget Navigation</title>
+<!--
+  Step 02k_app_navigation (2026-11-18): how the REAL app moves between its screens.
+  Samuel's direction (round 1): 1A bottom tab bar · 2A Tap · Plans · Overviews · Rewards · More · 3A check-in = automatic prompt + badge on Tap.
+  Screens inside the phone are simple stand-ins; each has a link to its full design mockup.
+  The strip at the very top (nav.js) is only the mockup review bar from 02j, NOT the app's navigation.
+  Images load from ../v6/assets/ (keep the folders together). Mockup only: nothing is saved.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap">
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A4F36; --warn-soft: #F5E4DC; --good: #2F7A4F;
+  --felt: #E7DCC8; --felt-ink: #4A3A28; --stitch: rgba(74, 58, 40, .45); --badge: #C0522F;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif;
+  --font-head: "Literata", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+    --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+    --felt: #2E2820; --felt-ink: #E6D8C2; --stitch: rgba(230, 216, 194, .35); --badge: #E07A55;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+  --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+  --felt: #2E2820; --felt-ink: #E6D8C2; --stitch: rgba(230, 216, 194, .35); --badge: #E07A55;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); padding: 0 16px 48px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+a { color: var(--accent); }
+
+/* mockup controls (not part of the app) */
+.controls { max-width: 1040px; margin: 14px auto 16px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; background: var(--surface);
+  display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; font-size: 14px; }
+.controls .tag { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 100%; display: flex; justify-content: space-between; gap: 8px; }
+.ver { font-weight: 700; color: var(--accent); letter-spacing: 0; text-transform: none; font-size: 12px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; vertical-align: middle; }
+.seg button { border: 0; background: none; padding: 5px 11px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 600; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; }
+
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+@media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+
+/* ===== phone ===== */
+.phone { position: relative; width: 100%; max-width: 420px; margin: 0 auto; height: 780px; background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
+  overflow: hidden; display: flex; flex-direction: column; }
+@media (max-width: 440px) { .phone { border-radius: 18px; height: 720px; } }
+.screen { flex: 1; overflow-y: auto; padding: 14px 16px 16px; position: relative; }
+.screen.enter-push { animation: pushin .22s ease-out; }
+.screen.enter-pop { animation: popin .22s ease-out; }
+.screen.enter-tab { animation: fadein .16s ease-out; }
+@keyframes pushin { from { transform: translateX(24px); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes popin { from { transform: translateX(-24px); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes fadein { from { opacity: .2; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .screen { animation: none !important; } }
+
+.head { display: flex; align-items: center; gap: 8px; min-height: 40px; margin-bottom: 8px; }
+.head h1 { font: 600 22px/1.2 var(--font-head); margin: 0; flex: 1; }
+.backbtn { border: 0; background: none; color: var(--accent); font-weight: 700; padding: 6px 8px 6px 0; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.backbtn .chev { font-size: 24px; line-height: 1; margin-top: -3px; }
+.full { font-size: 12px; color: var(--muted); text-decoration: none; border: 1px dashed var(--line); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.full:hover { color: var(--accent); border-color: var(--accent); }
+.pseg { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 2px 0 12px; }
+.pseg button { flex: 1; border: 0; background: none; padding: 7px 4px; font-size: 14px; }
+.pseg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 700; }
+.card { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; background: var(--surface); }
+.card h3 { margin: 0 0 4px; font-size: 15px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.row:last-child { border-bottom: 0; }
+.link { border: 0; background: none; color: var(--accent); font-weight: 700; padding: 0; text-align: left; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+.chip.on { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.stub { font-size: 12px; color: var(--muted); text-align: center; margin: 14px 0 4px; }
+.bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 3px 0 2px; }
+.bar i { display: block; height: 100%; border-radius: 999px; }
+
+/* tap screen stand-in */
+.hero { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+.hero .label { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.hero .stage { width: 196px; height: 196px; position: relative; }
+.hero .name { font-weight: 800; font-size: 20px; margin-top: 2px; }
+.hero .clock { font: 700 44px/1.05 var(--font-ui); font-variant-numeric: tabular-nums; }
+.nextrow { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 12px; }
+.nextbtn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+.textlink { border: 0; background: none; color: var(--muted); text-decoration: underline; padding: 6px 8px; }
+.needs { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 10px; border: 1px solid var(--warn); background: var(--warn-soft); color: var(--warn);
+  border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; }
+.grid8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 2px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.tile { border: 0; background: none; padding: 3px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; }
+.tile.on { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.tile .t { font-size: 12px; font-weight: 700; }
+.tile .art { width: 72px; height: 72px; }
+@media (max-width: 440px) { .tile .art { width: 62px; height: 62px; } }
+
+/* tile art (static copy of the felt tiles from 02g) */
+.art { position: relative; display: block; }
+.layer, .place, .layer img, .place img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.place { transform-origin: 0 0; }
+.layer img, .place img { display: block; pointer-events: none; user-select: none; }
+.bgwrap { filter: drop-shadow(1px 3px 3px rgba(40, 25, 10, .35)); }
+.patchclip { clip-path: inset(12.3% 11.5% 12.9% 11.7% round 7%); }
+.art.press { animation: press .3s cubic-bezier(.3,1.6,.5,1); }
+@keyframes press { 30% { transform: scale(.94); } 100% { transform: scale(1); } }
+
+/* running-timer pill (on every screen except Tap) */
+.pill { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 12px 6px; padding: 4px 12px 4px 4px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--bg); text-align: left; font-size: 14px; }
+.pill .art { width: 30px; height: 30px; flex: none; }
+.pill b { font-variant-numeric: tabular-nums; }
+.pill .go { margin-left: auto; color: var(--accent); font-weight: 700; font-size: 13px; }
+
+/* ===== the app's tab bar ===== */
+.tabbar { flex: none; position: relative; display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 6px 10px; border-top: 1px solid var(--line); background: var(--surface); }
+.tab { position: relative; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 2px 3px; border-radius: 14px;
+  color: var(--muted); font-size: 12px; font-weight: 600; -webkit-tap-highlight-color: transparent; min-height: 52px; }
+.tab .ic { width: 30px; height: 30px; display: grid; place-items: center; position: relative; }
+.tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tab .ic .art { width: 30px; height: 30px; }
+.tab[aria-current="page"] { color: var(--accent); font-weight: 800; }
+.tab[aria-current="page"] .ic { background: var(--accent-soft); border-radius: 10px; }
+.tab .ic.tileic { background: none !important; }
+.tab[aria-current="page"] .ic.tileic .art { transform: scale(1.12); }
+.badge { position: absolute; top: -4px; right: -9px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--badge); color: #fff;
+  font: 800 11px/18px var(--font-ui); text-align: center; box-shadow: 0 0 0 2px var(--surface); animation: bpop .35s cubic-bezier(.2,1.6,.4,1); }
+@keyframes bpop { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* felt look: beige felt strip with a stitched seam, active tab = a sewn-on patch */
+.tabbar.felt { background: var(--felt); border-top: 0; color: var(--felt-ink); }
+.tabbar.felt::before { content: ""; position: absolute; left: 8px; right: 8px; top: 4px; border-top: 2px dashed var(--stitch); }
+.tabbar.felt .tab { color: var(--felt-ink); opacity: .8; margin-top: 4px; }
+.tabbar.felt .tab[aria-current="page"] { opacity: 1; background: var(--accent); color: #FFF8EC; transform: rotate(-1.5deg);
+  box-shadow: inset 0 0 0 3px var(--accent), inset 0 0 0 4.5px rgba(255, 248, 236, .55), 2px 4px 6px rgba(40, 25, 10, .3); }
+:root[data-theme="dark"] .tabbar.felt .tab[aria-current="page"] { color: #10201B; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tabbar.felt .tab[aria-current="page"] { color: #10201B; } }
+.tabbar.felt .tab[aria-current="page"] .ic { background: none; }
+.tabbar.felt .badge { box-shadow: 0 0 0 2px var(--felt); }
+
+/* overlays inside the phone (cover the tab bar on purpose) */
+.sheet { position: absolute; inset: 0; z-index: 20; background: var(--surface); padding: 16px; overflow-y: auto; animation: sheetup .25s ease-out; }
+@keyframes sheetup { from { transform: translateY(30px); opacity: .2; } to { transform: none; opacity: 1; } }
+.sheet h2 { font: 600 20px/1.3 var(--font-head); margin: 0; flex: 1; }
+.entry { border: 1px solid var(--warn); background: var(--warn-soft); border-radius: 14px; padding: 10px 12px; margin-top: 10px; }
+.entry.done { background: none; border-color: var(--line); opacity: .75; }
+.entry .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+.entry .q { font-size: 14px; margin: 3px 0 6px; }
+.stamp { margin: 18px auto 10px; width: 190px; padding: 10px; border: 4px solid var(--good); color: var(--good); border-radius: 14px; text-align: center;
+  font: 800 22px/1.15 var(--font-ui); transform: rotate(-8deg); animation: stamp .45s cubic-bezier(.2,1.6,.4,1); }
+@keyframes stamp { from { transform: rotate(-8deg) scale(2.2); opacity: 0; } to { transform: rotate(-8deg) scale(1); opacity: 1; } }
+.dim { position: absolute; inset: 0; z-index: 30; background: rgba(15, 20, 18, .45); display: flex; align-items: flex-end; }
+.dialog { width: 100%; background: var(--surface); border-radius: 20px 20px 0 0; padding: 16px; animation: sheetup .2s ease-out; }
+.dialog h2 { font: 600 19px/1.3 var(--font-head); margin: 0 0 4px; }
+.dialog .opts { display: grid; gap: 8px; margin-top: 12px; }
+.dialog .opts button { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 700; }
+.dialog .opts button small { display: block; font-weight: 500; color: var(--muted); }
+.dialog .opts button.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.dialog .opts button.primary small { color: inherit; opacity: .85; }
+.draft { display: flex; gap: 8px; align-items: center; justify-content: space-between; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 7px 10px; margin-bottom: 10px; font-size: 13px; }
+.draft button { border: 0; border-radius: 999px; padding: 5px 12px; font-weight: 700; background: var(--accent); color: var(--surface); }
+.draft button.q { background: none; color: var(--accent); }
+.toast { position: absolute; left: 12px; right: 12px; bottom: 84px; z-index: 40; background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 14px; text-align: center; animation: fadein .2s; }
+.more-list .row { padding: 11px 2px; font-size: 15px; font-weight: 600; cursor: pointer; border: 0; border-bottom: 1px solid var(--line); background: none; width: 100%; text-align: left; color: var(--ink); }
+.more-list .row .chev { color: var(--muted); font-size: 20px; }
+.more-list .row.soon { color: var(--muted); font-weight: 500; font-style: italic; cursor: default; }
+.ic-sm { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); margin-right: 10px; font-size: 15px; }
+.lefty { display: flex; align-items: center; }
+
+/* ===== explanation column ===== */
+.doc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; font-size: 14px; }
+.doc h2 { font: 600 18px/1.3 var(--font-head); margin: 18px 0 6px; }
+.doc h2:first-child { margin-top: 0; }
+.doc ol, .doc ul { margin: 0; padding-left: 22px; }
+.doc li { margin: 3px 0; }
+.map { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; }
+.map .col { border: 1px solid var(--line); border-radius: 12px; padding: 6px; background: var(--bg); font-size: 12px; }
+.map .col b { display: block; font-size: 13px; padding: 4px 6px; border-radius: 8px; background: var(--accent); color: var(--surface); text-align: center; margin-bottom: 4px; }
+.map .col span { display: block; padding: 3px 6px; border-left: 2px solid var(--line); margin: 3px 0 3px 6px; }
+.map .col span.soon { color: var(--muted); font-style: italic; }
+.map .col span.over { border-left-color: var(--badge); }
+@media (max-width: 520px) { .map { grid-template-columns: repeat(2, 1fr); } }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+td, th { border-bottom: 1px solid var(--line); padding: 6px 6px 6px 0; text-align: left; vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+.ask { border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--accent-soft); border-radius: 0 10px 10px 0; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <span class="tag"><span>Mockup controls (not part of the app)</span><span class="ver">Navigation v1 · 2026-11-18</span></span>
+  <label>Bar look <span class="seg" id="lookSeg"><button type="button" data-v="plain" aria-pressed="true">plain</button><button type="button" data-v="felt" aria-pressed="false">felt</button></span></label>
+  <label>Tap button icon <span class="seg" id="iconSeg"><button type="button" data-v="tile" aria-pressed="true">running tile</button><button type="button" data-v="plain" aria-pressed="false">plain icon</button></span></label>
+  <label><input type="checkbox" id="pillChk" checked> "Now running" strip on other screens</label>
+  <button class="btn" type="button" id="checkoutBtn">It's 21:45 → evening checkout</button>
+  <button class="btn" type="button" id="sysBack" title="Android back button / edge swipe">◁ Phone back</button>
+  <button class="btn" type="button" id="resetBtn">Reset</button>
+  <label>Page <span class="seg" id="themeSeg"><button type="button" data-v="auto" aria-pressed="true">auto</button><button type="button" data-v="light" aria-pressed="false">light</button><button type="button" data-v="dark" aria-pressed="false">dark</button></span></label>
+</div>
+
+<div class="wrap">
+  <div class="phone" id="phone">
+    <div class="screen" id="screen"></div>
+    <button type="button" class="pill" id="pill" hidden></button>
+    <nav class="tabbar" id="tabbar" aria-label="App navigation"></nav>
+    <div id="overlay"></div>
+    <div id="toastHost"></div>
+  </div>
+
+  <div class="doc">
+    <h2>How the app moves (v1)</h2>
+    <ol>
+      <li><b>Bottom bar, 5 buttons:</b> Tap · Plans · Overviews · Rewards · More. Same place on every main screen, always with labels (icons alone are guesswork).</li>
+      <li><b>Tap is home.</b> The app always opens on Tap. The Tap button shows the <b>running tile</b> (a mini Work patch while Work runs), so the bar also tells you what is running.</li>
+      <li><b>The timer never stops when you leave Tap.</b> On every other screen a thin strip above the bar shows "Work · 1:23:05 ›". Tapping it goes back to Tap.</li>
+      <li><b>Inside a tab, screens stack.</b> Opening something inside a tab (e.g. a goal stamp in Overviews) slides the new screen in with "‹ Overviews" at the top left. The bar stays.</li>
+      <li><b>Each tab remembers where you were</b> (Plans stays on Week, Overviews on Month). Tapping the button of the tab you are already on goes back to that tab's first screen.</li>
+      <li><b>Back (‹ or the phone's back / edge swipe):</b> one screen up inside the tab → on a tab's first screen: back to Tap → on Tap: leaves the app (timer keeps running).</li>
+      <li><b>No swiping between tabs.</b> Sideways swipes would fire by accident while you tap tiles. Only the back edge swipe works.</li>
+      <li><b>Page tabs move to the top.</b> Day / Week / Month (Plans, Overviews) and Checkout / Progress / Rewards (Rewards) become a switch under the title, so there is only ever one bar at the bottom.</li>
+      <li><b>Leaving Plans with unsaved changes</b> (any bar button, back, or the strip) asks first: Save · Review · Revert (Decision 2026-11-13). Try it: Plans → "+15 min Hobby" → tap another button.</li>
+      <li><b>Evening check-in (3A):</b> at checkout time it opens by itself over everything (the bar is covered). "Later ✕" closes it; the Tap button keeps a red number badge (open times), and Tap shows "3 times need you · sort now". Sorting the last one removes the badge.</li>
+      <li><b>Full-screen moments cover the bar:</b> evening checkout, morning check-in, "Nighty night!", onboarding / tour. They end by finishing or closing, never by a tab tap.</li>
+    </ol>
+
+    <h2>Map</h2>
+    <div class="map">
+      <div class="col"><b>Tap</b><span>tile · next · pick</span><span class="over">Evening checkout (over)</span><span class="over">Morning check-in (over)</span><span class="over">Nighty night (over)</span></div>
+      <div class="col"><b>Plans</b><span>Day · Week · Month · Templates</span><span>› Goals (from a block)</span></div>
+      <div class="col"><b>Overviews</b><span>Day · Week · Month</span><span>› Goals (from a stamp)</span></div>
+      <div class="col"><b>Rewards</b><span>Checkout · Progress · Rewards</span><span>› Mini game</span></div>
+      <div class="col"><b>More</b><span>› Categories</span><span>› Goals</span><span>› Settings</span><span>› Rules &amp; tour</span><span class="soon">› Journey (07)</span><span class="soon">› Yes-check (08)</span></div>
+    </div>
+    <p class="small muted" style="margin:6px 0 0">› = opens inside that tab with a back arrow. "(over)" = covers the whole screen, bar included.</p>
+
+    <h2>What changes in the existing mockups</h2>
+    <table>
+      <tr><th>Screen</th><th>Today (mockup)</th><th>With this navigation</th></tr>
+      <tr><td>Settings</td><td>‹ goes to the tap screen</td><td>Lives under More; ‹ goes to More</td></tr>
+      <tr><td>Rewards</td><td>own bottom tabs Checkout / Progress / Rewards</td><td>same three as a switch under the title</td></tr>
+      <tr><td>Plans, Overviews</td><td>Day / Week / Month switch</td><td>unchanged (already at the top)</td></tr>
+      <tr><td>Overviews goal stamp</td><td>jumps to the Categories page</td><td>opens Goals inside Overviews, "‹ Overviews" back</td></tr>
+      <tr><td>Tap "Adjust in Plans" / "Plan tomorrow"</td><td>jumps to the Plans page</td><td>switches to the Plans tab; "Done → back to tapping" switches back to Tap</td></tr>
+      <tr><td>Categories / Goals</td><td>one page with two tabs</td><td>two rows under More (Goals also from Plans + Overviews)</td></tr>
+      <tr><td>Content (Rules, tour)</td><td>own mockup</td><td>More › Rules &amp; tour; the tour runs full-screen</td></tr>
+    </table>
+
+    <h2>Your call (round 1)</h2>
+    <div class="ask">
+      1. Bar look: <b>plain</b> or <b>felt</b> (control at the top)?<br>
+      2. Tap button: <b>running tile</b> or <b>plain icon</b>?<br>
+      3. "Now running" strip on other screens: keep or drop?<br>
+      4. Anything in the 11 rules that feels wrong, or a screen in the wrong place on the map?<br>
+      Or: something else / I meant…
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+const $ = id => document.getElementById(id);
+const A = '../v6/assets/';
+
+/* ---------- felt tile art (static, positions from 02g tap.html) ---------- */
+const BOX = {
+  a01: [[102,29,405,481],[55,119,376,440],[303,168,453,355]], a02: [[22,23,489,489],[33,117,341,464],[266,167,470,370]],
+  a03: [[77,43,434,376],[102,39,409,337],[240,163,488,347]],  a04: [[92,29,386,477],[56,29,477,487],[412,76,452,433]],
+  a05: [[118,32,391,487],[57,29,264,460],[263,151,485,357]],  a06: [[32,47,479,453],[122,284,391,486],[246,71,485,327]],
+  a08: [[99,57,399,456],[252,173,464,346],[164,11,344,155]],  a09: [[44,35,490,482],[35,99,482,437],[310,165,474,405]]
+};
+const TILES = {
+  a09: { t: 'Work',    els: [[2,[82,230,250,400],'b'],[1,[150,130,420,420],'b'],[3,[345,105,432,230],'c']] },
+  a08: { t: 'Commute', els: [[1,[110,95,410,425],'b',1]] },
+  a05: { t: 'Chores',  els: [[2,[82,190,200,425],'b'],[1,[160,95,350,425],'b'],[3,[325,215,432,325],'c']] },
+  a06: { t: 'Food',    els: [[2,[165,335,345,432],'b'],[1,[95,85,365,370],'b'],[3,[330,215,432,330],'c']] },
+  a01: { t: 'Family',  els: [[1,[170,100,385,425],'b'],[2,[82,245,250,425],'b'],[3,[350,300,428,405],'b']] },
+  a02: { t: 'Friends', els: [[1,[150,95,400,425],'b'],[2,[82,210,240,425],'b'],[3,[330,110,432,215],'c']] },
+  a04: { t: 'Hobby',   els: [[2,[82,120,225,425],'b'],[1,[160,95,375,425],'b'],[3,[380,130,425,410],'b']] },
+  a03: { t: 'Chill',   els: [[2,[95,90,200,190],'c'],[1,[120,200,395,420],'b'],[3,[320,240,432,330],'c']] }
+};
+const ORDER = ['a09','a08','a05','a06','a01','a02','a04','a03'];
+const BG_SCALE = { 1: 1, 2: 1.037, 3: 1.22 };
+const bgOf = id => ((parseInt(id.slice(1), 10) - 1) % 3) + 1;
+const pct = px => (px / 512 * 100).toFixed(2) + '%';
+function art(id, cls) {
+  const n = bgOf(id);
+  let h = `<span class="art ${cls || ''}"><span class="layer bgwrap" style="transform:scale(${BG_SCALE[n]})"><img src="${A}background_rgba_0000${n}_.png" alt=""></span>`;
+  TILES[id].els.forEach(([e, r, a, clip]) => {
+    const b = BOX[id][e - 1], bw = b[2] - b[0], bh = b[3] - b[1];
+    const s = Math.min((r[2] - r[0]) / bw, (r[3] - r[1]) / bh);
+    const tx = (r[0] + r[2]) / 2 - s * (b[0] + b[2]) / 2;
+    const ty = a === 'c' ? (r[1] + r[3]) / 2 - s * (b[1] + b[3]) / 2 : r[3] - s * b[3];
+    h += `<span class="layer${clip ? ' patchclip' : ''}"><span class="place" style="transform:translate(${pct(tx)}, ${pct(ty)}) scale(${s.toFixed(4)})"><img src="${A}${id}_e${e}_00001_.png" alt=""></span></span>`;
+  });
+  return h + '</span>';
+}
+
+/* ---------- icons ---------- */
+const ICON = {
+  tap:   '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg>',
+  plans: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M7 14h4M7 17h7"/></svg>',
+  overviews: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>',
+  rewards: '<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
+  more:  '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'
+};
+const TABS = [['tap','Tap'],['plans','Plans'],['overviews','Overviews'],['rewards','Rewards'],['more','More']];
+const LINK = {   // full design mockups (plain names, Decision 2026-11-17)
+  tap: '../02g_tap/tap.html', plans: '../02a_plans/plans.html', overviews: '../02c_overviews/overviews.html', rewards: '../02d_rewards/rewards.html',
+  categories: '../02b_categories/categories.html', goals: '../02b_categories/categories.html#cat=a04', settings: '../02e_settings/settings.html',
+  rules: '../02f_content/content.html', journey: '../07_journey/journey.html', yes: '../08_yes_check/yes_check.html'
+};
+
+/* ---------- state ---------- */
+let S;
+function fresh() {
+  S = { tab: 'tap', stacks: { tap: ['tap'], plans: ['plans'], overviews: ['overviews'], rewards: ['rewards'], more: ['more'] },
+        seg: { plans: 'Day', overviews: 'Day', rewards: 'Checkout' }, cur: 'a09', since: Date.now() - (83 * 60 + 5) * 1000,
+        pick: false, dirty: false, hobby: 90, fromTap: false, open: [], closed: false, anim: 'tab' };
+}
+fresh();
+const VIEW = { look: 'plain', icon: 'tile', pill: true };
+const top = () => S.stacks[S.tab][S.stacks[S.tab].length - 1];
+const fmt = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+const clk = () => fmt(Date.now() - S.since);
+const TITLE = { tap: 'Tap', plans: 'Plans', overviews: 'Overviews', rewards: 'Rewards', more: 'More', categories: 'Categories', goals: 'Goals', settings: 'Settings', rules: 'Rules & tour', game: 'Guess your week' };
+
+/* ---------- screens ---------- */
+function head(id) {
+  const st = S.stacks[S.tab], i = st.indexOf(id);
+  const back = i > 0 ? `<button class="backbtn" data-act="back"><span class="chev">‹</span>${TITLE[st[i - 1]]}</button>` : '';
+  const full = LINK[id] ? `<a class="full" href="${LINK[id]}" target="_blank" rel="noopener">full design ↗</a>` : '';
+  return `<div class="head">${back}<h1>${TITLE[id]}</h1>${full}</div>`;
+}
+function pseg(key, opts) {
+  return `<div class="pseg">${opts.map(o => `<button type="button" data-seg="${key}" data-v="${o}" aria-pressed="${S.seg[key] === o}">${o}</button>`).join('')}</div>`;
+}
+const SCREENS = {
+  tap() {
+    const n = S.open.filter(o => !o.done).length;
+    let h = n ? `<button type="button" class="needs" data-act="checkout">${n} time${n > 1 ? 's' : ''} need${n > 1 ? '' : 's'} you · sort now ›</button>` : '';
+    h += `<div class="hero"><span class="label">Now</span><div class="stage">${art(S.cur, '" id="bigArt" style="width:196px;height:196px')}</div>
+      <div class="name">${TILES[S.cur].t}</div><div class="clock" data-clk>${clk()}</div></div>
+      <div class="nextrow"><button class="nextbtn" data-act="next">next: Food ›</button><button class="textlink" data-act="pick">${S.pick ? 'hide tiles' : 'pick'}</button></div>`;
+    if (S.pick) h += `<div class="grid8">${ORDER.map(id => `<button class="tile ${id === S.cur ? 'on' : ''}" data-tile="${id}">${art(id)}<span class="t">${TILES[id].t}</span></button>`).join('')}</div>`;
+    h += `<div class="card" style="margin-top:14px"><div class="row"><span>Late start? (from the morning flow)</span><button class="link" data-act="adjust">Adjust in Plans ›</button></div></div>
+      <p class="stub">Stand-in for the tap screen (02g v9.2). <a href="${LINK.tap}" target="_blank" rel="noopener">Full design ↗</a></p>`;
+    return h;
+  },
+  plans() {
+    let h = head('plans');
+    if (S.fromTap) h += `<div class="draft"><span>Opened from the tap screen</span><button data-act="doneTap">Done → back to tapping</button></div>`;
+    if (S.dirty) h += `<div class="draft"><span><b>Draft</b> · not saved yet</span><span><button class="q" data-act="undoPlan">Undo changes</button> <button data-act="savePlan">Plan done</button></span></div>`;
+    h += pseg('plans', ['Day', 'Week', 'Month', 'Templates']);
+    if (S.seg.plans === 'Day') {
+      h += `<div class="card"><h3>Today · Tue 18 Nov</h3>${[['07:30','Food','breakfast'],['08:00','Work','fixed'],['12:30','Food','lunch'],['13:15','Work',''],['17:00','Chores','dishes'],['19:00','Hobby', fm(S.hobby)],['21:45','Checkout','']].map(([t,a,d]) =>
+        `<div class="row"><span><b>${t}</b> ${a} <span class="muted small">${d}</span></span>${a === 'Hobby' ? `<button class="link" data-act="goals">Goal ›</button>` : ''}</div>`).join('')}</div>
+        <div class="chips"><button class="chip" data-act="hobbyPlus">+15 min Hobby (makes a change)</button></div>`;
+    } else h += `<div class="card muted">${S.seg.plans} view (see the full design). The tab remembers this choice when you leave and come back.</div>`;
+    return h + `<p class="stub">Stand-in for Plans (02a v7).</p>`;
+  },
+  overviews() {
+    let h = head('overviews') + pseg('overviews', ['Day', 'Week', 'Month']);
+    const rows = [['Work', 62, '#4F7CAC', '6 h 10'], ['Chores', 30, '#A87C4F', '1 h 40'], ['Hobby', 45, '#7A6BAE', '2 h'], ['Chill', 38, '#5E9C8F', '1 h 50']];
+    h += `<div class="card"><h3>${S.seg.overviews === 'Day' ? 'Today' : S.seg.overviews === 'Week' ? 'This week' : 'November'}: planned vs tapped</h3>${rows.map(([n, w, c, t]) =>
+      `<div class="small" style="display:flex;justify-content:space-between"><b>${n}</b><span class="muted">${t}</span></div><div class="bar"><i style="width:${w}%;background:${c}"></i></div>`).join('')}</div>
+      <div class="card"><h3>Goals</h3><div class="row"><span>Hobby · grow ▲ · 8 h / week</span><button class="link" data-act="goals">stamp ›</button></div><div class="row"><span>Work · reduce ▼</span><button class="link" data-act="goals">stamp ›</button></div></div>`;
+    return h + `<p class="stub">Stand-in for Overviews (02c v2).</p>`;
+  },
+  rewards() {
+    let h = head('rewards') + pseg('rewards', ['Checkout', 'Progress', 'Rewards']);
+    if (S.seg.rewards === 'Checkout') h += `<div class="card"><h3>Wallet</h3><div style="font:800 34px/1 var(--font-ui)">1 240 <span class="small muted">stitches</span></div><p class="small muted" style="margin:4px 0 0">Last checkout +18</p></div>`;
+    else if (S.seg.rewards === 'Progress') h += `<div class="card"><h3>Quilt</h3><p class="small muted" style="margin:0">17 patches sewn this month.</p></div><div class="card"><div class="row"><span>Guess your week</span><button class="link" data-act="game">Play ›</button></div></div>`;
+    else h += `<div class="card"><h3>Unlocks</h3><div class="row"><span>chalk_board theme</span><span class="muted small">3 000</span></div><div class="row"><span>lino_bold theme</span><span class="muted small">5 000</span></div></div>`;
+    return h + `<p class="stub">Stand-in for Rewards (02d v3). Its 3 bottom tabs became this switch.</p>`;
+  },
+  more() {
+    const it = [['categories','▤','Categories'],['goals','◎','Goals'],['settings','⚙','Settings'],['rules','?','Rules & tour'],['journey','➶','Journey · coming in 07',1],['yes','✓','Yes-check · coming in 08',1]];
+    return head('more') + `<div class="more-list">${it.map(([k, i, l, soon]) =>
+      `<button type="button" class="row${soon ? ' soon' : ''}" ${soon ? '' : `data-push="${k}"`}><span class="lefty"><span class="ic-sm">${i}</span>${l}</span>${soon ? '' : '<span class="chev">›</span>'}</button>`).join('')}</div>
+      <p class="stub">Export / import data and calendar sync stay inside Settings → Data &amp; calendar.</p>`;
+  },
+  categories() { return head('categories') + `<div class="card">${['Work','Commute','Chores','Food','Family','Friends','Hobby','Chill'].map(c => `<div class="row"><span>${c}</span><span class="muted small">subcategories ›</span></div>`).join('')}</div><p class="stub">Stand-in for Categories (02b v3).</p>`; },
+  goals() { return head('goals') + `<div class="card"><h3>Hobby</h3><div class="row"><span>Music making</span><b>5 h / week</b></div><div class="row"><span>Drawing</span><b>3 h / week</b></div><div class="row"><span>Direction</span><span>▲ grow (automatic)</span></div></div><p class="stub">Stand-in for Goals (02b v3). Opened from ${S.tab === 'more' ? 'More' : S.tab === 'plans' ? 'a Plans block' : 'an Overviews stamp'}: back returns there.</p>`; },
+  settings() { return head('settings') + `<div class="chips" style="margin-bottom:10px">${['Tap screen','Day & sleep','Alarms','Plans','Categories','Checkout & rewards','Data & calendar'].map(s => `<span class="chip">${s}</span>`).join('')}</div><div class="card"><div class="row"><span>Untapped time</span><b>C · plan fills in</b></div><div class="row"><span>Colour on tap</span><b>A · background</b></div></div><p class="stub">Stand-in for Settings (02e v2). ‹ now goes to More, not to Tap.</p>`; },
+  rules() { return head('rules') + `<div class="card"><h3>4 core rules</h3><p class="small" style="margin:0">Time is always running, whether you plan for it or not. …</p></div><div class="card"><div class="row"><span>Take the tour again</span><button class="link" data-act="tour">Start ›</button></div></div><p class="stub">Stand-in for Content (02f).</p>`; },
+  game() { return head('game') + `<div class="card muted">Mini game from Rewards → Progress (02d v3). Back returns to Rewards.</div>`; }
+};
+function fm(m) { return `${Math.floor(m / 60)} h${m % 60 ? ' ' + (m % 60) : ''}`; }
+
+/* ---------- render ---------- */
+function render() {
+  const sc = $('screen');
+  sc.className = 'screen enter-' + S.anim;
+  sc.innerHTML = SCREENS[top()]();
+  sc.scrollTop = 0;
+  // tab bar
+  const n = S.open.filter(o => !o.done).length;
+  const bar = $('tabbar');
+  bar.className = 'tabbar' + (VIEW.look === 'felt' ? ' felt' : '');
+  bar.innerHTML = TABS.map(([k, l]) => {
+    const ic = k === 'tap' && VIEW.icon === 'tile' ? `<span class="ic tileic">${art(S.cur)}` : `<span class="ic">${ICON[k]}`;
+    const badge = k === 'tap' && n ? `<span class="badge" aria-label="${n} open times">${n}</span>` : '';
+    return `<button type="button" class="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${ic}${badge}</span>${l}</button>`;
+  }).join('');
+  // now-running strip
+  const p = $('pill');
+  p.hidden = !(VIEW.pill && S.tab !== 'tap');
+  if (!p.hidden) p.innerHTML = `${art(S.cur)}<span>${TILES[S.cur].t} · <b data-clk>${clk()}</b></span><span class="go">Tap ›</span>`;
+  S.anim = 'tab';
+}
+setInterval(() => document.querySelectorAll('[data-clk]').forEach(e => e.textContent = clk()), 1000);
+
+function toast(t) {
+  $('toastHost').innerHTML = `<div class="toast">${t}</div>`;
+  clearTimeout(toast.t); toast.t = setTimeout(() => $('toastHost').innerHTML = '', 2600);
+}
+
+/* leaving Plans with a draft asks first (Decision 2026-11-13) */
+function guard(then) {
+  if (!(S.dirty && S.tab === 'plans')) return then();
+  $('overlay').innerHTML = `<div class="dim"><div class="dialog" role="dialog" aria-label="Save your plan?"><h2>Save your plan?</h2>
+    <p class="small muted" style="margin:0">You changed today's plan (Hobby ${fm(S.hobby)}) and didn't press Plan done.</p>
+    <div class="opts"><button class="primary" data-dlg="save">Save changes now<small>then go on</small></button>
+    <button data-dlg="review">Review changes<small>stay in Plans</small></button>
+    <button data-dlg="revert">Revert to the last saved plan<small>then go on</small></button></div></div></div>`;
+  guard.then = then;
+}
+function goTab(k) {
+  if (k === S.tab) {                               // tapping the current tab: back to its first screen
+    if (S.stacks[k].length > 1) { S.stacks[k] = [k]; S.anim = 'pop'; render(); }
+    else if (k === 'tap') toast('Already on Tap.');
+    return;
+  }
+  guard(() => { if (S.tab === 'plans') S.fromTap = false; S.tab = k; render(); });
+}
+function push(id) { S.stacks[S.tab].push(id); S.anim = 'push'; render(); }
+function back() {
+  const st = S.stacks[S.tab];
+  if (st.length > 1) { st.pop(); S.anim = 'pop'; render(); }
+  else if (S.tab !== 'tap') goTab('tap');
+  else toast('Leaves the app. The timer keeps running.');
+}
+
+/* ---------- evening checkout (covers the bar) ---------- */
+function openCheckout() {
+  if (!S.open.length) S.open = [
+    { t: '07:12–08:00', q: 'Untapped before Work. What was it?', a: ['Food', 'Chill', 'TBH? No idea'] },
+    { t: '15:40–16:05', q: 'Stuck, no reason picked.', a: ['Meltdown', 'Problem solving', 'TBH? No idea'] },
+    { t: '19:00–19:20', q: 'Ran 20 min past the plan (Food).', a: ['Fine, keep', 'Was Chill', 'TBH? No idea'] }
+  ];
+  drawCheckout();
+}
+function drawCheckout() {
+  const left = S.open.filter(o => !o.done).length;
+  let h = `<div class="sheet" role="dialog" aria-label="Evening checkout"><div class="head"><h2>Evening checkout</h2>${left ? '<button class="btn" data-co="later">Later ✕</button>' : ''}</div>
+    <p class="small muted" style="margin:0">${left ? `${left} time${left > 1 ? 's' : ''} need${left > 1 ? '' : 's'} you. The tab bar is hidden until you finish or close.` : 'All sorted.'}</p>`;
+  if (!left) h += `<div class="stamp">Day closed<small>+18 stitches</small></div><div style="text-align:center"><button class="btn" data-co="later">Back to tapping</button></div>`;
+  S.open.forEach((o, i) => {
+    h += `<div class="entry ${o.done ? 'done' : ''}"><div class="top"><span>${o.t}</span>${o.done ? `<span class="small" style="color:var(--good)">✓ ${o.done}</span>` : ''}</div>`;
+    if (!o.done) h += `<div class="q">${o.q}</div><div class="chips">${o.a.map(a => `<button class="chip" data-co="ans" data-i="${i}" data-a="${a}">${a}</button>`).join('')}</div>`;
+    h += '</div>';
+  });
+  $('overlay').innerHTML = h + '</div>';
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, [data-act]'); if (!t) return;
+  if (t.dataset.tab) return goTab(t.dataset.tab);
+  if (t.dataset.push) return push(t.dataset.push);
+  if (t.dataset.seg) { S.seg[t.dataset.seg] = t.dataset.v; S.anim = 'none'; return render(); }
+  if (t.dataset.tile) { S.cur = t.dataset.tile; S.since = Date.now(); S.pick = false; render(); const a = $('bigArt'); if (a) a.classList.add('press'); return; }
+  if (t.dataset.dlg) {
+    const d = t.dataset.dlg; $('overlay').innerHTML = '';
+    if (d === 'review') { S.seg.plans = 'Day'; S.stacks.plans = ['plans']; return render(); }
+    if (d === 'revert') S.hobby = 90;
+    S.dirty = false; return guard.then && guard.then();
+  }
+  if (t.dataset.co) {
+    if (t.dataset.co === 'later') { $('overlay').innerHTML = ''; return render(); }
+    S.open[+t.dataset.i].done = t.dataset.a; drawCheckout(); return render();
+  }
+  if (t.id === 'pill') return guard(() => { if (S.tab === 'plans') S.fromTap = false; S.tab = 'tap'; render(); });
+  switch (t.dataset.act) {
+    case 'back': return back();
+    case 'pick': S.pick = !S.pick; S.anim = 'none'; return render();
+    case 'next': S.cur = 'a06'; S.since = Date.now(); render(); $('bigArt').classList.add('press'); return toast('(Mockup: starts at once. The real flow proposes first, see 02g.)');
+    case 'checkout': return openCheckout();
+    case 'adjust': S.fromTap = true; S.seg.plans = 'Day'; S.stacks.plans = ['plans']; S.tab = 'plans'; return render();
+    case 'doneTap': return guard(() => { S.fromTap = false; S.tab = 'tap'; render(); });
+    case 'goals': return push('goals');
+    case 'game': return push('game');
+    case 'hobbyPlus': S.hobby += 15; S.dirty = true; S.anim = 'none'; return render();
+    case 'savePlan': S.dirty = false; S.anim = 'none'; render(); return toast('Plan saved.');
+    case 'undoPlan': S.dirty = false; S.hobby = 90; S.anim = 'none'; return render();
+    case 'tour': return toast('The tour runs full-screen over the bar (02f onboarding).');
+  }
+});
+$('sysBack').onclick = () => { if ($('overlay').innerHTML) { $('overlay').innerHTML = ''; return render(); } back(); };
+$('checkoutBtn').onclick = () => { $('overlay').innerHTML = ''; openCheckout(); };
+$('resetBtn').onclick = () => { $('overlay').innerHTML = ''; fresh(); render(); };
+$('pillChk').onchange = e => { VIEW.pill = e.target.checked; S.anim = 'none'; render(); };
+function segCtl(id, fn) {
+  $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+    $(id).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); fn(b.dataset.v); });
+}
+segCtl('lookSeg', v => { VIEW.look = v; S.anim = 'none'; render(); });
+segCtl('iconSeg', v => { VIEW.icon = v; S.anim = 'none'; render(); });
+segCtl('themeSeg', v => { if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v); });
+render();
+})();
+</script>
+<script src="../_shared/nav.js"></script>
+</body>
+</html>

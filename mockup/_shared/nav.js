@@ -21,7 +21,8 @@
     ['Journey',    '07_journey/journey.html',        'soon'],
     ['Yes-check',  '08_yes_check/yes_check.html',    'soon'],
     ['Settings',   '02e_settings/settings.html',     ''],
-    ['Content',    '02f_content/content.html',       '']
+    ['Content',    '02f_content/content.html',       ''],
+    ['Navigation', '02k_navigation/navigation.html', '']
   ];
 
   var css = document.createElement('link');

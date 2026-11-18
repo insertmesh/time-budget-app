@@ -6,6 +6,7 @@
 <title>Time Budget Settings</title>
 <!--
   Settings mockup (step 02e_settings_design). Current file = settings.html; older rounds in archive\settings_v<N>.html.
+  v2 (2026-11-17): new section Alarms & notifications (Samuel), About row (02f words).
   v1 (2026-11-17): first round. Grouping "by screen" (Samuel: no preference → recommended option).
   "Untapped time" = all three rules (A strict / B short gaps vanish / C plan fills in) as a setting, C as the starting default.
   Mockup only: fake data, nothing is saved. Tile art from ../v6/assets/ (felt Chill tile).
@@ -158,6 +159,14 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
 .toast { position: absolute; left: 50%; bottom: 18px; transform: translate(-50%, 20px); background: var(--ink); color: var(--surface); border-radius: 12px; padding: 8px 14px; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; max-width: 86%; text-align: center; z-index: 20; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* v2: fake phone notification */
+.notif { position: absolute; left: 10px; right: 10px; top: 10px; z-index: 30; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); transform: translateY(-130%); transition: transform .35s cubic-bezier(.3,1.3,.5,1); }
+.notif.show { transform: translateY(0); }
+.notif.ring { animation: ring .5s ease-in-out .35s 6; }
+@keyframes ring { 0%,100% { translate: 0 0; } 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+[hidden] { display: none !important; }
+
 .notes { max-width: 920px; margin: 18px auto 0; font-size: 14px; }
 .notes h3 { font: 600 17px var(--font-head); margin: 0 0 6px; }
 .notes li { margin-bottom: 6px; }
@@ -168,7 +177,7 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
 
 <div class="controls" aria-label="Mockup controls">
   <span class="tag">Mockup controls · not part of the app</span>
-  <span class="ver" id="ver">Settings v1 · 2026-11-17</span>
+  <span class="ver" id="ver">Settings v2 · 2026-11-17</span>
   <label>Page <span class="seg" id="themeSeg"><button type="button" data-v="auto" aria-pressed="true">auto</button><button type="button" data-v="light" aria-pressed="false">light</button><button type="button" data-v="dark" aria-pressed="false">dark</button></span></label>
   <span class="small muted">Nothing is saved. A small gold dot = changed from the default.</span>
 </div>
@@ -182,6 +191,7 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
   <nav class="jump" id="jump" aria-label="Jump to section">
     <button type="button" data-to="s-tap">Tap screen</button>
     <button type="button" data-to="s-day">Day &amp; sleep</button>
+    <button type="button" data-to="s-alarm">Alarms</button>
     <button type="button" data-to="s-plans">Plans</button>
     <button type="button" data-to="s-cats">Categories</button>
     <button type="button" data-to="s-check">Checkout &amp; rewards</button>
@@ -259,6 +269,41 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
             <span class="seg" data-seg="gapto"><button type="button" data-v="next">next activity</button><button type="button" data-v="prev">previous activity</button></span></div>
         </div>
         <div class="tl" id="tl"></div>
+      </div>
+    </div>
+
+    <!-- ============ ALARMS & NOTIFICATIONS (v2) ============ -->
+    <div class="sec" id="s-alarm"><h2>Alarms &amp; notifications</h2><button class="textlink small" type="button" data-reset="alarm">reset section</button></div>
+    <div class="card">
+      <div class="row" data-key="notif">
+        <div class="top"><span class="name">Notifications<span class="dot"></span></span><button class="sw" type="button" role="switch" data-sw="notif" aria-label="Notifications"></button></div>
+        <div class="hint">The phone asks once for permission. Off = the app only shows things while it is open.</div>
+      </div>
+    </div>
+    <div id="notifBlock">
+      <div class="card" style="margin-top:8px" id="alerts"></div>
+
+      <div class="card" style="margin-top:8px">
+        <div class="row" data-key="alarmsound">
+          <div class="top"><span class="name">Alarm sound<span class="dot"></span></span><button class="textlink small" type="button" data-test="sound">▶ test</button></div>
+          <div class="hint">Used for every line set to "Sound" or "Alarm".</div>
+          <div class="opts" data-opts="alarmsound">
+            <button class="opt" type="button" data-v="chime"><span class="t"><span class="radio"></span>Felt chime</span><span class="d">soft, from the Felt sound pack</span></button>
+            <button class="opt" type="button" data-v="bell"><span class="t"><span class="radio"></span>Soft bell</span><span class="d">gets a little louder each ring</span></button>
+            <button class="opt" type="button" data-v="classic"><span class="t"><span class="radio"></span>Classic alarm</span><span class="d">hard to sleep through</span></button>
+            <button class="opt" type="button" data-v="own"><span class="t"><span class="radio"></span>My own sound…</span><span class="d" id="ownName">pick an mp3 from the phone</span></button>
+          </div>
+        </div>
+        <div class="row" data-key="vibrate">
+          <div class="top"><span class="name">Vibrate when sound is off<span class="dot"></span></span><button class="sw" type="button" role="switch" data-sw="vibrate" aria-label="Vibrate when sound is off"></button></div>
+          <div class="hint">Phone on silent → a vibration instead of the sound. Phones only (a PC can't vibrate).</div>
+          <div class="sub" id="vibSub">
+            <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="small"><b>Pattern</b></span>
+              <span><span class="seg" data-seg="vibpat"><button type="button" data-v="short">short</button><button type="button" data-v="double">double</button><button type="button" data-v="long">long</button></span>
+              <button class="textlink small" type="button" data-test="vib">▶</button></span></div>
+            <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px"><span class="small"><b>Also vibrate when sound is on</b></span><button class="sw" type="button" role="switch" data-sw="vibalways" aria-label="Also vibrate when sound is on"></button></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -359,16 +404,27 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
         <div class="hint">The 6 skippable questions from the start. Answering again suggests a new starter setup; nothing changes until you say yes.</div>
         <div class="datarow"><button class="btn sm" type="button" data-toast="Opens the setup questions (screen not designed yet).">Answer again</button></div>
       </div>
+      <div class="row">
+        <div class="top"><span class="name">About</span></div>
+        <div class="datarow"><button class="btn sm" type="button" data-toast="Opens the Rules page (02f content).">Rules</button><button class="btn sm" type="button" data-toast="Starts the tour again (02f content).">Show the tour again</button></div>
+      </div>
     </div>
 
     <button class="btn reset" type="button" data-reset="all">Reset all settings to defaults</button>
-    <p class="small muted" style="text-align:center">Settings v1 · mockup</p>
+    <p class="small muted" style="text-align:center">Settings v2 · mockup</p>
   </div>
+  <div class="notif" id="notif" role="status"></div>
   <div class="toast" id="toast" role="status"></div>
 </div>
 
 <div class="notes">
-  <h3>What's in settings v1</h3>
+  <h3>New in settings v2</h3>
+  <ul>
+    <li><b>Alarms &amp; notifications</b> (new section, chip "Alarms"): one main switch; 4 lines (Start the day, Evening checkout, Next planned activity, Bedtime), each on/off + Banner / Sound / Alarm and "▶ test" (a fake phone message drops in at the top). Alarm sound: 3 built-in sounds or your own mp3. Vibrate when sound is off, with a pattern.</li>
+    <li><b>Known limit (fairly sure):</b> the app is a web page for now. A web page can show notifications, but it cannot reliably ring a real alarm or play your own mp3 while it is closed, and iPhones do not let web pages vibrate. Full alarms need the Android app later (09_later). The settings are designed now so the app can grow into them.</li>
+    <li>About row (Rules, Show the tour again) from the content chat 02f.</li>
+  </ul>
+  <h3>From settings v1</h3>
   <ul>
     <li><b>Grouped by screen</b>: Tap screen · Day &amp; sleep · Plans · Categories · Checkout &amp; rewards · Data &amp; calendar. The chips at the top jump to a section.</li>
     <li><b>Defaults</b> = what the app uses today (bars 2 / 1 / 3 / 5 min, wake 07:00, bedtime 22:30, day starts 04:00, Colour on tap A, idle medium, drop shadow). A gold dot marks every setting you changed; each section has "reset section".</li>
@@ -391,18 +447,46 @@ const DEF = {
   autofix: 'auto', chains: true, chainwhen: 'unplanned',
   selfcare: 'log', toilet: false, bath: 'chill',
   comments: true, sounds: false, snd_good: true, snd_neutral: true, snd_bad: false, pack: 'felt', theme: 'felt', plain: false,
-  calsync: 'off', twoway: false
+  calsync: 'off', twoway: false,
+  // v2: alarms & notifications
+  notif: true,
+  al_day_on: true, al_day_type: 'sound',
+  al_check_on: true, al_check_type: 'banner', al_check_t: '21:45',
+  al_next_on: true, al_next_type: 'banner', al_next_lead: '0', al_next_which: 'all',
+  al_bed_on: true, al_bed_type: 'sound',
+  alarmsound: 'chime', vibrate: true, vibpat: 'short', vibalways: false
 };
+const ALERTS = [
+  ['al_day', 'Start the day', 'At wake-up (<span data-echo="wake"></span>).', 'Morning! Ready to start the day?'],
+  ['al_check', 'Evening checkout', 'At a time you pick.', 'Checkout time: 3 things to look at.'],
+  ['al_next', 'Next planned activity', 'When a planned block ends and the next one would begin.', 'Lunch is over → Chores (dishes) next.'],
+  ['al_bed', 'Bedtime', 'At bedtime (<span data-echo="bed"></span>), when the Sleep tile comes up. <i>Added by me, keep?</i>', 'Time to sleep! 🌙']
+];
+const TYPES = [['banner', 'Banner'], ['sound', 'Sound'], ['alarm', 'Alarm']];
+$('alerts').innerHTML = ALERTS.map(([k, n, h]) => `<div class="row" data-key="${k}">
+  <div class="top"><span class="name">${n}<span class="dot"></span></span><span style="display:flex;gap:6px;align-items:center"><button class="textlink small" type="button" data-test="${k}">▶ test</button><button class="sw" type="button" role="switch" data-sw="${k}_on" aria-label="${n}"></button></span></div>
+  <div class="hint">${h}</div>
+  <div class="ctl" data-show="${k}_on">
+    <span class="seg" data-seg="${k}_type">${TYPES.map(([v, l]) => `<button type="button" data-v="${v}">${l}</button>`).join('')}</span>
+    ${k === 'al_check' ? `<input type="time" data-time="al_check_t" style="margin-left:6px">` : ''}
+    ${k === 'al_next' ? `<div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="small"><b>When</b></span><span class="seg" data-seg="al_next_lead"><button type="button" data-v="0">at the change</button><button type="button" data-v="5">5 min before</button><button type="button" data-v="10">10 min before</button></span></div>
+      <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px"><span class="small"><b>For</b></span><span class="seg" data-seg="al_next_which"><button type="button" data-v="all">all planned blocks</button><button type="button" data-v="fixed">only fixed times</button></span></div>` : ''}
+  </div></div>`).join('') +
+  `<div class="hint" style="padding:6px 0 10px">Banner = silent message · Sound = message + one sound · Alarm = rings until you tap it.</div>`;
 const SECTIONS = {
   tap: ['colour', 'idle', 'shadow', 'bar_suggest', 'bar_morning', 'bar_first', 'bar_bed'],
   day: ['wake', 'bed', 'daystart', 'planahead', 'untap', 'gap', 'gapto'],
   plans: ['autofix', 'chains', 'chainwhen'],
   cats: ['selfcare', 'toilet', 'bath'],
   check: ['comments', 'sounds', 'snd_good', 'snd_neutral', 'snd_bad', 'pack', 'theme', 'plain'],
-  data: ['calsync', 'twoway']
+  data: ['calsync', 'twoway'],
+  alarm: ['notif', 'al_day_on', 'al_day_type', 'al_check_on', 'al_check_type', 'al_check_t', 'al_next_on', 'al_next_type', 'al_next_lead', 'al_next_which', 'al_bed_on', 'al_bed_type', 'alarmsound', 'vibrate', 'vibpat', 'vibalways']
 };
 // which row (data-key) shows the gold dot for which values
-const ROWKEY = { gap: 'untap', gapto: 'untap', chainwhen: 'chains', toilet: 'selfcare', bath: 'selfcare', snd_good: 'sounds', snd_neutral: 'sounds', snd_bad: 'sounds', pack: 'sounds', twoway: 'calsync' };
+const ROWKEY = { gap: 'untap', gapto: 'untap', chainwhen: 'chains', toilet: 'selfcare', bath: 'selfcare', snd_good: 'sounds', snd_neutral: 'sounds', snd_bad: 'sounds', pack: 'sounds', twoway: 'calsync',
+  al_day_on: 'al_day', al_day_type: 'al_day', al_check_on: 'al_check', al_check_type: 'al_check', al_check_t: 'al_check',
+  al_next_on: 'al_next', al_next_type: 'al_next', al_next_lead: 'al_next', al_next_which: 'al_next', al_bed_on: 'al_bed', al_bed_type: 'al_bed',
+  vibpat: 'vibrate', vibalways: 'vibrate' };
 let S = { ...DEF };
 
 // ---------- bar rows ----------
@@ -480,6 +564,13 @@ function render() {
   $('calSub').hidden = S.calsync === 'off';
   $('calHint').textContent = { off: '', daily: 'Checks for new dates once a day.', monthly: 'Imports the whole month on the 1st. The month view then shows a "Resync" button for new dates.' }[S.calsync];
 
+  // v2: alarms
+  $('notifBlock').hidden = !S.notif;
+  document.querySelectorAll('[data-show]').forEach(el => { el.hidden = !S[el.dataset.show]; });
+  document.querySelectorAll('[data-echo]').forEach(el => { el.textContent = S[el.dataset.echo]; });
+  $('vibSub').hidden = !S.vibrate;
+  $('ownName').textContent = ownFile ? ownFile + ' · tap to change' : 'pick an mp3 from the phone';
+
   // preview
   const pv = $('pv');
   pv.className = `preview idle-${S.idle} shadow-${S.shadow}${(S.colour === 'glow' || S.colour === 'both') ? ' glow-on' : ''}`;
@@ -499,6 +590,23 @@ function render() {
   $('changedCount').textContent = changedRows.size ? `${changedRows.size} changed` : '';
 }
 
+// ---------- v2: fake notification banner + own sound ----------
+let ownFile = '', nt;
+const SOUNDNAME = { chime: 'Felt chime', bell: 'Soft bell', classic: 'Classic alarm', own: 'your own sound' };
+function notify(k) {
+  const a = ALERTS.find(x => x[0] === k);
+  const type = S[k + '_type'];
+  const how = type === 'banner' ? 'silent' : `${SOUNDNAME[S.alarmsound]}${type === 'alarm' ? ', rings until you tap' : ''}`;
+  const vib = (S.vibrate && type !== 'banner') ?` · on silent: ${S.vibpat} vibration` : '';
+  const n = $('notif');
+  n.innerHTML = `<b>Time Budget</b> <span class="small muted">now</span><br>${a[3]}<div class="small muted">${how}${vib}</div>${type === 'alarm' ? '<button class="btn sm main" type="button" data-dismiss style="margin-top:6px">Stop</button>' : ''}`;
+  n.classList.remove('ring'); void n.offsetWidth;
+  n.classList.add('show'); if (type === 'alarm') n.classList.add('ring');
+  clearTimeout(nt); if (type !== 'alarm') nt = setTimeout(() => n.classList.remove('show'), 3200);
+}
+const fileIn = document.createElement('input'); fileIn.type = 'file'; fileIn.accept = 'audio/*'; fileIn.hidden = true; document.body.appendChild(fileIn);
+fileIn.addEventListener('change', () => { if (fileIn.files[0]) { ownFile = fileIn.files[0].name; S.alarmsound = 'own'; render(); } });
+
 // ---------- events ----------
 let tt;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2600); }
@@ -511,6 +619,13 @@ document.addEventListener('click', e => {
     if (b.dataset.v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', b.dataset.v);
     return;
   }
+  if (b.dataset.dismiss !== undefined) { $('notif').classList.remove('show', 'ring'); return; }
+  if (b.dataset.test) {
+    if (b.dataset.test === 'sound') { toast(`▶ ${SOUNDNAME[S.alarmsound]} (sounds are not built yet)`); return; }
+    if (b.dataset.test === 'vib') { toast(`▶ ${S.vibpat} vibration (phone only)`); return; }
+    notify(b.dataset.test); return;
+  }
+  if (o && o.dataset.opts === 'alarmsound' && b.dataset.v === 'own') { fileIn.click(); if (ownFile) { S.alarmsound = 'own'; render(); } return; }
   if (b.dataset.locked) { toast(`${b.dataset.locked} is locked. Unlock it on the Rewards page by being thorough.`); return; }
   if (g && b.dataset.v !== undefined) { S[g.dataset.seg] = b.dataset.v; render(); return; }
   if (o && b.dataset.v !== undefined) { S[o.dataset.opts] = b.dataset.v; render(); return; }
