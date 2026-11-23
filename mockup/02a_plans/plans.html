@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Time Budget Plans v7</title>
+<title>Time Budget Plans v8</title>
 <!--
   Plans mockup v2 (step 02a_plans_design, 2026-11-12). New in v2 (Samuel's feedback on v1):
   calendar dates = always fixed start + planned length; day types (weekday / weekend, weekend can become Work) + themes;
@@ -153,7 +153,13 @@ h2.page { font: 600 20px/1.3 var(--font-head); margin: 0 0 8px; }
 .stepper button { width: 28px; height: 28px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; font-weight: 800; padding: 0; }
 .stepper span { min-width: 54px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 .blk { border-bottom: 1px solid var(--line); }
-.blk .row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; }
+.blk .row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; position: relative; }
+/* v8: "Delete?" overlay when − takes a block to 0 min */
+.delover { position: absolute; inset: 2px 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 10px; background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 10px; font-size: 14px; animation: delin .15s ease-out; z-index: 2; }
+.delover .q { flex: 1; min-width: 0; color: var(--warn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.delover .btn { padding: 5px 11px; white-space: nowrap; font-size: 14px; }
+.btn.danger { background: var(--warn); color: var(--surface); border-color: var(--warn); }
+@keyframes delin { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 .blk .main { flex: 1; display: flex; align-items: center; gap: 10px; border: 0; background: none; text-align: left; padding: 0; min-width: 0; }
 .blk .main .txt b { display: block; line-height: 1.25; }
 .blk.sel { background: var(--accent-soft); border-radius: 12px; border-bottom-color: transparent; }
@@ -315,7 +321,13 @@ h2.page { font: 600 20px/1.3 var(--font-head); margin: 0 0 8px; }
   </div>
 
   <div class="notes">
-    <h2>New in Plans v7</h2>
+    <h2>New in Plans v8</h2>
+    <ul>
+      <li><b>Delete a block with −:</b> on a 15-min block, one more − shows <b>"0 min · delete Chores?"</b> over the row: <b>Delete</b> (warm red) or <b>Keep 15 min</b>. Tapping anywhere else also keeps it. Works in Day and Templates. Calendar dates have no −, so they can't be deleted this way.</li>
+      <li><b>Undo for delete:</b> after a delete the bottom message says "Chores deleted (not saved yet)" with an <b>Undo</b> button for 7 seconds. It puts the block back in the same place. After that, "Undo changes" in the bar still takes back everything since the last Plan done.</li>
+      <li>The "delete" link in the block editor (tap the block's name) gets the same Undo message.</li>
+    </ul>
+    <h2>Earlier (v7)</h2>
     <ul>
       <li><b>Save check when leaving Plans:</b> tapping "Tap" (bottom bar or "see it in the Tap tab") with unsaved changes opens "Save your plan?": <b>Save changes now</b> · <b>Review changes</b> (opens the first changed day) · <b>Revert</b> (back to the last saved plan).</li>
       <li><b>App closed with unsaved changes:</b> the same check comes first at the next planning moment (evening "Plan tomorrow", morning prompt). Try it: "Close the app with unsaved plan changes", then "Play this moment".</li>
@@ -618,8 +630,8 @@ const $$ = s => document.querySelector(s);
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, 3000); }
 let undoSnap = null;
 function snap() { undoSnap = JSON.stringify({ days, meta, approved }); }
-function toastUndo(msg) {   // calendar actions + auto-fix: one tap undoes it (and, in the real app, the calendar change)
-  const t = $('toast'); t.innerHTML = ''; t.append(msg); const u = document.createElement('button'); u.type = 'button'; u.textContent = 'Undo'; u.dataset.undo = '1'; t.append(u);
+function toastUndo(msg, key = 'undo') {   // calendar actions + auto-fix + delete (v8): one tap undoes it (and, in the real app, the calendar change)
+  const t = $('toast'); t.innerHTML = ''; t.append(msg); const u = document.createElement('button'); u.type = 'button'; u.textContent = 'Undo'; u.dataset[key] = '1'; t.append(u);
   t.hidden = false; clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, 7000);
 }
 const fmtT = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
@@ -751,6 +763,7 @@ function renderBlocks(p, L, ctx) {
         <span class="small muted">${fmtT(r.start)}–${fmtT(r.end)}</span>${tags}</span></button>
       ${x.cal ? `<span class="lock">${fmtD(x.dur)}</span>` : r.part > 1 ? `<span class="small muted">${fmtD(r.dur)}</span>`
         : `<span class="stepper"><button type="button" data-dur="${r.i}:-15" aria-label="15 min shorter">−</button><span>${fmtD(x.dur)}</span><button type="button" data-dur="${r.i}:15" aria-label="15 min longer">+</button></span>`}
+      ${zeroBlk === x && r.part === 1 ? `<div class="delover" role="alertdialog" aria-label="Delete ${btitle(x)}?"><span class="q"><b>0 min</b> · delete ${btitle(x)}?</span><button type="button" class="btn danger" data-delok="${r.i}">Delete</button><button type="button" class="btn" data-delkeep="1">Keep ${fmtD(x.dur)}</button></div>` : ''}
     </div>${r.conflict ? `<div class="warnline">Overlaps the block before by ${fmtD(r.conflict)}. Shown, not blocked.</div>` : ''}${on && r.part === r.parts ? editor(x, r, ctx) : ''}</div>`;
   });
   h += `<div class="addrow">${adding ? `<div class="small muted" style="margin-bottom:6px">Add which tile? (goes before bedtime)</div><div class="grid8">${ALL8.map(k => `<button type="button" class="tile" data-add="${k}">${art(k)}<span class="title">${TITLE[k]}</span></button>`).join('')}</div>
@@ -1032,9 +1045,28 @@ function sheetReady() {
 // ---------- events ----------
 function target() { return tab === 'templates' ? TPLS[selTpl] : days[cur]; }
 function touched() { if (tab === 'templates') rebuildUsing(selTpl === 'empty' ? '*' : selTpl); else meta[cur].edited = true; }
+// v8: delete a block (− to 0 → "Delete?" overlay, or "delete" in the block editor); one-step Undo toast
+let zeroBlk = null, delUndo = null;
+function delBlock(p, i) {
+  const item = p.blocks.splice(i, 1)[0];
+  delUndo = { p, i, item, tpl: tab === 'templates' ? selTpl : null, day: cur };
+  zeroBlk = null; sel = -1; touched(); render();
+  toastUndo(`${btitle(item)} deleted (not saved yet).`, 'undodel');
+}
 document.addEventListener('click', ev => {
   const q = s => ev.target.closest(s); let e;
   const p = target();
+  const hadZero = zeroBlk; if (zeroBlk && !q('.delover')) zeroBlk = null;   // any click outside the overlay = keep the block
+  if ((e = q('[data-delok]'))) { delBlock(p, +e.dataset.delok); return; }
+  if ((e = q('[data-delkeep]'))) { zeroBlk = null; render(); return; }
+  if ((e = q('[data-undodel]'))) {
+    const u = delUndo; delUndo = null; $('toast').hidden = true; if (!u) return;
+    const home = u.tpl ? TPLS[u.tpl] : days[u.day];
+    if (home !== u.p) { toast('Too late for this Undo: use "Undo changes" in the bar.'); return; }
+    u.p.blocks.splice(Math.min(u.i, u.p.blocks.length), 0, u.item);
+    if (u.tpl) rebuildUsing(u.tpl === 'empty' ? '*' : u.tpl); else meta[u.day].edited = true;
+    sel = -1; render(); toast(`${btitle(u.item)} is back (not saved yet).`); return;
+  }
   if ((e = q('[data-safe]'))) {
     const v = e.dataset.safe, go = afterSafe; afterSafe = null; $('sheet').hidden = true;
     if (v === 'review') { const ch = changedDays(); view = 'plan'; tab = 'day'; if (ch.length) cur = ch[0]; sel = -1; render(); toast('Here are your unsaved changes. Press Plan done when it looks right.'); return; }
@@ -1103,7 +1135,9 @@ document.addEventListener('click', ev => {
     toastUndo(`Pushed ${n} fixed dates and times of November to your calendar.`); render(); return;
   }
   if ((e = q('[data-autofix]'))) { autoFix(); toast('Auto-fix done (not saved yet): the rest was spread over the tiles you did not touch. Check the month goals.'); render(); return; }
-  if ((e = q('[data-dur]'))) { const [i, d] = e.dataset.dur.split(':').map(Number); p.blocks[i].dur = Math.max(15, p.blocks[i].dur + d); touched(); render(); return; }
+  if ((e = q('[data-dur]'))) { const [i, d] = e.dataset.dur.split(':').map(Number);
+    if (d < 0 && p.blocks[i].dur + d < 15) { zeroBlk = p.blocks[i]; render(); return; }   // v8: would hit 0 → ask "Delete?"
+    p.blocks[i].dur = Math.max(15, p.blocks[i].dur + d); touched(); render(); return; }
   if ((e = q('[data-sel]'))) { const i = +e.dataset.sel; sel = sel === i ? -1 : i; calEdit = -1; adding = false; render(); return; }
   if ((e = q('[data-setk]'))) { p.blocks[sel].k = e.dataset.setk; p.blocks[sel].d = null; touched(); render(); return; }
   if ((e = q('[data-setd]'))) { p.blocks[sel].d = e.dataset.setd || null; touched(); render(); return; }
@@ -1117,7 +1151,7 @@ document.addEventListener('click', ev => {
     const j = sel + +e.dataset.mv; if (j < 0 || j >= p.blocks.length) return;
     [p.blocks[sel], p.blocks[j]] = [p.blocks[j], p.blocks[sel]]; sel = j; touched(); render(); return;
   }
-  if ((e = q('[data-del]'))) { p.blocks.splice(sel, 1); sel = -1; touched(); render(); return; }
+  if ((e = q('[data-del]'))) { delBlock(p, sel); return; }
   if ((e = q('[data-addtoggle]'))) { adding = !adding; sel = -1; render(); return; }
   if ((e = q('[data-add]'))) { p.blocks.push(b(e.dataset.add, null, 60)); adding = false; sel = p.blocks.length - 1; touched(); render(); return; }
   if ((e = q('[data-ready]'))) {
@@ -1170,6 +1204,7 @@ document.addEventListener('click', ev => {
   }
   if ((e = q('[data-lateok]'))) { planDone(); late = null; view = 'tap'; render(); miniStamp('Plan updated', 'first: ' + btitle(days[TODAY].blocks[layoutDay(days[TODAY]).segs.find(x => x.gap == null).i])); return; }
   if ((e = q('#reset'))) { late = null; reset(); render(); return; }
+  if (hadZero && !zeroBlk) render();   // v8: clicked somewhere else → close the "Delete?" overlay
 });
 let drag = null;
 document.addEventListener('pointerdown', ev => {
