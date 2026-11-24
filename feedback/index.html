@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget · Feedback &amp; bugs</title>
+<!--
+  Feedback page (step 04i_feedback_page). Public on GitHub Pages: /feedback/
+  Our own quick form. It sends each message to a Google Form in the background
+  (POST to .../formResponse), and the Form stores it in a PRIVATE Google Sheet in Samuel's Drive.
+  Only the PUBLIC Form id + entry numbers go in this file. Never put the Sheet link here.
+  All questions in the Google Form must have "Required" OFF, or Google silently drops messages.
+  URL options: ?screen=<key> preselects the screen (the app passes the last screen you saw),
+               ?from=app marks that it was opened inside the app.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Literata:opsz,wght@7..72,600&display=swap">
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --ok: #2F7A4F;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif;
+  --font-head: "Literata", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+    --accent: #8FC4B3; --accent-soft: #213430; --ok: #7CCB9B; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); }
+body.inapp { background: var(--surface); }
+main { max-width: 600px; margin: 0 auto; padding: 28px 16px 40px; }
+body.inapp main { padding: 14px 16px 24px; }
+h1 { font: 600 26px/1.2 var(--font-head); margin: 0 0 8px; }
+body.inapp h1, body.inapp a.back { display: none; }   /* the app's own header already says "Feedback" */
+a.back { display: inline-block; margin: 0 0 14px; color: var(--accent); text-decoration: none; font-weight: 600; }
+.lead { margin: 0 0 14px; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+body.inapp .card { border: 0; padding: 0; }
+label.top { display: block; font-weight: 700; margin: 0 0 6px; }
+textarea, input, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+textarea { min-height: 130px; resize: vertical; }
+textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.chips button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 13px; font: 600 14px var(--font-ui); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.chips span { font-size: 13px; color: var(--muted); align-self: center; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 0; }
+.row label { font-size: 13px; color: var(--muted); display: block; }
+details { margin: 12px 0 0; font-size: 14px; }
+details summary { color: var(--accent); cursor: pointer; font-weight: 600; }
+details label { font-size: 13px; color: var(--muted); display: block; margin: 8px 0 3px; }
+.send { display: block; width: 100%; margin: 14px 0 0; border: 0; border-radius: 12px; padding: 13px; background: var(--accent); color: #fff; font: 700 16px var(--font-ui); cursor: pointer; }
+@media (prefers-color-scheme: dark) { .send { color: #10201b; } }
+.send:disabled { opacity: .5; cursor: default; }
+.status { min-height: 22px; margin: 10px 0 0; font-weight: 600; }
+.status.ok { color: var(--ok); }
+.status.err { color: #C0522F; }
+.small { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+.small a { color: var(--accent); }
+.soon { padding: 6px 0 2px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="../">‹ Time Budget</a>
+  <h1>Feedback &amp; bugs</h1>
+  <p class="lead">Anything odd, broken, confusing or missing? Just write it down. Several things at once are fine, one per line. No account needed.</p>
+
+  <div class="card">
+    <form id="fb" autocomplete="off">
+      <label class="top" for="what">What did you notice?</label>
+      <textarea id="what" placeholder="e.g. Typo on Plans: &quot;buddget&quot;&#10;The Stop button is hard to hit on my phone&#10;Idea: a weekly summary"></textarea>
+
+      <div class="chips" id="kinds" role="group" aria-label="Kind (optional)">
+        <button type="button" data-v="Bug" aria-pressed="false">Bug</button>
+        <button type="button" data-v="Text" aria-pressed="false">Text</button>
+        <button type="button" data-v="Idea" aria-pressed="false">Idea</button>
+        <span>optional</span>
+      </div>
+
+      <div class="row">
+        <div><label for="screen">Screen</label><select id="screen"></select></div>
+        <div><label for="name">Your name (optional)</label><input id="name" maxlength="60"></div>
+      </div>
+
+      <details>
+        <summary>Add a screenshot link</summary>
+        <label for="img">Upload the image anywhere (for example <a href="https://imgur.com/upload" target="_blank" rel="noopener">imgur.com</a>) and paste its link:</label>
+        <input id="img" type="url" placeholder="https://…">
+      </details>
+
+      <button class="send" id="send" type="submit">Send</button>
+      <div class="status" id="status" aria-live="polite"></div>
+    </form>
+  </div>
+  <p class="small">Your device type (phone / PC, app / browser) is added automatically. Messages are stored privately for the developer.
+    <span id="realForm" hidden>Problems sending? <a id="formLink" href="#" target="_blank" rel="noopener">Use the plain form</a>.</span></p>
+</main>
+
+<script>
+/* ---------- the Google Form (public parts only) ----------
+   id      = the long code in the Form's link: https://docs.google.com/forms/d/e/<id>/viewform
+   entries = the field numbers, from the Form's "Get pre-filled link" (each looks like entry.123456789)
+   Option texts (KINDS on the chips, SCREENS, device()) must match the Form's option texts EXACTLY. */
+const FORM = {
+  id: '1FAIpQLSeYyWLfw942DSvjA0o7wKBuFf_R6JPNuYzWAPVn6V2P9AauQw',
+  entries: { kind: 'entry.240508226', screen: 'entry.299997008', what: 'entry.830631340', device: 'entry.198104739',
+             image: 'entry.299391013', name: 'entry.1140473963' }   // image: empty would hide the screenshot box
+};
+
+/* app screen key → the option text in the Form's "Which screen?" dropdown */
+const SCREENS = {
+  tap: 'Tap (timer)', plans: 'Plans', overviews: 'Overviews', rewards: 'Rewards',
+  categories: 'Categories', goals: 'Goals', settings: 'Settings', rules: 'Rules', tour: 'Tour (onboarding)',
+  sync: 'Sync', checkin: 'Check-in', journey: 'Journey', yes: 'Yes-check', more: 'More',
+  web: 'Website', other: 'Other / not sure'
+};
+
+const $ = id => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+const inApp = q.get('from') === 'app' || window.self !== window.top;
+if (inApp) document.body.classList.add('inapp');
+
+/* screen picker, preselected from ?screen= (app) or "Website" (opened from the web) */
+for (const k in SCREENS) $('screen').add(new Option(SCREENS[k], SCREENS[k]));
+$('screen').value = SCREENS[q.get('screen')] || (inApp ? SCREENS.other : SCREENS.web);
+
+/* name is remembered on this device only */
+const NAME_KEY = 'tb.feedback.name';
+try { $('name').value = localStorage.getItem(NAME_KEY) || ''; } catch (e) {}
+
+/* kind chips: optional, one at a time, tap again to clear */
+let kind = '';
+$('kinds').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  kind = kind === b.dataset.v ? '' : b.dataset.v;
+  [...$('kinds').querySelectorAll('button')].forEach(x => x.setAttribute('aria-pressed', x.dataset.v === kind));
+});
+
+function device() {           // the option text in the Form's "Device" question
+  const phone = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (matchMedia('(pointer: coarse)').matches && innerWidth < 900);
+  let installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  try { installed = installed || top.matchMedia('(display-mode: standalone)').matches; } catch (e) {}
+  return (phone ? 'Phone' : 'PC') + ' · ' + (installed ? 'installed app' : 'browser');
+}
+
+if (!FORM.entries.image) document.querySelector('details').hidden = true;
+const base = () =>'https://docs.google.com/forms/d/e/' + FORM.id;
+if (FORM.id) { $('formLink').href = base() + '/viewform'; $('realForm').hidden = false; }
+else { $('send').disabled = true; $('status').textContent = 'Not connected yet: sending opens soon.'; }
+
+function say(text, cls) { $('status').textContent = text; $('status').className = 'status ' + (cls || ''); }
+
+$('fb').addEventListener('submit', async e => {
+  e.preventDefault();
+  const what = $('what').value.trim();
+  if (!what) { say('Write something first.', 'err'); $('what').focus(); return; }
+  const E = FORM.entries, body = new URLSearchParams();
+  const put = (k, v) => { if (E[k] && v) body.append(E[k], v); };
+  put('what', what); put('kind', kind); put('screen', $('screen').value); put('device', device());
+  put('image', $('img').value.trim()); put('name', $('name').value.trim());
+  try { localStorage.setItem(NAME_KEY, $('name').value.trim()); } catch (e2) {}
+  $('send').disabled = true; say('Sending…');
+  try {
+    // Google doesn't let the page read its reply ("no-cors"), so a finished request counts as sent.
+    await fetch(base() + '/formResponse', { method: 'POST', mode: 'no-cors', body });
+    $('what').value = ''; $('img').value = '';
+    kind = ''; [...$('kinds').querySelectorAll('button')].forEach(x => x.setAttribute('aria-pressed', 'false'));
+    say('Sent ✓ Thank you! Anything else?', 'ok');
+    $('what').focus();
+  } catch (err) {
+    say('Could not send (offline?). Your text is still here: try again, or use the plain form below.', 'err');
+  }
+  $('send').disabled = false;
+});
+</script>
+</body>
+</html>
