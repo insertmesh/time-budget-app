@@ -190,6 +190,7 @@ const BAR_FIRST_S   = 180;  // grey first tile of the day: runs out → it start
 const BAR_BED_S     = 300;  // "Time to sleep!": runs out → Sleep starts, counted from bedtime
 const WAKE = '07:00';       // planned start of the day (the Plans page comes later)
 const BEDTIME = '22:30';    // planned bedtime
+const NEXT_SLEEP_FROM = 90; // "next" may suggest Sleep only from this many minutes before BEDTIME (fix 2026-11-24); before that, a used-up plan starts again from the top
 const DAY_START = '04:00';  // a "day" in this app runs from 04:00 to 04:00 (so staying up past midnight still counts as the evening)
 
 const $ = id => document.getElementById(id);
@@ -344,7 +345,7 @@ const FELT = (() => {
 })();
 
 // ================= content (temporary 8 tiles, approved 2026-11-12) =================
-const TITLE = { a09: 'Work', a08: 'Commute', a05: 'Chores', a06: 'Food', a01: 'Family', a02: 'Friends', a04: 'Hobby', a03: 'Chill', sleep: 'Sleep', stuck: 'Stuck' };
+const TITLE = { a09: 'Work', a08: 'Commute', a05: 'Chores', a06: 'Food', a01: 'Family', a02: 'Friends', a04: 'Hobby', a03: 'Self Care', sleep: 'Sleep', stuck: 'Stuck' };
 const TINT = { a09: '#7E9BB6', a08: '#4FA3A0', a05: '#C9A98A', a06: '#E0A25A', a01: '#C77FA3', a02: '#D88A72', a04: '#9C88CC', a03: '#E0B45F', sleep: '#5B5FA8', stuck: '#A7A09A' };
 const ALL8 = ['a09', 'a08', 'a05', 'a06', 'a01', 'a02', 'a04', 'a03'];
 const DETAIL = {
@@ -365,7 +366,7 @@ const PLAN = [['a06', 'Coffee / breakfast'], ['a09', null], ['a06', 'Lunch break
 const RW = {
   a09: 'Work logged. Real hours, real name.', a08: 'Commute logged. The road gets its own line.', a05: 'Chores logged. Somewhere a sink is grateful.',
   a06: 'Food logged. Mmm.', a01: 'Family time logged. That one counts double.', a02: 'Friend time logged. Driving not included.',
-  a04: 'Hobby time logged. Protect it.', a03: 'Chilling logged. No guilt.',
+  a04: 'Hobby time logged. Protect it.', a03: 'Self care logged. No guilt.',
   sleep: 'Good night. Sleep runs until your first tap tomorrow.', stuck: 'Stuck logged. Data, not a verdict.'
 };
 const AWAKE_H = 16;
@@ -411,14 +412,28 @@ function migrate(d) {
   } else o.flow = Object.assign(blankFlow(), d.flow || {});
   return o;
 }
+// Sync (step 04f): save() stamps what changed since the last load/save, so two devices can be merged (app/sync/merge.js).
+//   entry.u = when that entry last changed; S.meta.flow / .plan / .settings = when that part last changed. Extra fields only:
+//   the data model stays v2 and older copies of this page keep them untouched.
+let snap = null;
+const snapshot = () => { snap = JSON.parse(JSON.stringify(S)); };
+function stampChanges(t) {
+  const strip = e => JSON.stringify(Object.assign({}, e, { u: 0 }));
+  const old = new Map(((snap && snap.entries) || []).map(e => [e.id, strip(e)]));
+  S.entries.forEach(e => { if (old.get(e.id) !== strip(e)) e.u = t; });
+  S.meta = Object.assign({}, S.meta || {});
+  ['flow', 'plan', 'settings'].forEach(k => { if (!snap || JSON.stringify(snap[k]) !== JSON.stringify(S[k])) S.meta[k] = t; });
+}
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const d = migrate(JSON.parse(raw)); if (d) { const was = JSON.parse(raw).v; S = d; if (was === 1) save(); } }
+    if (raw) { const d = migrate(JSON.parse(raw)); if (d) { const was = JSON.parse(raw).v; S = d; snapshot(); if (was === 1) save(); } }
   } catch (e) { storageOk = false; }
+  if (!snap) snapshot();
 }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; }
+  stampChanges(Date.now());                          // real clock (not ?shift), so devices compare fairly
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; snapshot(); }
   catch (e) { storageOk = false; toast('Could not save in this browser. Use "Export data" to keep a copy.', true); }
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -711,8 +726,8 @@ let showAll = false, logOpen = false;
 function renderPicker() {
   const F = S.flow, m = mode(), r = running();
   if (m === 'sleepq' || m === 'plan') { $('picker').innerHTML = ''; return; }
-  const sleepNext = F.up || S.plan.idx >= PLAN.length - 1;
-  const ni = S.plan.idx + 1;
+  const sleepNext = nextIsSleep(now());
+  const ni = nextIdx();
   const hideNext = m.startsWith('bed') || (r && r.tile === 'sleep' && m === 'run');
   const nextLbl = sleepNext ? 'Sleep' : label(PLAN[ni][0], PLAN[ni][1]);
   const cur = F.bed ? F.bed.alt : F.pending ? F.pending.key : r && m === 'run' ? r.tile : null;
@@ -789,19 +804,24 @@ function toast(msg, bad) { const t = $('toast'); t.textContent = msg; t.classNam
 
 let lastMinute = -1;
 setInterval(() => {
+  if (!started) return;                              // waiting for the first sync (max 5 s, 04f)
   const t = now();
   if (advance(t)) { renderAll(); return; }
   live();
   const m = Math.floor(t / 60000);
   if (m !== lastMinute) { lastMinute = m; renderToday(); }
 }, 1000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && advance(now())) renderAll(); });
+document.addEventListener('visibilitychange', () => { if (started && !document.hidden && advance(now())) renderAll(); });
 
 // ================= events =================
+// A pick moves the plan only when it is the very next plan item (fix 2026-11-24: Food used to jump ahead to the next meal).
 function planIdxFor(tile) {
-  for (let j = S.plan.idx + 1; j < PLAN.length; j++) if (PLAN[j][0] === tile) return j;
-  return S.plan.idx;
+  const j = S.plan.idx + 1;
+  return j < PLAN.length && PLAN[j][0] === tile ? j : S.plan.idx;
 }
+// "next" suggests Sleep only after staying up, or when the plan is used up AND bedtime is close (fix 2026-11-24).
+const nextIsSleep = t => !!S.flow.up || (S.plan.idx >= PLAN.length - 1 && t >= bedAt(t) - NEXT_SLEEP_FROM * 60000);
+const nextIdx = () => S.plan.idx >= PLAN.length - 1 ? 0 : S.plan.idx + 1;
 function setDetail(d, t) {
   const r = running(); if (!r || r.detail === d) return;
   if (r.detail == null) r.detail = d;               // first detail names the whole tap so far
@@ -840,6 +860,8 @@ function heroTap(t) {
   playArt($$('#hero .stage > .art'));               // tapping the running tile again changes nothing
 }
 document.addEventListener('click', ev => {
+  if (window.parent !== window) window.parent.postMessage({ tbUserTap: 1 }, '*');   // sync (04f): a tap may renew the Google sign-in
+  if (!started) begin();                              // a tap before the first sync finished: go with what we have
   const q = s => ev.target.closest(s), t = now(), F = S.flow; let b;
   if (advance(t)) { renderAll(); return; }           // a bar ran out a moment ago: show that first
   if ((b = q('[data-nighty]'))) { nightyShow = b.dataset.nighty === 'close' ? 'closed' : null; renderNight(); return; }
@@ -855,8 +877,8 @@ document.addEventListener('click', ev => {
   if ((b = q('[data-why]'))) { F.bed.whyPick = b.dataset.why; save(); renderHero(); renderDetail(); return; }   // select only
   if ((b = q('[data-bedback]'))) { F.bed.phase = 'ask'; F.bed.alt = null; F.bed.whyPick = null; commit(); return; }
   if ((b = q('[data-next]'))) {
-    if (F.up || S.plan.idx >= PLAN.length - 1) { const ba = bedAt(t); goBed(Math.min(t, ba), t, t); commit({ peel: true }); return; }
-    const i = S.plan.idx + 1;
+    if (nextIsSleep(t)) { const ba = bedAt(t); goBed(Math.min(t, ba), t, t); commit({ peel: true }); return; }
+    const i = nextIdx();
     S.plan.idx = i;                                  // "next" walks the plan even if the proposal is not confirmed
     propose(PLAN[i][0], PLAN[i][1], t, i); commit({ peel: true }); return;
   }
@@ -899,8 +921,12 @@ window.addEventListener('storage', e => { if (e.key === KEY) { load(); renderAll
 
 if (FAST || SHIFT_MS) { const tb = $('testbar'); tb.hidden = false; tb.textContent = 'TEST MODE' + (FAST ? ' · all bars 10 s' : '') + (SHIFT_MS ? ' · clock shifted ' + (SHIFT_MS / 60000) + ' min' : '') + ' · uses the real data'; }
 load();
-advance(now());
-renderAll();
+// Sync (04f): inside the app frame with sync on, wait for the first sync (max 5 s) before any bar or default acts,
+// so this device does not act on old data. Without sync (or opened alone / from disk) it starts at once.
+const SYNC = (() => { try { return window.parent !== window && window.parent.TBSync && window.parent.TBSync.info().on ? window.parent.TBSync : null; } catch (e) { return null; } })();
+let started = false;
+function begin() { if (started) return; started = true; load(); advance(now()); renderAll(); }
+if (SYNC) { renderAll(); SYNC.ready.then(begin, begin); } else begin();
 if (!storageOk) toast('This browser blocks saving. Taps will be lost on reload.', true);
 })();
 </script>
