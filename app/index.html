@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Time Budget</title>
+<!-- installable app (PWA, step 04d): manifest = name + icon; the service worker ../sw.js keeps an offline copy -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#3D6B5E">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <!--
   Time Budget app with its navigation (step 02k_app_navigation, 2026-11-18).
   Bottom bar: Tap · Plans · Overviews · Rewards · More (design: ..\mockup\02k_navigation\navigation.html).
@@ -46,6 +51,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .subhead b { font: 600 17px/1.2 var(--font-head); }
 .backbtn { border: 0; background: none; color: var(--accent); font-weight: 700; padding: 6px 8px 6px 0; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 .backbtn .chev { font-size: 24px; line-height: 1; margin-top: -3px; }
+.preview { flex: none; padding: 5px 12px; background: #FBEFD9; color: #7A4B12; border-bottom: 1px solid #EBD3A8; font-size: 12.5px; font-weight: 700; text-align: center; }
+.preview span { font-weight: 500; }
 .frames { flex: 1; position: relative; }
 .frames iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--surface); }
 .frames iframe.off { display: none; }
@@ -81,6 +88,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <body>
 <div class="phone" id="phone">
   <div class="subhead" id="subhead" hidden></div>
+  <div class="preview" id="preview" hidden>Preview – not your data <span>· design only, nothing here is saved</span></div>
   <div class="frames" id="frames"></div>
   <button type="button" class="pill" id="pill" hidden></button>
   <nav class="tabbar" id="tabbar" aria-label="App navigation"></nav>
@@ -174,7 +182,8 @@ function moreDoc() {   // the More list
   button b{margin-left:auto;color:${v('--muted')};font-size:20px;font-weight:400}button.soon{color:${v('--muted')};font-weight:500;font-style:italic}
   p{font-size:12px;color:${v('--muted')}}</style></head><body><h1>More</h1>
   ${MORE.map(([k, i, l]) => `<button class="${/coming/.test(l) ? 'soon' : ''}" onclick="parent.postMessage({tbPush:'${k}'},'*')"><i>${i}</i>${l}<b>›</b></button>`).join('')}
-  <p>Export / import of your tapped data: on the Tap screen, below the timer.</p></body></html>`;
+  <p>Export / import of your tapped data: on the Tap screen, below the timer.</p>
+  <p>Storage on this device: ${STORE}</p></body></html>`;
 }
 
 /* ---------- messages from the screens ---------- */
@@ -227,6 +236,7 @@ function show() {
   sh.hidden = st.length < 2;
   if (!sh.hidden) sh.innerHTML = `<button class="backbtn" id="subBack"><span class="chev">‹</span>${TITLE[st[st.length - 2].id]}</button><b>${TITLE[e.id]}</b>`;
   if (S.tab !== 'tap') S.covered = false;
+  $('preview').hidden = e.id === 'tap' || e.id === 'more';   // label every design-only screen (04d)
   S.sig = ''; drawBar();
 }
 function drawBar() {
@@ -251,6 +261,19 @@ document.addEventListener('click', e => {
   if (t.id === 'pill') return goTab('tap');
 });
 show();
+
+/* ---------- installable app (step 04d): offline copy + ask the browser to keep our data ---------- */
+var STORE = 'checking…';
+// only on the real site (https). Local servers get it only with ?sw, so design chats never see stale cached files.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || /[?&]sw\b/.test(location.search))) {
+  navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(err => console.warn('offline copy not set up:', err));
+}
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().then(ok => {
+    STORE = ok ? 'kept (the browser will not clear it by itself)' : 'normal (the browser may clear it when space runs low; export now and then)';
+    const m = S.stacks.more[0].frame; if (m) m.srcdoc = moreDoc();
+  });
+} else STORE = 'normal (this browser cannot promise to keep it)';
 })();
 </script>
 </body>
