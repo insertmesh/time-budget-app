@@ -177,7 +177,7 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
 
 <div class="controls" aria-label="Mockup controls">
   <span class="tag">Mockup controls · not part of the app</span>
-  <span class="ver" id="ver">Settings v2 · 2026-11-17</span>
+  <span class="ver" id="ver">Settings v3 · 2026-11-26</span>
   <label>Page <span class="seg" id="themeSeg"><button type="button" data-v="auto" aria-pressed="true">auto</button><button type="button" data-v="light" aria-pressed="false">light</button><button type="button" data-v="dark" aria-pressed="false">dark</button></span></label>
   <span class="small muted">Nothing is saved. A small gold dot = changed from the default.</span>
 </div>
@@ -269,6 +269,24 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
             <span class="seg" data-seg="gapto"><button type="button" data-v="next">next activity</button><button type="button" data-v="prev">previous activity</button></span></div>
         </div>
         <div class="tl" id="tl"></div>
+      </div>
+    </div>
+
+    <!-- v3 (04j_missed_tap, 2026-11-26): a tile that keeps running because you forgot to tap -->
+    <div class="sec"><h2 style="font-size:16px">When I forget to tap</h2></div>
+    <div class="card">
+      <div class="row" data-key="forget">
+        <div class="hint" style="margin-top:0">A tile keeps running long after its planned time (e.g. Commute still runs at lunch). What should the app do?</div>
+        <div class="opts" data-opts="forget">
+          <button class="opt" type="button" data-v="A"><span class="t"><span class="radio"></span>Only switch on its own</span><span class="d">A few minutes past the planned end, the next planned tile starts by itself, counted from the planned end. Marked "auto", one tap to undo.</span></button>
+          <button class="opt" type="button" data-v="BC"><span class="t"><span class="radio"></span>Only ask me</span><span class="d">Nothing switches. The tap screen shows the overtime with three choices: Revert to planned time · Split · Continue.</span></button>
+          <button class="opt" type="button" data-v="both"><span class="t"><span class="radio"></span>Both<span class="def">default</span></span><span class="d">The choices show as soon as the tile runs over. If you don't answer, it switches on its own.</span></button>
+        </div>
+        <div class="sub" id="forgetA">
+          <div class="top" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="small"><b>Switch after</b></span>
+            <span class="seg" data-seg="forget_min"><button type="button" data-v="5">5 min</button><button type="button" data-v="10">10 min</button><button type="button" data-v="15">15 min</button><button type="button" data-v="20">20 min</button><button type="button" data-v="30">30 min</button></span></div>
+          <div class="hint">past the planned end. "Correct" on the tap screen fixes any tap right away.</div>
+        </div>
       </div>
     </div>
 
@@ -411,7 +429,7 @@ select { border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; b
     </div>
 
     <button class="btn reset" type="button" data-reset="all">Reset all settings to defaults</button>
-    <p class="small muted" style="text-align:center">Settings v2 · mockup</p>
+    <p class="small muted" style="text-align:center">Settings v3 · mockup</p>
   </div>
   <div class="notif" id="notif" role="status"></div>
   <div class="toast" id="toast" role="status"></div>
@@ -444,6 +462,7 @@ const DEF = {
   bar_suggest: '120', bar_morning: '60', bar_first: '180', bar_bed: '300',
   wake: '07:00', bed: '22:30', daystart: '04:00', planahead: 'before',
   untap: 'C', gap: '10', gapto: 'next',
+  forget: 'both', forget_min: '10',   // v3 (04j): when I forget to tap
   autofix: 'auto', chains: true, chainwhen: 'unplanned',
   selfcare: 'log', toilet: false, bath: 'chill',
   comments: true, sounds: false, snd_good: true, snd_neutral: true, snd_bad: false, pack: 'felt', theme: 'felt', plain: false,
@@ -475,7 +494,7 @@ $('alerts').innerHTML = ALERTS.map(([k, n, h]) => `<div class="row" data-key="${
   `<div class="hint" style="padding:6px 0 10px">Banner = silent message · Sound = message + one sound · Alarm = rings until you tap it.</div>`;
 const SECTIONS = {
   tap: ['colour', 'idle', 'shadow', 'bar_suggest', 'bar_morning', 'bar_first', 'bar_bed'],
-  day: ['wake', 'bed', 'daystart', 'planahead', 'untap', 'gap', 'gapto'],
+  day: ['wake', 'bed', 'daystart', 'planahead', 'untap', 'gap', 'gapto', 'forget', 'forget_min'],
   plans: ['autofix', 'chains', 'chainwhen'],
   cats: ['selfcare', 'toilet', 'bath'],
   check: ['comments', 'sounds', 'snd_good', 'snd_neutral', 'snd_bad', 'pack', 'theme', 'plain'],
@@ -483,7 +502,7 @@ const SECTIONS = {
   alarm: ['notif', 'al_day_on', 'al_day_type', 'al_check_on', 'al_check_type', 'al_check_t', 'al_next_on', 'al_next_type', 'al_next_lead', 'al_next_which', 'al_bed_on', 'al_bed_type', 'alarmsound', 'vibrate', 'vibpat', 'vibalways']
 };
 // which row (data-key) shows the gold dot for which values
-const ROWKEY = { gap: 'untap', gapto: 'untap', chainwhen: 'chains', toilet: 'selfcare', bath: 'selfcare', snd_good: 'sounds', snd_neutral: 'sounds', snd_bad: 'sounds', pack: 'sounds', twoway: 'calsync',
+const ROWKEY = { gap: 'untap', gapto: 'untap', forget_min: 'forget', chainwhen: 'chains', toilet: 'selfcare', bath: 'selfcare', snd_good: 'sounds', snd_neutral: 'sounds', snd_bad: 'sounds', pack: 'sounds', twoway: 'calsync',
   al_day_on: 'al_day', al_day_type: 'al_day', al_check_on: 'al_check', al_check_type: 'al_check', al_check_t: 'al_check',
   al_next_on: 'al_next', al_next_type: 'al_next', al_next_lead: 'al_next', al_next_which: 'al_next', al_bed_on: 'al_bed', al_bed_type: 'al_bed',
   vibpat: 'vibrate', vibalways: 'vibrate' };
@@ -558,6 +577,7 @@ function render() {
 
   // sub panels
   $('untapB').hidden = S.untap !== 'B';
+  $('forgetA').hidden = S.forget === 'BC';
   $('chainsSub').hidden = !S.chains;
   $('selfcareSub').hidden = S.selfcare !== 'log';
   $('soundsSub').hidden = !S.sounds;

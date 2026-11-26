@@ -94,7 +94,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   <nav class="tabbar" id="tabbar" aria-label="App navigation"></nav>
   <div id="toastHost"></div>
 </div>
-<p class="note">Tap = the real tap timer (saves in this browser). Plans, Overviews, Rewards and More show the approved designs; they don't work yet. <a href="../mockup/02k_navigation/navigation.html">How the navigation works</a></p>
+<p class="note">Tap = the real tap timer (saves in this browser). Screens marked Preview show the approved designs and don't work yet; the others are real. <a href="../mockup/02k_navigation/navigation.html">How the navigation works</a></p>
 
 <!-- sync (step 04f): merge rules, Google sign-in + Drive storage, engine. Loaded before the timer frame so the timer can wait for the first sync. -->
 <script src="sync/merge.js"></script>
@@ -148,23 +148,28 @@ const TABS = [['tap','Tap'],['plans','Plans'],['overviews','Overviews'],['reward
 /* ---------- screens: the real timer + the approved mockups (plain names, Decision 2026-11-17) ---------- */
 const PAGE = {
   tap: 'timer.html', plans: M + '02a_plans/plans.html', overviews: M + '02c_overviews/overviews.html', rewards: M + '02d_rewards/rewards.html',
-  categories: M + '02b_categories/categories.html', goals: M + '02b_categories/categories.html#cat=a04', settings: M + '02e_settings/settings.html',
+  categories: 'screens/categories.html', goals: 'screens/categories.html#goals',   // REAL (04h)
+  settings: 'screens/settings.html',   // REAL (04h)
+
   rules: M + '02f_content/content.html#tbshow=rules', tour: M + '02f_content/content.html#tbshow=onb',
-  checkin: M + '06_checkin/checkin.html', journey: M + '07_journey/journey.html', yes: M + '08_yes_check/yes_check.html', more: null,
+  checkin: M + '06_checkin/checkin.html', journey: 'screens/journey.html', yes: M + '08_yes_check/yes_check.html', more: null,
   sync: 'sync.html',                               // REAL screen (04f): Google Drive sync; moves into Settings when Settings is built
   feedback: '../feedback/index.html'               // REAL (04i): feedback page with the Google Form; gets ?from=app&screen=<last screen>
 };
-const REAL = { tap: 1, more: 1, sync: 1, feedback: 1 };         // screens that work for real (no "Preview" label)
+const REAL = { tap: 1, more: 1, sync: 1, feedback: 1, categories: 1, goals: 1, settings: 1, journey: 1 };         // screens that work for real (no "Preview" label)
 const TITLE = { tap: 'Tap', plans: 'Plans', overviews: 'Overviews', rewards: 'Rewards', more: 'More', categories: 'Categories', goals: 'Goals',
   settings: 'Settings', rules: 'Rules', tour: 'Tour', checkin: 'Check-in', journey: 'Journey', yes: 'Yes-check', sync: 'Sync', feedback: 'Feedback' };
 const MORE = [['sync','⟳','Sync · Google Drive'],['categories','▤','Categories'],['goals','◎','Goals'],['settings','⚙','Settings'],['rules','?','Rules'],['tour','▶','Tour (onboarding)'],['feedback','✎','Feedback & bugs'],
-  ['checkin','☾','Check-in · coming (06)'],['journey','➶','Journey · coming (07)'],['yes','✓','Yes-check · coming (08)']];
+  ['checkin','☾','Check-in · coming (06)'],['journey','➶','Journey · shape your week'],['yes','✓','Yes-check · coming (08)']];
+const MOCK = { plans: '/02a_plans/plans.html', overviews: '/02c_overviews/overviews.html', rewards: '/02d_rewards/rewards.html',
+  settings: '/02e_settings/settings.html', checkin: '/06_checkin/checkin.html', journey: '/07_journey/journey.html' };
 const pathOf = u => decodeURIComponent(new URL(u, location.href).pathname);
 function keyOf(href) {         // which screen is this URL? (mockup links point to ../02g_tap/tap.html for the tap screen)
   const path = pathOf(href), hash = new URL(href, location.href).hash;
   if (path.endsWith('/02g_tap/tap.html') || path.endsWith('/app/timer.html') || path.endsWith('/app/index.html')) return 'tap';
-  if (path.endsWith('/02b_categories/categories.html')) return /cat=/.test(hash) ? 'goals' : 'categories';
+  if (path.endsWith('/02b_categories/categories.html') || path.endsWith('/app/screens/categories.html')) return /cat=|goals/.test(hash) ? 'goals' : 'categories';
   for (const k in PAGE) if (PAGE[k] && path === pathOf(PAGE[k])) return k;
+  for (const k in MOCK) if (path.endsWith(MOCK[k])) return k;     // a link to a design mockup whose real screen exists (04h)
   return null;
 }
 
@@ -203,7 +208,14 @@ function syncLine() {
 window.addEventListener('message', e => {
   const m = e.data || {};
   if (m.tbPush === 'feedback') return push('feedback', PAGE.feedback + '?from=app&screen=' + (S.last || 'tap'));   // 04i: preselect the last screen seen
-  if (m.tbPush && PAGE[m.tbPush]) return push(m.tbPush);
+  if (m.tbPush && PAGE[m.tbPush]) {                // 04h: real screens call TBDefaults.go(key, hash)
+    const url = PAGE[m.tbPush] && m.hash ? PAGE[m.tbPush].split('#')[0] + '#' + String(m.hash).replace(/^#/, '') : undefined;
+    if (S.stacks[m.tbPush] && m.tbPush !== S.tab) {   // a tab (Tap / Plans / Overviews / Rewards): switch to it
+      if (url) { const st = S.stacks[m.tbPush]; st[0].url = url; if (st[0].frame) st[0].frame.src = url; }
+      return goTab(m.tbPush);
+    }
+    return push(m.tbPush, url);
+  }
   if (m.tbRun) {
     S.run = m.tbRun.name ? m.tbRun : null;
     S.covered = S.tab === 'tap' && !!m.tbRun.covered;
@@ -222,7 +234,7 @@ function route(k, href) {
   const st = S.stacks[S.tab];
   if (st.length > 1 && st[st.length - 2].id === k) return back();
   if (S.stacks[k] && k !== S.tab) return goTab(k);   // a link to Tap / Plans / … switches to that tab
-  if (k !== S.tab) push(k, PAGE[k] === null ? null : (k === 'goals' || k === 'categories' ? href : PAGE[k]));
+  if (k !== S.tab) push(k, PAGE[k] === null ? null : (k === 'goals' || k === 'categories' ? PAGE[k].split('#')[0] + (new URL(href, location.href).hash || (k === 'goals' ? '#goals' : '')) : PAGE[k]));
 }
 
 /* ---------- moves ---------- */

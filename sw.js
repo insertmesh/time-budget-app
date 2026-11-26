@@ -4,7 +4,7 @@
    - Pages (HTML): try the network first (3 s), else the saved copy -> updates arrive by themselves when online.
    - Everything else (pictures, scripts, fonts): saved copy first, refreshed in the background.
    Your taps are NOT here: they stay in the browser's localStorage (key sam10.timeBudget.v1). */
-const VERSION = 'tb-2026-11-24b-sync';          // change this to force every device to re-download the core files
+const VERSION = 'tb-2026-11-26d-04h-journey';          // change this to force every device to re-download the core files
 const CACHE = VERSION;
 const TILES = ['a01', 'a02', 'a03', 'a04', 'a05', 'a06', 'a08', 'a09'];
 const APP_ASSETS = ['a01_e1_00001_.png','a01_e2_00001_.png','a01_e3_00001_.png','a02_e1_00001_.png','a02_e2_00001_.png','a02_e3_00001_.png',
@@ -16,6 +16,8 @@ const APP_ASSETS = ['a01_e1_00001_.png','a01_e2_00001_.png','a01_e3_00001_.png',
   'sleep_background.png','sleep_moon.png','sleep_sleeper.png','sleep_star.png'];
 const CORE = [
   'app/index.html', 'app/timer.html', 'app/manifest.webmanifest',
+  // real screens (04h); files that don't exist yet are skipped by the install
+  'app/data/defaults.js', ...['categories', 'plans', 'checkin', 'rewards', 'overviews', 'settings', 'content', 'journey'].flatMap(n => [`app/screens/${n}.html`, `app/screens/${n}.logic.js`]),
   'app/sync.html', 'app/data/store.js', 'app/sync/merge.js', 'app/sync/google.js', 'app/sync/engine.js',   // sync (04f); Google's own sign-in script is never cached
   'app/icons/icon-192.png', 'app/icons/icon-512.png', 'app/icons/icon-maskable-512.png', 'app/icons/apple-touch-icon.png',
   ...APP_ASSETS.map(f => 'app/assets/' + f),

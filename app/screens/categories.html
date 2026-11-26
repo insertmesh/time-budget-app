@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget – Categories &amp; Goals</title>
+<script src="../data/store.js"></script>
+<script src="../data/defaults.js"></script>
+<style>
+:root {
+  --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF;
+  --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A4F36; --warn-soft: #F5E4DC; --good: #2F7A4F;
+  --under: #3F78A8; --under-soft: #E0EBF4; --neutral: #8F9A96;
+  --font-ui: "Figtree", system-ui, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632;
+    --accent: #8FC4B3; --accent-soft: #213430; --warn: #E3A38A; --warn-soft: #3A2822; --good: #7CC79A;
+    --under: #8DB8DE; --under-soft: #1E2C38; --neutral: #7A8682; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 var(--font-ui); }
+.wrap { max-width: 720px; margin: 0 auto; padding: 12px 16px 60px; }
+h1 { font-size: 20px; margin: 4px 0 2px; }
+h2 { font-size: 16px; margin: 0 0 6px; }
+.sub { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+button, select, input { font: inherit; color: inherit; }
+.tabs { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+.tab { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-weight: 700; cursor: pointer; }
+.tab.on { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 10px 0; }
+.card.hl { border-color: var(--accent); background: var(--accent-soft); }
+.note { font-size: 13px; color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; font-weight: 600; }
+.seg button.on { background: var(--accent); color: var(--surface); }
+.seg button.on.reduce { background: var(--warn); } .seg button.on.grow { background: var(--good); }
+.btn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 6px 14px; font-weight: 700; cursor: pointer; }
+.btn.pri { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.btn.sm { padding: 3px 10px; font-size: 14px; }
+.lbl { font-size: 13px; color: var(--muted); font-weight: 700; margin: 10px 0 4px; display: block; }
+
+/* tiles */
+.tile { border: 0; background: none; padding: 4px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; position: relative; }
+.tile.on { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.tile .title { font-size: 13px; font-weight: 700; line-height: 1.2; text-align: center; }
+.tile .meta { font-size: 12px; color: var(--muted); }
+.art { position: relative; display: block; flex: none; width: 72px; height: 72px; }
+.art.big { width: 150px; height: 150px; } .art.xs { width: 34px; height: 34px; }
+.layer, .layer img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.layer img { display: block; pointer-events: none; }
+.place { position: absolute; inset: 0; transform-origin: 0 0; }
+.bgwrap { filter: drop-shadow(0 3px 4px rgba(60,40,10,.35)); }
+.ph { position: absolute; inset: 6%; border-radius: 18%; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #FFF4E2; box-shadow: 0 3px 4px rgba(60,40,10,.35); border: 2px dashed rgba(255,244,226,.6); }
+.art.big .ph { font-size: 64px; }
+.grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px 2px; }
+@media (max-width: 480px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+.badge { position: absolute; top: 0; right: 4px; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 1px 6px; background: var(--surface); border: 1px solid var(--line); }
+.badge.lock { color: var(--muted); }
+
+/* chips */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-weight: 600; font-size: 15px; }
+.chip.on { background: var(--accent-soft); border-color: var(--accent); }
+.chip .d { font-weight: 800; margin-left: 4px; }
+.chip .d.reduce { color: var(--warn); } .chip .d.grow { color: var(--good); } .chip .d.keep { color: var(--muted); }
+.chip.add { border-style: dashed; color: var(--muted); }
+.chip.sc { border-color: #A8507C; }
+
+/* stepper */
+.step { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.step button { border: 0; background: var(--bg); width: 36px; height: 34px; font-size: 20px; font-weight: 700; cursor: pointer; }
+.step span { min-width: 78px; text-align: center; font-weight: 700; }
+.sentence { background: var(--accent-soft); border-radius: 10px; padding: 8px 10px; font-weight: 700; margin-top: 10px; }
+.sentence.reduce { background: var(--warn-soft); } .sentence.grow { background: #E1F0E6; }
+@media (prefers-color-scheme: dark) { .sentence.grow { background: #1F3328; } }
+
+/* bars */
+.bar { height: 14px; background: var(--line); border-radius: 999px; position: relative; overflow: visible; }
+.bar .fill { height: 100%; border-radius: 999px; background: var(--neutral); }
+.bar .fill.ok { background: var(--accent); } .bar .fill.over { background: var(--warn); } .bar .fill.under { background: var(--under); }
+.bar .tick { position: absolute; top: -3px; width: 3px; height: 20px; background: var(--ink); border-radius: 2px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+td, th { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+th { font-size: 12px; color: var(--muted); }
+td.n { text-align: right; white-space: nowrap; }
+.pill { font-size: 12px; font-weight: 800; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--line); }
+.pill.reduce { color: var(--warn); border-color: var(--warn); } .pill.grow { color: var(--good); border-color: var(--good); } .pill.keep { color: var(--under); border-color: var(--under); }
+input[type=date] { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 10px; }
+.sentence.keep { background: var(--under-soft); }
+input[type=text], select { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 10px; }
+.phone { border: 2px solid var(--line); border-radius: 20px; padding: 12px; background: var(--bg); }
+.hero { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.det { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 14px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
+input.typed { width: 76px; text-align: right; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Categories &amp; Goals</h1>
+  <p class="sub">Page 1 creates categories and subcategories, page 2 sets how much time each gets (reduce / keep / grow is worked out for you), page 3 builds chains for unplanned time.</p>
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+</div>
+
+<script>
+(function () {
+const A = '../assets/';
+const BG_SCALE = { 1: 1, 2: 1.037, 3: 1.22 };
+const BOX = {
+  a01: [[102,29,405,481],[55,119,376,440],[303,168,453,355]],
+  a02: [[22,23,489,489],[33,117,341,464],[266,167,470,370]],
+  a03: [[77,43,434,376],[102,39,409,337],[240,163,488,347]],
+  a04: [[92,29,386,477],[56,29,477,487],[412,76,452,433]],
+  a05: [[118,32,391,487],[57,29,264,460],[263,151,485,357]],
+  a06: [[32,47,479,453],[122,284,391,486],[246,71,485,327]],
+  a08: [[99,57,399,456],[252,173,464,346],[164,11,344,155]],
+  a09: [[44,35,490,482],[35,99,482,437],[310,165,474,405]]
+};
+// e = element number, r = target rect (px of 512), a = anchor (b bottom / c centre). Same placement as Plans v7.
+const TILES = {
+  a09: [{e:2,r:[82,230,250,400],a:'b'},{e:1,r:[150,130,420,420],a:'b'},{e:3,r:[345,105,432,230],a:'c'}],
+  a08: [{e:1,r:[110,95,410,425],a:'b'}],
+  a01: [{e:1,r:[170,100,385,425],a:'b'},{e:2,r:[82,245,250,425],a:'b'},{e:3,r:[350,300,428,405],a:'b'}],
+  a02: [{e:1,r:[150,95,400,425],a:'b'},{e:2,r:[82,210,240,425],a:'b'},{e:3,r:[330,110,432,215],a:'c'}],
+  a05: [{e:2,r:[82,190,200,425],a:'b'},{e:1,r:[160,95,350,425],a:'b'},{e:3,r:[325,215,432,325],a:'c'}],
+  a06: [{e:2,r:[165,335,345,432],a:'b'},{e:1,r:[95,85,365,370],a:'b'},{e:3,r:[330,215,432,330],a:'c'}],
+  a04: [{e:2,r:[82,120,225,425],a:'b'},{e:1,r:[160,95,375,425],a:'b'},{e:3,r:[380,130,425,410],a:'b'}],
+  a03: [{e:2,r:[95,90,200,190],a:'c'},{e:1,r:[120,200,395,420],a:'b'},{e:3,r:[320,240,432,330],a:'c'}]
+};
+const bgOf = id => ((parseInt(id.slice(1), 10) - 1) % 3) + 1;
+const pct = px => (px / 512 * 100).toFixed(2) + '%';
+function placeOf(box, r, a) {
+  const bw = box[2]-box[0], bh = box[3]-box[1];
+  const s = Math.min((r[2]-r[0])/bw, (r[3]-r[1])/bh);
+  const tx = (r[0]+r[2])/2 - s*(box[0]+box[2])/2;
+  const ty = a === 'c' ? (r[1]+r[3])/2 - s*(box[1]+box[3])/2 : r[3] - s*box[3];
+  return { s, tx, ty };
+}
+const FELT_LAYERS = {   // = timer.html
+  stuck: { clip: 'inset(12.3% 11.5% 12.9% 11.7% round 7%)', els: [['question', 'translate(23.4%, -11.7%) scale(0.432)'], ['person', 'translate(-7.2%, 7.5%) scale(0.588)'], ['yarn', 'translate(24.4%, 15.6%) scale(0.419)']] },
+  sleep: { clip: 'inset(12.9% 12.3% 14.5% 12.3% round 7%)', els: [['moon', 'translate(-18.8%, -17.8%) scale(0.372)'], ['star', 'translate(8.5%, -19.8%) scale(0.37)'], ['sleeper', 'translate(0.1%, 19.2%) scale(0.719)']] }
+};
+function tileArt(id, cls = '') {
+  if (FELT_LAYERS[id]) { const f = FELT_LAYERS[id];
+    return `<span class="art ${cls}"><div class="layer bgwrap"><div class="layer" style="clip-path:${f.clip}"><img src="${A}${id}_background.png" alt=""></div></div>` +
+      f.els.map(([n, place]) => `<div class="layer" style="transform:${place}"><img src="${A}${id}_${n}.png" alt=""></div>`).join('') + `</span>`; }
+  let h = `<div class="layer bgwrap" style="transform:scale(${BG_SCALE[bgOf(id)]})"><img src="${A}background_rgba_0000${bgOf(id)}_.png" alt=""></div>`;
+  TILES[id].forEach(el => {
+    const box = BOX[id][el.e-1], p = placeOf(box, el.r, el.a);
+    h += `<div class="layer"><div class="place" style="transform:translate(${pct(p.tx)},${pct(p.ty)}) scale(${p.s.toFixed(4)})"><img src="${A}${id}_e${el.e}_00001_.png" alt=""></div></div>`;
+  });
+  return `<span class="art ${cls}">${h}</span>`;
+}
+
+// ---------- sample data (minutes per week unless unit says otherwise) ----------
+// g = goal: type fixed|flex|cap (cap = Max), unit day|week|month, amt (in that unit, minutes), base = normal amount (min / week), fr = friction min,
+// until = optional date; mode period (this amount until the date) | deadline (reach total by the date); after normal|zero
+const DAY = 864e5, TODAY = new Date(); TODAY.setHours(0, 0, 0, 0);
+const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const addDays = n => iso(new Date(TODAY.getTime() + n * DAY));
+const fmtDate = x => new Date(x + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const wk = g => g.unit === 'day' ? g.amt * 7 : g.unit === 'month' ? g.amt * 7 / 30.4 : g.amt;
+// first argument = sample seed only: it sets the "normal" amount (base) so the sample shows grow / reduce / keep. The app works direction out itself.
+const G = (dir, type, unit, amt, fr = 0, extra = {}) => { const g = Object.assign({ type, unit, amt, fr, session: 0, note: '', until: '', mode: 'period', after: 'normal', total: 0, done: 0 }, extra);
+  if (g.base === undefined) g.base = Math.round(wk(g) * (dir === 'reduce' ? 1.4 : dir === 'grow' ? 0.7 : 1) / 15) * 15; return g; };
+let CATS = {};   // filled by load() from TBData
+let ORDER = TBDefaults.CAT_ORDER.slice();
+const NAMES = { a11: 'Bureaucracy', a15: 'Car repairs', a12: 'Health appointment' };
+
+const S = { tab: 'cats', cat: 'a05', sub: 'Self care', chain: 0 };
+const $v = document.getElementById('view');
+
+// ---------- helpers ----------
+const fmt = m => { m = Math.round(m); const h = Math.floor(m / 60), r = m % 60; return h ? (r ? `${h} h ${r} min` : `${h} h`) : `${r} min`; };
+const UN = { day: '/ day', week: '/ week', month: '/ month' };
+const DIRL = { reduce: '▼ reduce', keep: '＝ keep', grow: '▲ grow' };
+const TYPEL = { fixed: 'Fixed', flex: 'Flexible', cap: 'Max' };
+const TYPEHELP = { fixed: 'Warns before it moves; the order cannot change (like a fixed block in Plans).', flex: 'A pot per day / week / month; times can move around.', cap: 'A maximum. Going over turns the bar red.' };
+const weeksLeft = g => Math.max(1, Math.ceil((new Date(g.until + 'T00:00') - TODAY) / DAY / 7));
+// effective minutes / week: a deadline goal = what is still missing / weeks left (recalculated every week)
+const effWk = g => (g.until && g.mode === 'deadline') ? Math.max(0, (g.total || 0) - (g.done || 0)) / weeksLeft(g) : wk(g);
+// direction is NOT a setting: it is worked out by comparing the goal with the "normal" amount
+const dirOf = (eff, base) => { const d = eff - base, tol = Math.max(5, base * 0.02); return d > tol ? 'grow' : d < -tol ? 'reduce' : 'keep'; };
+const dirG = g => dirOf(effWk(g), g.base);
+const dirPill = dir => `<span class="pill ${dir}">${DIRL[dir]}</span>`;
+const catEff = id => { const c = CATS[id]; return c.subs.length ? c.subs.reduce((s, x) => s + effWk(x.g), 0) : (c.goal ? wk(c.goal) : 0); };
+const catBase = id => { const c = CATS[id]; return c.subs.length ? c.subs.reduce((s, x) => s + x.g.base, 0) : (c.goal ? c.goal.base : 0); };
+const catSum = catEff;
+const findSub = (cid, n) => CATS[cid] ? CATS[cid].subs.find(s => s.n === n) : undefined;
+const AWAKE_WEEK = 16 * 60 * 7;
+const sentence = (n, g) => { let t = `${n}: ${TYPEL[g.type]} · ${DIRL[dirG(g)]} · `;
+  if (g.until && g.mode === 'deadline') t += `${fmt(g.total || 0)} by ${fmtDate(g.until)} (about ${fmt(effWk(g))} / week)`;
+  else t += `${fmt(g.amt)} ${UN[g.unit]}` + (g.until ? ` until ${fmtDate(g.until)}` : '');
+  if (g.until) t += ` · then ${g.after === 'zero' ? '0' : 'back to normal (' + fmt(g.base) + ' / week)'}`;
+  return t + (g.fr ? ' · friction ' + g.fr + ' min' : ''); };
+const stepVal = g => g.unit === 'month' ? 60 : g.unit === 'day' ? 5 : 15;
+
+// ---------- real data (04h): TBData records ⇄ the page's CATS / CHAINS ----------
+// category / subcategory / goal / chain records (app\DATA_MODEL.md §4). Everything saves at once.
+let snap = {}, saving = false;
+const clean = v => String(v || '').replace(/["<>]/g, '').trim().slice(0, 40);
+const GOAL_KEYS = ['type', 'unit', 'amt', 'base', 'fr', 'session', 'note', 'until', 'mode', 'total', 'after', 'from'];
+function toG(r) { return Object.assign({ type: 'flex', unit: 'week', amt: 0, fr: 0, session: 0, note: '', until: '', mode: 'period', after: 'normal', total: 0, done: 0 }, r, { base: r.base != null ? r.base : Math.round(wk(r)) }); }
+function load() {
+  TBDefaults.ensure(TBData);
+  const cats = TBData.list('category'), subs = TBData.list('subcategory'), goals = TBData.list('goal');
+  const gBySub = {}, gByCat = {};
+  goals.forEach(g => { if (g.sub) gBySub[g.sub] = g; else gByCat[g.cat] = g; });
+  CATS = {}; ORDER = [];
+  cats.filter(c => !c.locked).forEach(c => { ORDER.push(c.id); CATS[c.id] = { name: c.name, subs: [], goal: gByCat[c.id] ? toG(gByCat[c.id]) : null }; });
+  subs.forEach(r => {
+    if (!CATS[r.cat]) return;
+    const g = gBySub[r.id];
+    const s = { id: r.id, n: r.name, gid: g ? g.id : 'g_' + r.id, g: g ? toG(g) : G('keep', 'flex', 'week', 0) };
+    if (r.isSelfCare) { s.sc = true; s.kids = r.kids || []; }
+    CATS[r.cat].subs.push(s);
+  });
+  CHAINS = TBData.list('chain').map(ch => ({ id: ch.id, name: ch.name, steps: (ch.steps || []).map(x => ({ c: x.c, d: x.d || '' })) }));
+  doneSoFar();
+  snap = wanted();
+}
+// deadline goals: "done so far" = minutes tapped on that subcategory since the date was set (computed, never stored)
+function doneSoFar() {
+  let es = []; try { es = TBData.entries(); } catch (e) { es = []; }
+  const now = Date.now();
+  ORDER.forEach(cid => CATS[cid].subs.forEach(s => {
+    if (!s.g.until) return;
+    const from = s.g.from ? new Date(s.g.from + 'T04:00').getTime() : 0;
+    s.g.done = Math.round(es.filter(e => (e.cat || e.tile) === cid && (e.sub ? e.sub === s.id : e.detail === s.n) && e.start >= from)
+      .reduce((m, e) => m + ((e.end || now) - e.start), 0) / 60000);
+  }));
+}
+// the records this page's state stands for: { type: { id: record } }
+function wanted() {
+  const out = { subcategory: {}, goal: {}, chain: {} };
+  ORDER.forEach(cid => {
+    const c = CATS[cid];
+    c.subs.forEach((s, i) => {
+      if (!s.id) { s.id = 's_' + TBData.uid(); s.gid = 'g_' + s.id; }
+      const r = { id: s.id, cat: cid, name: s.n, order: i };
+      if (s.sc) { r.isSelfCare = true; r.kids = s.kids; }
+      out.subcategory[s.id] = r;
+      out.goal[s.gid] = goalRec(s.gid, cid, s.id, s.g);
+    });
+    if (!c.subs.length && c.goal) out.goal['g_' + cid] = goalRec('g_' + cid, cid, null, c.goal);
+  });
+  CHAINS.forEach((ch, i) => {
+    if (!ch.id) ch.id = 'chain_' + TBData.uid();
+    out.chain[ch.id] = { id: ch.id, name: ch.name, order: i, steps: ch.steps.map(x => ({ c: x.c, d: x.d || '', sub: x.d ? subIdOf(x.c, x.d) : null })) };
+  });
+  return out;
+}
+function goalRec(id, cat, sub, g) {
+  const r = { id, cat, sub };
+  GOAL_KEYS.forEach(k => { if (g[k] !== undefined && g[k] !== '') r[k] = g[k]; });
+  return r;
+}
+function subIdOf(cid, name) { const s = CATS[cid] && CATS[cid].subs.find(x => x.n === name); return s ? s.id : null; }
+// write only what changed since the last load / save; keep fields other screens added (additive)
+function persist() {
+  const now = wanted(); saving = true;
+  try {
+    Object.keys(now).forEach(type => {
+      const was = snap[type] || {};
+      Object.keys(now[type]).forEach(id => {
+        if (JSON.stringify(now[type][id]) === JSON.stringify(was[id])) return;
+        const old = TBData.get(type, id) || {};
+        const rec = Object.assign({}, old, now[type][id]);
+        if (type === 'goal') GOAL_KEYS.forEach(k => { if (!(k in now[type][id])) delete rec[k]; });
+        TBData.put(type, rec);
+      });
+      Object.keys(was).forEach(id => { if (!now[type][id]) TBData.remove(type, id); });
+    });
+  } finally { saving = false; }
+  snap = now;
+}
+
+// ---------- views ----------
+function tabs() {
+  const T = [['cats','1 · Categories'], ['goals','2 · Goals'], ['chains','3 · Chains']];
+  document.getElementById('tabs').innerHTML = T.map(([k, l]) => `<button class="tab ${S.tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('');
+}
+
+function tileBtn(id, label, meta, extraCls = '', badge = '') {
+  return `<button class="tile ${extraCls}" data-cat="${id}">${badge}${tileArt(id)}<span class="title">${label}</span><span class="meta">${meta}</span></button>`;
+}
+
+function viewCats() {
+  const c = CATS[S.cat], isSys = S.cat === 'stuck' || S.cat === 'sleep';
+  let h = `<div class="card"><h2>The 10 tiles</h2><div class="grid">`;
+  ORDER.forEach(id => h += tileBtn(id, CATS[id].name, `${CATS[id].subs.length} subs`, S.cat === id ? 'on' : ''));
+  h += tileBtn('stuck', 'Stuck', 'system', S.cat === 'stuck' ? 'on' : '', '<span class="badge lock">🔒</span>');
+  h += tileBtn('sleep', 'Sleep', 'system', S.cat === 'sleep' ? 'on' : '', '<span class="badge lock">🔒</span>');
+  h += `</div><p class="note">Stuck and Sleep are system tiles: they cannot be renamed or deleted and have no subcategories. Tap a tile to edit it.</p></div>`;
+
+  if (S.cat === 'stuck') h += sysCard('Stuck', 'The "?" tile. Not pickable; it appears when a bar runs out and in the checkout. Its reasons are the "sub-items" (relationship issue, meltdown, shutdown, doomscrolling…).',
+    'Optional goal: <b>reduce</b> (cap) so you see how much time went to being stuck. Data, not shame.', 'reduce', 'cap', 'week', 420);
+  else if (S.cat === 'sleep') h += sysCard('Sleep', 'Planned bedtime and wake-up come from the Plans page (linked, 16 h awake / 8 h sleep).',
+    'Goal: a length (e.g. 8 h / day). Sleeping less shows up as a cost elsewhere, it is not repaid by oversleeping (HANDOFF decision 5).', 'keep', 'flex', 'day', 480);
+  else h += catCard(c);
+
+  return h;
+}
+
+function sysCard(name, what, goalNote, dir, type, unit, amt) {
+  return `<div class="card hl"><h2>${name} <span class="pill">system tile</span></h2><p>${what}</p>
+  <div class="sentence ${dir === 'keep' ? 'keep' : dir}">${name}: ${TYPEL[type]} · ${DIRL[dir]} · ${fmt(amt)} ${UN[unit]}</div><p class="note">${goalNote}</p></div>`;
+}
+
+function catCard(c) {
+  const sub = findSub(S.cat, S.sub);
+  let h = `<div class="card hl"><h2>${c.name} · subcategories</h2>
+  <p class="note">Written by you. They become the text buttons under the big tile on the tap screen. Goals are set on the Goals page.</p><div class="chips">`;
+  c.subs.forEach(s => h += `<button class="chip ${s.n === S.sub ? 'on' : ''} ${s.sc ? 'sc' : ''}" data-sub="${s.n}">${s.n}</button>`);
+  h += `<button class="chip add" data-addsub="1">＋ add subcategory</button></div>
+  <div class="row" id="addrow" style="margin-top:8px" hidden><input type="text" id="newsub" placeholder="e.g. Plant watering"><button class="btn pri sm" data-addok="1">Add</button></div></div>`;
+  if (sub) {
+    h += `<div class="card"><h2>${sub.n}</h2><span class="lbl">Rename</span><input type="text" data-rename="1" value="${sub.n}">
+    <span class="lbl">Move to</span><select data-move="1">${ORDER.map(id => `<option value="${id}" ${id===S.cat?'selected':''}>${CATS[id].name}</option>`).join('')}</select>
+    <div class="row" style="margin-top:10px"><button class="btn pri sm" data-goto="1">Set its goal →</button><button class="btn sm" data-del="1">Delete subcategory</button></div></div>`;
+    if (sub.sc) h += selfCareCard(sub);
+  }
+  return h;
+}
+
+const toH = m => +(m / 60).toFixed(2);
+function goalEditor(s) {
+  const g = s.g, dir = dirG(g);
+  let h = `<div class="card"><h2>${s.n} · goal</h2>`;
+  h += `<div class="sentence ${dir}">${dirPill(dir)} compared with your normal amount of ${fmt(g.base)} / week</div>
+    <div class="note">No direction button any more: set the first amount and it counts as "＝ keep". Change it later and the label follows by itself (▲ more than normal, ▼ less). </div>`;
+  h += `<span class="lbl">Type</span><div class="seg">${['fixed','flex','cap'].map(t => `<button class="${g.type===t?'on':''}" data-type="${t}">${TYPEL[t]}</button>`).join('')}</div><div class="note">${TYPEHELP[g.type]}</div>`;
+  if (!(g.until && g.mode === 'deadline')) {
+    h += `<span class="lbl">Amount (type it, or use ＋ / −)</span><div class="row"><input type="text" class="typed" data-typed="sub" value="${toH(g.amt)}" inputmode="decimal" aria-label="amount in hours"> <b>h</b>
+      <div class="step"><button data-amt="-1">−</button><span>${fmt(g.amt)}</span><button data-amt="1">＋</button></div>
+      <div class="seg">${['day','week','month'].map(u => `<button class="${g.unit===u?'on':''}" data-unit="${u}">${u}</button>`).join('')}</div></div>
+      <div class="note">Switch day / week / month and the amount converts by itself. Typing: 1.5 · 1:30 · 90m</div>`;
+  }
+  h += `<span class="lbl">Until a date (optional)</span>`;
+  if (!g.until) h += `<button class="btn sm" data-untilon="1">📅 ＋ until a date…</button> <span class="note">for a holiday, a gig, a deadline</span>`;
+  else {
+    h += `<div class="row"><input type="date" data-date="1" value="${g.until}" aria-label="until date"><button class="btn sm" data-untiloff="1">✕ remove date</button></div>
+      <span class="lbl">What kind of date?</span><div class="seg"><button class="${g.mode==='period'?'on':''}" data-mode="period">A while: this amount until the date</button><button class="${g.mode==='deadline'?'on':''}" data-mode="deadline">Deadline: reach a total by the date</button></div>`;
+    if (g.mode === 'period') h += `<div class="note">E.g. a holiday: more (or less) time every week until the date. The amount above counts until then.</div>`;
+    else {
+      const left = Math.max(0, (g.total || 0) - (g.done || 0));
+      h += `<div class="note">E.g. car repairs before the inspection, or 50 h of music before a gig. You say how much in total; the app works out the weekly amount.</div>
+      <span class="lbl">Total to reach by ${fmtDate(g.until)}</span><div class="row"><input type="text" class="typed" data-typed="total" value="${toH(g.total || 0)}" inputmode="decimal" aria-label="total in hours"> <b>h</b>
+        <div class="step"><button data-tot="-1">−</button><span>${fmt(g.total || 0)}</span><button data-tot="1">＋</button></div></div>
+      <div class="sentence ${dirG(g)}">Done so far ${fmt(g.done || 0)} · still ${fmt(left)} · ${weeksLeft(g)} weeks left → about <b>${fmt(effWk(g))} / week</b></div>
+      <div class="note">Recalculated every week: miss a week and the next week asks for a bit more. Leaving it unbalanced and catching up later stays your choice.</div>`;
+    }
+    h += `<span class="lbl">After the date</span><div class="seg"><button class="${g.after==='normal'?'on':''}" data-after="normal">Back to normal (${fmt(g.base)} / week)</button><button class="${g.after==='zero'?'on':''}" data-after="zero">Down to 0</button></div>`;
+  }
+  h += `<span class="lbl">Friction (setup, cables, getting going)</span><div class="step"><button data-fr="-5">−</button><span>${g.fr} min</span><button data-fr="5">＋</button></div>
+    <span class="note"> added to every session of this activity</span>`;
+  h += `<span class="lbl">Session length (optional)</span><div class="step"><button data-ses="-15">−</button><span>${g.session ? fmt(g.session) : 'none'}</span><button data-ses="15">＋</button></div>
+    <span class="note"> a running entry past it is flagged, not stopped</span>`;
+  h += `<div class="sentence ${dir}">${sentence(s.n, g)}</div></div>`;
+  return h;
+}
+function catGoalCard(id) {
+  const c = CATS[id], n = c.subs.length;
+  let h = `<div class="card hl"><h2>${c.name} · category goal</h2>`;
+  if (n) {
+    const dir = dirOf(catEff(id), catBase(id));
+    h += `<div class="sentence ${dir}">${c.name}: ${fmt(catEff(id))} / week ${dirPill(dir)} <span class="note">adds up from the subcategory goals below</span></div>
+    <div class="note">The category has no number of its own: it is always the sum of its subcategories.</div>`;
+  } else {
+    if (!c.goal) c.goal = G('keep', 'flex', 'week', 120);
+    const cg = c.goal;
+    h += `<div class="note">No subcategories yet, so the category itself gets one amount.</div>
+    <span class="lbl">Amount (type it, or use ＋ / −)</span><div class="row"><input type="text" class="typed" data-typed="cat" value="${toH(cg.amt)}" inputmode="decimal" aria-label="category amount in hours"> <b>h</b>
+    <div class="step"><button data-camt="-1">−</button><span>${fmt(cg.amt)}</span><button data-camt="1">＋</button></div>
+    <div class="seg">${['day','week','month'].map(u => `<button class="${cg.unit===u?'on':''}" data-cunit="${u}">${u}</button>`).join('')}</div></div>`;
+  }
+  return h + `</div>`;
+}
+
+function selfCareCard(s) {
+  const under = S.cat;
+  let h = `<div class="card" style="border-color:#A8507C"><h2>${s.n} · self care</h2>
+  <p class="note">Hygiene, toilet time and self-regulation after a meltdown are real time. They are not shame; they are part of the 16 awake hours.</p>
+  <span class="lbl">Lives under (top category)</span>
+  <div class="seg"><button class="${under==='a05'?'on':''}" data-sc="a05">Chores</button><button class="${under==='a03'?'on':''}" data-sc="a03">Self Care</button></div>
+  <div class="note">Chores = a thing you HAVE to do (an hour a day). Self Care = it recharges you. Your call: moving it takes the goal with it.</div>
+  <span class="lbl">Parts (switch off what you don't want to log)</span><table>`;
+  s.kids.forEach((k, i) => h += `<tr><td><label><input type="checkbox" data-kid="${i}" ${k.on?'checked':''}> ${k.n}</label>${k.note ? `<div class="note">${k.note}</div>` : ''}</td><td class="n">${k.on ? k.min + ' min / day' : 'off'}</td></tr>`);
+  h += `</table><div class="note" style="margin-top:6px">How thorough to be (log toilet time · long baths count as Chill · "don't care" = counted between activities) is a <b>setting</b>.</div>
+  <button class="btn sm" data-go="settings">Open Settings → Categories</button></div>`;
+  return h;
+}
+
+function mappingCard() {
+  const rows = [['Bureaucracy', 'a11', ['a09','a05'], 'a09'], ['Car repairs', 'a15', ['a08','a05'], 'a08']];
+  let h = `<div class="card"><h2>Where the 3 open activities went (Samuel, 13 Nov)</h2><p class="note">Bureaucracy → Work · Car repairs → Work · Health appointment → part of Self care. Change one to try another place; it moves in the lists above.</p><table>`;
+  rows.forEach(([n, , opts]) => {
+    let cur = ORDER.find(id => CATS[id].subs.some(s => s.n === n));
+    h += `<tr><td>${n}</td><td class="n"><select data-map="${n}">${ORDER.map(id => `<option value="${id}" ${id===cur?'selected':''}>${CATS[id].name}</option>`).join('')}</select></td></tr>`;
+  });
+  return h + `</table></div>`;
+}
+
+function viewGoals() {
+  const isSys = S.cat === 'stuck' || S.cat === 'sleep';
+  if (!isSys && !ORDER.includes(S.cat)) S.cat = 'a09';
+  let h = `<div class="card"><h2>Goals · pick a category</h2><div class="grid">`;
+  ORDER.forEach(id => h += tileBtn(id, CATS[id].name, fmt(catSum(id)) + ' / week', S.cat === id ? 'on' : ''));
+  h += tileBtn('stuck', 'Stuck', 'system', S.cat === 'stuck' ? 'on' : '') + tileBtn('sleep', 'Sleep', 'system', S.cat === 'sleep' ? 'on' : '');
+  h += `</div><p class="note">How much time you want to give each category and subcategory. Creating subcategories is on the Categories page. The totals / reduce-grow overview lives on Overviews.</p></div>`;
+  if (S.cat === 'stuck') return h + sysCard('Stuck', 'The "?" tile: not pickable.', 'Optional goal: a cap, so you see how much time went to being stuck. Data, not shame.', 'reduce', 'cap', 'week', 420);
+  if (S.cat === 'sleep') return h + sysCard('Sleep', 'Bedtime and wake-up come from the Plans page.', 'Goal: a length. Sleeping less shows up as a cost elsewhere.', 'keep', 'flex', 'day', 480);
+  const c = CATS[S.cat];
+  if (!findSub(S.cat, S.sub)) S.sub = c.subs[0] ? c.subs[0].n : null;
+  h += catGoalCard(S.cat);
+  h += `<div class="card"><h2>${c.name} · subcategories</h2><table>`;
+  c.subs.forEach(s => h += `<tr><td><button class="chip ${s.n === S.sub ? 'on' : ''} ${s.sc ? 'sc' : ''}" data-sub="${s.n}">${s.n}</button></td><td>${dirPill(dirG(s.g))} ${TYPEL[s.g.type]}${s.g.until ? ' 📅 ' + fmtDate(s.g.until) : ''}</td><td class="n">${s.g.until && s.g.mode === 'deadline' ? fmt(effWk(s.g)) + ' / week' : fmt(s.g.amt) + ' ' + UN[s.g.unit]}</td></tr>`);
+  h += `</table></div>`;
+  const sub = findSub(S.cat, S.sub);
+  if (sub) h += goalEditor(sub);
+  return h;
+}
+
+let CHAINS = [];   // filled by load()
+function viewChains() {
+  let h = `<div class="card hl"><h2>Chains · for time you did not plan</h2>
+  <p class="note">Don't want to plan the whole day, or the weekend? A chain is a short ready-made order of categories WITH a subcategory each. When nothing is planned, "next" suggests the first step; after that it suggests the second, and so on. Every step still needs your tap. Chaining small steps also helps against task paralysis.</p></div>`;
+  CHAINS.forEach((ch, ci) => {
+    h += `<div class="card"><div class="row"><input type="text" data-chname="${ci}" value="${ch.name}"><button class="btn sm" data-chdel="${ci}">Delete chain</button></div><div class="row" style="margin-top:8px;align-items:flex-start">`;
+    ch.steps.forEach((st, si) => {
+      h += `${si ? '<span class="note" style="align-self:center">›</span>' : ''}<div style="display:flex;flex-direction:column;align-items:center;gap:4px">${tileArt(st.c)}
+      <select data-stc="${ci}:${si}">${ORDER.map(id => `<option value="${id}" ${id===st.c?'selected':''}>${CATS[id].name}</option>`).join('')}</select>
+      <select data-std="${ci}:${si}"><option value="">(no detail)</option>${CATS[st.c].subs.map(s => `<option ${s.n===st.d?'selected':''}>${s.n}</option>`).join('')}</select>
+      <button class="btn sm" data-stdel="${ci}:${si}">remove</button></div>`;
+    });
+    h += `<button class="btn sm" data-stadd="${ci}">＋ step</button></div></div>`;
+  });
+  h += `<button class="btn" data-chadd="1">＋ new chain</button>`;
+  const ch = CHAINS[Math.min(S.chain, CHAINS.length - 1)];
+  if (ch && ch.steps.length) {
+    const f = ch.steps[0], rest = ch.steps.slice(1).map(x => `${CATS[x.c].name}${x.d ? ' (' + x.d + ')' : ''}`).join(' › ');
+    h += `<div class="card"><h2>On the tap screen (preview)</h2><div class="row">${CHAINS.map((x, i) => `<button class="tab ${i === S.chain ? 'on' : ''}" data-chpick="${i}">${x.name}</button>`).join('')}</div>
+    <div class="phone" style="margin-top:8px"><div class="hero">${tileArt(f.c, 'big')}<b>${CATS[f.c].name}</b><div class="chips" style="justify-content:center"><span class="det">${f.d || '–'}</span></div>
+    <span class="note">Nothing planned: suggested chain "${ch.name}"</span>${rest ? `<span class="note">then: ${rest}</span>` : ''}
+    <div class="row"><span class="btn sm">next</span><span class="btn sm">pick</span></div></div></div>
+    <p class="note">Which chain is suggested when (and whether chains are on at all) is a setting. <button class="btn sm" data-go="settings">Settings</button></p></div>`;
+  }
+  return h;
+}
+
+function render() {
+  tabs();
+  $v.innerHTML = S.tab === 'cats' ? viewCats() : S.tab === 'goals' ? viewGoals() : viewChains();
+}
+
+// ---------- events ----------
+const parseH = str => { str = String(str).trim().toLowerCase().replace(',', '.'); let m;
+  if ((m = str.match(/^(\d+):(\d{1,2})$/))) return (+m[1]) * 60 + (+m[2]);
+  if ((m = str.match(/^(\d+(?:\.\d+)?)\s*m(in)?$/))) return +m[1];
+  if ((m = str.match(/^(\d+(?:\.\d+)?)\s*h?$/))) return Math.round(+m[1] * 60);
+  return null; };
+const conv = (g, u) => { const w = wk(g); return Math.max(5, Math.round((u === 'day' ? w / 7 : u === 'month' ? w * 30.4 / 7 : w) / 5) * 5); };
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  const d = t.dataset; if (!Object.keys(d).length) return;
+  const sub = findSub(S.cat, S.sub), c = CATS[S.cat], cg = c && c.goal;
+  if (d.go) { TBDefaults.go(d.go); return; }
+  if (d.tab) S.tab = d.tab;
+  else if (d.cat) { S.cat = d.cat; S.sub = (CATS[d.cat] || { subs: [] }).subs[0]?.n || null; }
+  else if (d.goto) S.tab = 'goals';
+  else if (d.sub) S.sub = d.sub;
+  else if (d.addsub) { document.getElementById('addrow').hidden = false; document.getElementById('newsub').focus(); return; }
+  else if (d.addok) { const v = clean(document.getElementById('newsub').value); if (v && !findSub(S.cat, v)) { c.subs.push({ n: v, g: G('keep', 'flex', 'week', 120) }); S.sub = v; } }
+  else if (sub && d.type) sub.g.type = d.type;
+  else if (sub && d.unit) { sub.g.amt = conv(sub.g, d.unit); sub.g.unit = d.unit; }
+  else if (sub && d.amt) sub.g.amt = Math.max(0, sub.g.amt + (+d.amt) * stepVal(sub.g));
+  else if (sub && d.fr) sub.g.fr = Math.max(0, sub.g.fr + (+d.fr));
+  else if (sub && d.ses) sub.g.session = Math.max(0, sub.g.session + (+d.ses));
+  else if (sub && d.tot) sub.g.total = Math.max(0, (sub.g.total || 0) + (+d.tot) * 60);
+  else if (sub && d.untilon) { sub.g.until = addDays(84); sub.g.from = addDays(0); sub.g.mode = 'period'; sub.g.after = 'normal'; sub.g.total = sub.g.total || 600; S.pick = true; }
+  else if (sub && d.untiloff) sub.g.until = '';
+  else if (sub && d.mode) sub.g.mode = d.mode;
+  else if (sub && d.after) sub.g.after = d.after;
+  else if (sub && d.del) { c.subs.splice(c.subs.indexOf(sub), 1); S.sub = c.subs[0]?.n || null; }
+  else if (d.sc) { if (sub && sub.sc && d.sc !== S.cat) { c.subs.splice(c.subs.indexOf(sub), 1); CATS[d.sc].subs.push(sub); S.cat = d.sc; } }
+  else if (cg && d.cunit) { cg.amt = conv(cg, d.cunit); cg.unit = d.cunit; }
+  else if (cg && d.camt) cg.amt = Math.max(0, cg.amt + (+d.camt) * stepVal(cg));
+  else if (d.chadd) CHAINS.push({ name: 'New chain', steps: [{ c: 'a06', d: '' }] });
+  else if (d.chdel) { CHAINS.splice(+d.chdel, 1); S.chain = 0; }
+  else if (d.stadd) CHAINS[+d.stadd].steps.push({ c: 'a05', d: '' });
+  else if (d.stdel) { const [a, b] = d.stdel.split(':').map(Number); CHAINS[a].steps.splice(b, 1); }
+  else if (d.chpick) S.chain = +d.chpick;
+  else return;
+  persist(); render();
+  if (S.pick) { S.pick = false; const di = document.querySelector('[data-date]'); if (di) { di.focus(); try { di.showPicker(); } catch (err) {} } }
+});
+document.addEventListener('change', e => {
+  const t = e.target, d = t.dataset, sub = findSub(S.cat, S.sub), c = CATS[S.cat];
+  if (d.move && sub) { c.subs.splice(c.subs.indexOf(sub), 1); CATS[t.value].subs.push(sub); S.cat = t.value; }
+  else if (d.rename && sub) { const v = clean(t.value); if (v && !findSub(S.cat, v)) { sub.n = v; S.sub = v; } }
+  else if (d.map) { const n = d.map, from = ORDER.find(id => CATS[id].subs.some(s => s.n === n)), s2 = findSub(from, n);
+    CATS[from].subs.splice(CATS[from].subs.indexOf(s2), 1); CATS[t.value].subs.push(s2); S.cat = t.value; S.sub = n; }
+  else if (d.kid !== undefined && sub) sub.kids[+d.kid].on = t.checked;
+  else if (d.typed) { const v = parseH(t.value); if (v !== null) { if (d.typed === 'total') sub.g.total = v; else (d.typed === 'cat' ? c.goal : sub.g).amt = v; } }
+  else if (d.date && sub) { if (t.value) sub.g.until = t.value; }
+  else if (d.chname) CHAINS[+d.chname].name = clean(t.value) || 'Chain';
+  else if (d.stc) { const [a, b] = d.stc.split(':').map(Number); CHAINS[a].steps[b] = { c: t.value, d: '' }; }
+  else if (d.std) { const [a, b] = d.std.split(':').map(Number); CHAINS[a].steps[b].d = t.value; }
+  else return;
+  persist(); render();
+});
+// Entry point from Overviews goal stamps: categories.html#cat=a09 (optional &sub=Client%20work)
+function fromHash() {
+  const p = new URLSearchParams(location.hash.slice(1)), id = p.get('cat');
+  if (p.has('goals') && !id) { S.tab = 'goals'; render(); return; }
+  if (p.has('chains')) { S.tab = 'chains'; render(); return; }
+  if (!id || !(CATS[id] || id === 'sleep')) return;  // 02j: also #cat=sleep (Bedtime goal stamp in Overviews)
+  S.tab = 'goals'; S.cat = id;
+  S.sub = id === 'sleep' ? null : (p.get('sub') && findSub(id, p.get('sub'))) ? p.get('sub') : (CATS[id].subs[0] || {}).n || null;
+  render();
+}
+window.addEventListener('hashchange', fromHash);
+load();
+render();
+fromHash();
+TBData.onChange(() => { if (saving) return; load(); render(); });
+})();
+</script>
+</body>
+</html>

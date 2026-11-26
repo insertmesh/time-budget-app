@@ -12,6 +12,9 @@
   Data: saved in this browser (localStorage key "sam10.timeBudget.v1", data model v2 inside; v1 data is migrated on load).
   Use "Export data" for a backup file. Previous version: index_v1_backup.html.
   Test only: add ?fast to the address (all bars 10 s) and/or ?shift=MINUTES (pretend the clock is later). Both use the real data.
+  2026-11-26 (step 04j_missed_tap): a tile running past its planned length → (A) switches to the next plan tile on its own,
+  (B) "correct" fixes recent taps (tile, start, reset the last tap), (C) Revert to planned time · Split · Continue.
+  Setting "When I forget to tap" (keys forget + forget_min, TBData settings from data/store.js) in the footer and in Settings.
 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap">
 <style>
@@ -159,6 +162,15 @@ summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 html.tb-embed body { padding: 0 0 24px; }
 html.tb-embed .app { max-width: none; border: 0; border-radius: 0; }
 html.tb-embed .testbar { margin-top: 8px; }
+/* missed tap (04j): correct panel, split panel */
+.fixbox { max-width: 400px; margin: 0 auto; }
+.fixrow { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+.fixrow select, .fixrow input { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; }
+.fixrow input[type=number] { width: 64px; }
+.fixrow .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+.fixrow .now { color: var(--accent); font-weight: 700; }
+.chips.mt { margin-top: 8px; }
+.chip.late { border-color: var(--late); color: var(--late); }
 </style>
 </head>
 <body>
@@ -172,12 +184,15 @@ html.tb-embed .testbar { margin-top: 8px; }
   </main>
   <div class="foot">
     <label>Colour on tap <select id="colour"><option value="off">off</option><option value="bg">A · background</option><option value="glow">B · glow</option><option value="both">A + B</option></select></label>
+    <label>When I forget to tap <select id="forget"><option value="both">auto switch + ask</option><option value="A">only auto switch</option><option value="BC">only ask</option></select></label>
+    <label>switch after <select id="forgetMin"><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option></select></label>
     <button class="textlink" type="button" id="export">Export data</button>
     <button class="textlink" type="button" id="importBtn">Import data</button>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
   </div>
   <div class="toast" id="toast" hidden></div>
 
+<script src="data/store.js"></script>   <!-- TBData (04f): settings records; the timer still works without it (defaults) -->
 <script>
 (function () {
 'use strict';
@@ -363,6 +378,10 @@ const WHY_UP = ['Worth it', "Can't sleep", 'Doomscrolling', 'Gotta keep working'
 const SLEEP_Q = ['I slept (forgot to tap)', "Couldn't sleep", 'Doomscrolling', 'Meltdown', 'Shutdown', 'None of ya business'];
 // Example day plan (fixed for now; the Plans page comes later). After the last item, "next" leads to Sleep.
 const PLAN = [['a06', 'Coffee / breakfast'], ['a09', null], ['a06', 'Lunch break'], ['a05', 'Cleaning, dishes'], ['a06', 'Dinner'], ['a01', 'Watching TV'], ['a04', 'Making music'], ['a03', 'TV']];
+// Missed tap (04j, 2026-11-26): planned minutes per PLAN item (same order), and for a tile picked off-plan.
+// The app notices when a tap runs past this ("overtime"). The Plans page (04h) replaces both with the day's real blocks.
+const PLAN_MIN = [30, 240, 45, 45, 60, 90, 90, 60];
+const TILE_MIN = { a09: 240, a08: 45, a05: 60, a06: 45, a01: 120, a02: 120, a04: 120, a03: 90 };
 const RW = {
   a09: 'Work logged. Real hours, real name.', a08: 'Commute logged. The road gets its own line.', a05: 'Chores logged. Somewhere a sink is grateful.',
   a06: 'Food logged. Mmm.', a01: 'Family time logged. That one counts double.', a02: 'Friend time logged. Driving not included.',
@@ -375,6 +394,9 @@ const PLANS_LATER = 'The Plans page comes later. Nothing was changed.';
 // ================= data (saved in the browser) =================
 // Entry = { id, tile, detail (text or null), start (ms), end (ms or null while running), tap (id of the tile tap it belongs to), approved, src }
 //   tile: a01…a09, "sleep" or "stuck". src: "tap" (you tapped), "auto" (a bar ran out), "forgot" (Sorry, forgot), "sleepq" (morning answer).
+//   04j (missed tap, all optional): src "plan" (Revert to planned time filled it in) · "split" (Split) · pmin (planned minutes of the tap,
+//   on its first entry) · autoFrom / autoIdx (switched on its own after overtime: id of the entry it replaced, plan step before) ·
+//   okOver ("Continue": no overtime help for this tap) · autoOk (auto switch confirmed) · edited (corrected by hand).
 //   Gaps between entries = untapped time.
 // flow = where the tap flow stands (survives reload): pending proposal, Stuck tile, bedtime, staying up, morning steps.
 const KEY = 'sam10.timeBudget.v1';   // kept from v1 so the data stays; the data model inside is v2
@@ -452,7 +474,9 @@ function startTile(tile, detail, t, o = {}) {
   t = Math.max(t, lastEnd());
   endRunning(t);
   const id = uid();
-  S.entries.push({ id, tile, detail: detail || null, start: t, end: null, tap: o.tap || id, approved: !!o.approved, src: o.src || 'tap' });
+  const e = { id, tile, detail: detail || null, start: t, end: null, tap: o.tap || id, approved: !!o.approved, src: o.src || 'tap' };
+  if (!o.tap && tile !== 'sleep' && tile !== 'stuck') e.pmin = o.pmin || (o.idx != null && PLAN[o.idx] && PLAN[o.idx][0] === tile ? PLAN_MIN[o.idx] : TILE_MIN[tile]);   // 04j: planned length
+  S.entries.push(Object.assign(e, o.extra || {}));
   if (o.idx != null) S.plan.idx = o.idx;
   F.pending = null; F.stuck = null; F.review = null; F.bed = null;
   if (tile === 'sleep') { F.up = null; F.bedDay = ldKey(t); }
@@ -490,6 +514,139 @@ function forgot(t) {                    // green "Sorry, forgot": the gap counts
   startTile(st.key, st.sub, t, { tap: t - a >= 1000 ? gid : null, idx: st.idx });
   rewardMsg = 'No problem. The gap counts as ' + TITLE[st.key] + ', approved.';
 }
+// ================= missed tap (step 04j, 2026-11-26) =================
+// Setting "When I forget to tap" (TBData settings records, keys as in mockup 02e_settings DEF): A = only auto switch,
+// BC = only ask (Revert · Split · Continue), both = ask, and switch on its own if nobody answers. forget_min = minutes past the planned end.
+const TBD = window.TBData || null;
+const setting = (k, d) => { try { return TBD ? TBD.setting(k, d) : d; } catch (e) { return d; } };
+const forgetMode = () => { const v = setting('forget', 'both'); return v === 'A' || v === 'BC' ? v : 'both'; };
+const forgetA = () => forgetMode() !== 'BC';
+const forgetC = () => forgetMode() !== 'A';
+const forgetMin = () => { const n = parseInt(setting('forget_min', '10'), 10); return n > 0 ? n : 10; };
+const tapFirst = e => S.entries.find(x => x.tap === e.tap) || e;
+const planLeft = () => S.plan.idx < PLAN.length - 1;      // auto switch and Revert never wrap around to the morning items
+// The running tap and its planned end. null for Sleep, Stuck, or nothing running.
+function overInfo(t) {
+  const r = running(); if (!r || r.tile === 'sleep' || r.tile === 'stuck') return null;
+  const f = tapFirst(r), min = f.pmin || TILE_MIN[r.tile]; if (!min) return null;
+  const end = f.start + min * 60000;
+  return { r, f, min, end, over: t - end, ok: !!f.okOver };
+}
+// Overtime that the screen should show (not while staying up past bedtime)
+function overNow(t) { const o = overInfo(t); return o && !o.ok && o.over >= 60000 && !S.flow.up && mode() === 'run' ? o : null; }
+// When the auto switch (A) happens for the running tap, or null. Counts from the planned end, or from a detail tapped later.
+function autoPlan() {
+  const F = S.flow; if (!forgetA() || F.up || mode() !== 'run') return null;
+  const o = overInfo(0); if (!o || o.ok) return null;
+  const base = Math.max(o.end, o.r.start), at = base + forgetMin() * 60000;
+  if (!planLeft() || ldKey(base) !== F.day || at >= bedAt(base) || nextIsSleep(base)) return null;   // plan used up, or near bedtime: the bedtime flow takes over
+  return { o, base, at, i: nextIdx() };
+}
+function autoSwitch(a) {
+  const from = a.o.r, prevIdx = S.plan.idx;
+  startTile(PLAN[a.i][0], PLAN[a.i][1], a.base, { idx: a.i, src: 'auto', extra: { autoFrom: from.id, autoIdx: prevIdx } });
+  rewardMsg = TITLE[from.tile] + ' ran past its plan, so ' + TITLE[PLAN[a.i][0]] + ' started on its own at ' + clockTime(a.base) + '.';
+}
+// Deleting taps keeps a "deleted" mark (S.del), so sync does not bring them back from another device (04f).
+function dropIds(ids) {
+  if (!ids.length) return;
+  S.del = Object.assign({}, S.del || {}); ids.forEach(id => { S.del[id] = Date.now(); });
+  S.entries = S.entries.filter(e => !ids.includes(e.id));
+}
+// Everything from T on is removed; the entry that runs across T ends at T.
+function cutAt(T) {
+  dropIds(S.entries.filter(e => e.start >= T).map(e => e.id));
+  S.entries.forEach(e => { if (e.start < T && (e.end == null || e.end > T)) e.end = T; });
+}
+function addDone(tile, detail, a, b, src) { const id = uid(); S.entries.push({ id, tile, detail: detail || null, start: a, end: b, tap: id, approved: true, src }); }
+// Undo an auto switch (also a chain of them): the tile that ran before keeps running, the plan step goes back.
+function undoAuto() {
+  let cur = tapFirst(running()), orig = null, idx = S.plan.idx;
+  while (cur && cur.autoFrom) { const o = S.entries.find(e => e.id === cur.autoFrom); if (!o) break; orig = o; idx = cur.autoIdx != null ? cur.autoIdx : idx; cur = tapFirst(o); }
+  if (!orig) return false;
+  const i = S.entries.indexOf(orig);
+  dropIds(S.entries.slice(i + 1).map(e => e.id));
+  orig.end = null; tapFirst(orig).okOver = true; S.plan.idx = idx;
+  rewardMsg = 'Undone. ' + label(orig.tile, orig.detail) + ' kept running.';
+  return true;
+}
+// C1 "Revert to planned time": the tap ends at its planned end, then the plan's tiles fill the time up to now.
+function revertPlan(t) {
+  const o = overInfo(t); if (!o || o.over <= 0 || !planLeft()) return;
+  cutAt(o.end);
+  for (let a = o.end, i = S.plan.idx + 1; ; i++) {
+    const b = a + PLAN_MIN[i] * 60000;
+    if (b > t || i === PLAN.length - 1) { startTile(PLAN[i][0], PLAN[i][1], a, { idx: i, src: 'plan', approved: true }); break; }
+    addDone(PLAN[i][0], PLAN[i][1], a, b, 'plan'); S.plan.idx = i; a = b;
+  }
+  rewardMsg = TITLE[o.r.tile] + ' cut to its planned ' + hm(o.min * 60000) + '. The plan filled in the rest.';
+}
+// C2 "Split": the overtime is cut into parts with chosen tiles; the last part keeps running.
+let panel = null, splitRows = [];
+const overMin = t => { const o = overInfo(t); return o ? Math.floor((t - o.end) / 60000) : 0; };
+function splitStart(t) { const r = running(); splitRows = [{ tile: planLeft() ? PLAN[S.plan.idx + 1][0] : r ? r.tile : 'a09', min: overMin(t) }]; panel = 'split'; }
+function applySplit(t) {
+  const o = overInfo(t), total = overMin(t); if (!o || total < 1) return 'Nothing to split.';
+  const head = splitRows.slice(0, -1), used = head.reduce((s, x) => s + (x.min || 0), 0);
+  if (head.some(x => !(x.min >= 1))) return 'Every part needs at least 1 minute.';
+  if (used >= total) return 'The parts add up to ' + used + ' min, but the overtime is only ' + total + ' min.';
+  cutAt(o.end);
+  let a = o.end;
+  head.forEach(x => { const b = a + x.min * 60000; addDone(x.tile, null, a, b, 'split'); a = b; });
+  const last = splitRows[splitRows.length - 1];
+  startTile(last.tile, null, a, { src: 'split', approved: true, pmin: Math.round((t - a) / 60000) + (TILE_MIN[last.tile] || 60) });
+  panel = null;
+  rewardMsg = 'Split into ' + splitRows.length + ' part' + (splitRows.length > 1 ? 's' : '') + '. ' + TITLE[last.tile] + ' runs now.';
+  return '';
+}
+// B "Correct now": recent taps (grouped by tile tap), newest first
+function recentTaps(n) {
+  const out = [];
+  for (let i = S.entries.length - 1; i >= 0; i--) {
+    const e = S.entries[i]; let g = out[out.length - 1];
+    if (!g || g.tap !== e.tap) { if (out.length === n) break; g = { tap: e.tap, list: [] }; out.push(g); }
+    g.list.unshift(e);
+  }
+  return out;
+}
+function nearTime(v, ref) {   // "HH:MM" → the moment closest to ref (taps can cross midnight)
+  const [h, m] = v.split(':').map(Number); let best = null;
+  [-1, 0, 1].forEach(dd => { const d = new Date(ref); d.setDate(d.getDate() + dd); d.setHours(h, m, 0, 0); const x = d.getTime(); if (best == null || Math.abs(x - ref) < Math.abs(best - ref)) best = x; });
+  return best;
+}
+function setTapTile(tap, tile) {
+  const list = S.entries.filter(e => e.tap === tap); if (!list.length || list[0].tile === tile) return;
+  const old = list[0].tile;
+  list.forEach(e => { e.tile = tile; e.detail = null; e.edited = true; e.approved = true; });
+  if (tile !== 'sleep' && tile !== 'stuck') { list[0].pmin = TILE_MIN[tile]; delete list[0].okOver; } else delete list[0].pmin;
+  rewardMsg = TITLE[old] + ' → ' + TITLE[tile] + '. Corrected.';
+}
+// Move a tap's start. A tap right before it that touched it keeps touching (its end follows); taps never overlap.
+function moveTapStart(tap, v, t) {
+  const i0 = S.entries.findIndex(e => e.tap === tap); if (i0 < 0 || !v) return '';
+  const first = S.entries[i0], prev = S.entries[i0 - 1];
+  const lo = prev ? tapFirst(prev).start + 60000 : 0, hi = (first.end == null ? t : first.end) - 60000;
+  if (hi < lo) return 'This tap is too short to move.';
+  const want = nearTime(v, first.start), ns = clamp(want, lo, hi);
+  const touching = prev && prev.end === first.start;
+  dropIds(S.entries.slice(0, i0).filter(e => e.start >= ns).map(e => e.id));
+  const fi = S.entries.indexOf(first);
+  S.entries.forEach((e, k) => { if (k < fi && e.end != null && e.end > ns) e.end = ns; });
+  if (touching && S.entries.includes(prev) && ns > first.start) prev.end = ns;
+  first.start = ns; first.edited = true;
+  rewardMsg = 'Start moved to ' + clockTime(ns) + '.';
+  return Math.abs(ns - want) >= 60000 ? 'Moved as far as possible: taps cannot overlap.' : '';
+}
+// "Back on the last tap: reset the whole tile": the running tap goes away, the tap before it runs again.
+function resetRunning() {
+  const r = running(); if (!r) return;
+  if (tapFirst(r).autoFrom && undoAuto()) return;
+  dropIds(S.entries.filter(e => e.tap === r.tap).map(e => e.id));
+  const p = S.entries[S.entries.length - 1];
+  if (p) { p.end = null; p.edited = true; tapFirst(p).okOver = true; rewardMsg = 'Back on ' + label(p.tile, p.detail) + ' (since ' + clockTime(tapStart(p)) + ').'; }
+  else rewardMsg = 'Tap removed.';
+}
+
 // Bedtime. at = where the orange overtime counts from; sleepAt = where Sleep starts if you do nothing.
 function goBed(at, shown, sleepAt) {
   const F = S.flow;
@@ -549,7 +706,7 @@ const reviewTxt = k => k === 'auto' ? 'Auto-adjusted. Your plan has no times yet
 
 // Defaults that happen when a bar runs out, and the day edges (bedtime, new morning). Also catches up after the app was closed.
 function advance(t) {
-  const F = S.flow; let changed = false;
+  const F = S.flow; let changed = false, auto;
   // fix 2026-11-24: a "staying up" left over from the old "next = Sleep" bug (started long before bedtime) is dropped
   if (F.up && F.up.at < bedAt(t) - NEXT_SLEEP_FROM * 60000) { F.up = null; changed = true; }
   for (let i = 0; i < 12; i++) {
@@ -558,6 +715,7 @@ function advance(t) {
     else if (F.pending && t >= F.pending.at + barMs(F.pending.auto ? 'first' : 'propose')) expirePending(F.pending.at + barMs(F.pending.auto ? 'first' : 'propose'));
     else if (F.morning && F.morning.step === 'plan' && t >= F.morning.planAt + barMs('plan')) doAdj('auto', F.morning.planAt + barMs('plan'), true);
     else if (F.bed && t >= F.bed.shown + barMs('bed')) expireBed(F.bed.shown + barMs('bed'));
+    else if ((auto = autoPlan()) && t >= auto.at) { autoSwitch(auto); panel = null; }      // 04j (A): forgot to tap, the plan moves on
     else if (!F.bed && !F.morning && F.bedDay !== ldKey(t) && t >= bedAt(t)) {
       const r = running();
       if (r && r.tile === 'sleep') F.bedDay = ldKey(t);
@@ -609,6 +767,7 @@ function renderHero() {
     lab = r.tile === 'sleep' ? 'Now · Sleep' : F.up ? (now() >= bedAt(now()) ? 'Now · past bedtime' : 'Now · staying up') : 'Now';
     if (r.tile === 'sleep') { cls = 'bed'; pend = `<div class="cap" id="cap">Sleep runs until your first tap of the day</div>`; }
     else if (F.up) pend = `<div class="cap late" id="cap"></div>`;
+    else if (overNow(now())) { lab = 'Now · over plan'; clk = 'late'; pend = `<div class="cap late" id="cap"></div>`; }   // 04j
   }
   else { key = PLAN[S.plan.idx][0]; lab = 'First on your day'; name = label(PLAN[S.plan.idx][0], PLAN[S.plan.idx][1]); grey = true; clk = 'off'; }
 
@@ -647,6 +806,7 @@ function drawBar() {
 function live() {
   const F = S.flow, m = mode(), r = running(), t = now(), c = $('clock'), cap = $('cap');
   if (!c) return;
+  let ov;
   let ms = 0, plus = false;
   if (m === 'sleepq') ms = t - F.morning.since;
   else if (m === 'plan') ms = r && r.tile === 'sleep' ? t - r.start : t - F.morning.planAt;
@@ -658,6 +818,7 @@ function live() {
   if (cap) {
     if (m === 'sleepq') cap.textContent = 'Nothing tapped since ' + clockTime(F.morning.since) + (F.morning.since < dayStart(t) - 86400000 ? ' (' + new Date(F.morning.since).toLocaleDateString() + ')' : '');
     else if (m.startsWith('bed')) cap.textContent = (r ? TITLE[r.tile] + ' still runs · ' : '') + 'do nothing = Sleep starts';
+    else if (m === 'run' && !F.up && (ov = overNow(t))) { const a = autoPlan(); cap.textContent = '+' + fmt(ov.over) + ' over plan' + (a ? ' · ' + TITLE[PLAN[a.i][0]] + ' at ' + hhmm(a.at) : ' (' + hm(ov.min * 60000) + ')'); }   // 04j
     else if (m === 'run' && F.up && r.tile !== 'sleep') cap.textContent = TITLE[r.tile] + (t >= bedAt(t) ? ' · +' + fmt(t - Math.max(F.up.at, bedAt(t))) + ' past bedtime (' + BEDTIME + ')' : ' · staying up · bedtime ' + BEDTIME);   // fix 2026-11-24: counts from bedtime, not from when Sleep was suggested
   }
   const sg = $('segs');
@@ -700,6 +861,8 @@ function renderDetail() {
       <div class="segs late-txt">Staying up is your call. It shows as overtime.</div>`;
     return;
   }
+  if (panel === 'split' && overMin(now()) < 1) panel = null;
+  if (panel && (m === 'run' || m === 'stuck' || m === 'pending' || m === 'idle')) { d.innerHTML = panel === 'split' ? splitHtml() : fixHtml(); return; }   // 04j
   if (m === 'stuck') {
     d.innerHTML = `<div class="lbl">Stuck? Pick a reason, then tap the ? tile. Or leave it for later: "next" or the evening checkout.</div>
       <div class="chips">${STUCK_TYPES.map(x => chip(x, `data-stuckd="${esc(x)}"`, F.stuck.pick === x)).join('')}</div>`;
@@ -719,10 +882,63 @@ function renderDetail() {
        <div class="chips" style="margin-bottom:8px">${chip('Auto-adjust tomorrow', 'data-tauto="1"')}${chip("Adjust tomorrow's plan", 'data-tomorrow="1"')}</div>`) : '';
   if (r.tile === 'sleep') { d.innerHTML = `<div class="lbl">Sleeping since ${clockTime(r.start)}. Got up? Tap "pick" and choose what you do now.</div>`; return; }
   const list = r.tile === 'stuck' ? STUCK_TYPES : DETAIL[r.tile];
-  d.innerHTML = up + `<div class="lbl">More detail? Optional. Switch between these as often as you like.</div>
+  d.innerHTML = up + missHtml(r) + `<div class="lbl">More detail? Optional. Switch between these as often as you like.</div>
     <div class="chips">${list.map(x => chip(x, `data-detail="${esc(x)}"`, r.detail === x)).join('')}</div>
     <div class="segs" id="segs"></div>`;
   live();
+}
+// ---- missed tap (04j): overtime box, auto-switch note, correct panel, split panel ----
+const hhmm = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+function missHtml(r) {
+  const t = now(), o = overNow(t), f = tapFirst(r);
+  if (o && forgetC()) {
+    const a = autoPlan();
+    return `<div class="lbl late-txt" style="margin-bottom:4px">${esc(TITLE[r.tile])} runs ${hm(o.over)} over its plan (${hm(o.min * 60000)}). Forgot to tap?</div>
+      <div class="chips" style="margin-bottom:6px">${planLeft() ? chip('Revert to planned time', 'data-ot="revert"') : ''}${chip('Split', 'data-ot="split"')}${chip('Continue', 'data-ot="cont"', false, true)}</div>
+      <div class="segs" style="margin:0 0 8px">${a ? 'Do nothing = ' + esc(TITLE[PLAN[a.i][0]]) + ' takes over at ' + hhmm(a.at) + ', counted from ' + hhmm(a.base) + '.' : planLeft() ? 'Revert = ' + esc(TITLE[r.tile]) + ' ends at ' + hhmm(o.end) + ', then your plan fills in.' : 'Your plan for today is used up: Split, Continue, or pick what you do now.'}</div>`;
+  }
+  if (f.autoFrom && !f.autoOk && f.src === 'auto') {
+    const was = S.entries.find(e => e.id === f.autoFrom);
+    return `<div class="lbl late-txt" style="margin-bottom:4px">Started on its own at ${hhmm(f.start)}${was ? ': ' + esc(TITLE[was.tile]) + ' ran past its plan' : ''}.</div>
+      <div class="chips" style="margin-bottom:8px">${chip('Right', 'data-auto="ok"')}${chip('Undo' + (was ? ' · ' + TITLE[was.tile] + ' kept running' : ''), 'data-auto="undo"')}${chip('Correct…', 'data-fix="1"', false, true)}</div>`;
+  }
+  return '';
+}
+const fixPending = {};
+function fixHtml() {
+  const t = now(), r = running(), taps = recentTaps(4), opts = ALL8.concat(['stuck', 'sleep']);
+  const rows = taps.map(g => {
+    const f = g.list[0], l = g.list[g.list.length - 1], run = l.end == null, end = run ? t : l.end, tp = esc(g.tap);
+    return `<div class="fixrow"><select data-fixtile="${tp}" aria-label="Tile">${opts.map(k => `<option value="${k}"${k === f.tile ? ' selected' : ''}>${TITLE[k]}</option>`).join('')}</select>
+      <input type="time" data-fixstart="${tp}" value="${hhmm(f.start)}" aria-label="Start time">
+      <span class="t">– ${run ? '<span class="now">now</span>' : hhmm(end)} · ${hm(end - f.start)}</span>
+      <button type="button" class="chip" data-fixsave="${tp}" hidden>save</button></div>`;
+  }).join('');
+  let more = '';
+  if (r) {
+    const rf = tapFirst(r), i = S.entries.indexOf(rf), prev = i > 0 ? S.entries[i - 1] : null;
+    more += chip(rf.autoFrom && rf.src === 'auto' ? 'Undo the auto switch' : prev ? 'Reset ' + TITLE[r.tile] + ' · back to ' + TITLE[prev.tile] : 'Remove ' + TITLE[r.tile], 'data-fixreset="1"');
+    const o = overInfo(t);
+    if (o && o.over >= 60000) more += (planLeft() ? chip('Revert to planned time', 'data-ot="revert"') : '') + chip('Split overtime', 'data-ot="split"');
+  }
+  return `<div class="fixbox"><div class="lbl">Correct now · newest first. Change a tile (saves at once) or a start time (then "save").</div>
+    ${rows || '<div class="segs">Nothing tapped yet.</div>'}
+    <div class="chips mt">${more}${chip('done', 'data-fixclose="1"', false, true)}</div>
+    <div class="segs">Moving a start time: the tap before it gets shorter or longer, taps never overlap. Reset = the last tap goes away, the one before runs again.</div></div>`;
+}
+function splitHtml() {
+  const t = now(), o = overInfo(t), total = overMin(t), opts = ALL8.concat(['stuck']);
+  const used = splitRows.slice(0, -1).reduce((s, x) => s + (x.min || 0), 0), rest = total - used;
+  const rows = splitRows.map((x, i) => {
+    const last = i === splitRows.length - 1;
+    return `<div class="fixrow"><select data-splittile="${i}" aria-label="Tile of part ${i + 1}">${opts.map(k => `<option value="${k}"${k === x.tile ? ' selected' : ''}>${TITLE[k]}</option>`).join('')}</select>
+      ${last ? `<span class="t" id="splitRest">${rest >= 1 ? 'the rest: ' + hm(rest * 60000) : 'the rest: –'} · runs now</span>`
+        : `<input type="number" min="1" max="${total}" step="1" data-splitmin="${i}" value="${x.min || ''}" aria-label="Minutes of part ${i + 1}"><span class="t">min</span><button type="button" class="textlink" data-splitdel="${i}">remove</button>`}</div>`;
+  }).join('');
+  return `<div class="fixbox"><div class="lbl late-txt">Split ${hm(total * 60000)} of overtime into parts. ${esc(TITLE[o.r.tile])} ends at ${hhmm(o.end)} (its plan).</div>
+    ${rows}
+    <div class="chips mt">${chip('+ part', 'data-splitadd="1"')}${chip('Apply split', 'data-splitgo="1"', true)}${chip('cancel', 'data-splitx="1"', false, true)}</div>
+    <div class="segs">Parts follow each other from ${hhmm(o.end)}. The last part gets the rest and keeps running.</div></div>`;
 }
 let showAll = false, logOpen = false;
 function renderPicker() {
@@ -735,7 +951,7 @@ function renderPicker() {
   const cur = F.bed ? F.bed.alt : F.pending ? F.pending.key : r && m === 'run' ? r.tile : null;
   const tileBtn = tid => `<button class="tile${cur === tid ? ' on' : ''}" type="button" data-pick="${tid}">${art(tid)}<span class="title">${TITLE[tid]}</span></button>`;
   $('picker').innerHTML = `<div class="nextrow">${hideNext ? '' : `<button class="nextbtn" type="button" data-next="1">next: ${esc(nextLbl)} →</button>`}
-    <button class="textlink" type="button" data-all="1" aria-expanded="${showAll}">${showAll ? 'hide' : 'pick'}</button></div>
+    <button class="textlink" type="button" data-all="1" aria-expanded="${showAll}">${showAll ? 'hide' : 'pick'}</button>${S.entries.length && !m.startsWith('bed') ? `<button class="textlink" type="button" data-fix="1" aria-expanded="${panel === 'fix'}">correct</button>` : ''}</div>
     ${showAll ? `<div class="grid8">${ALL8.map(tileBtn).join('')}</div>` : ''}`;
 }
 function todayTotals(t) {
@@ -751,7 +967,8 @@ function todayTotals(t) {
   const untapped = first == null ? 0 : Math.max(0, (t - first) - covered);
   return { per, named, sleep, untapped, rows };
 }
-const SRC = { forgot: 'forgot, approved', auto: 'started on its own', sleepq: 'morning answer' };
+const SRC = { forgot: 'forgot, approved', auto: 'started on its own', sleepq: 'morning answer', plan: 'from plan', split: 'split' };
+const srcTxt = e => e.edited ? 'corrected' : e.src === 'auto' && e.autoFrom ? 'switched on its own' : SRC[e.src];
 function renderToday() {
   const t = now(), { per, named, sleep, untapped, rows } = todayTotals(t);
   const full = AWAKE_H * 3600000, keys = ALL8.concat(['stuck']).filter(k => per[k]);
@@ -760,7 +977,7 @@ function renderToday() {
     <div class="bar" role="img" aria-label="Named time today: ${hm(named)} of ${AWAKE_H} hours">${segs}</div>
     <div class="legend">${keys.map(k => `<span><b style="background:${TINT[k]}"></b>${TITLE[k]} ${hm(per[k])}</span>`).join('')}${sleep ? `<span><b style="background:${TINT.sleep}"></b>Sleep ${hm(sleep)} (not in the bar)</span>` : ''}${!keys.length && !sleep ? '<span class="muted">Nothing tapped yet today.</span>' : ''}</div>
     ${rows.length ? `<details id="logbox"${logOpen ? ' open' : ''}><summary>Today's log (${rows.length})</summary><ul class="log">${rows.slice().reverse().map(x =>
-      `<li><span>${esc(label(x.e.tile, x.e.detail))}${SRC[x.e.src] ? ` <span class="src">· ${SRC[x.e.src]}</span>` : ''}</span><span class="t">${clockTime(x.a)}–${x.e.end == null ? 'now' : clockTime(x.b)} · ${hm(x.b - x.a)}</span></li>`).join('')}</ul></details>` : ''}`;
+      `<li><span>${esc(label(x.e.tile, x.e.detail))}${srcTxt(x.e) ? ` <span class="src">· ${srcTxt(x.e)}</span>` : ''}</span><span class="t">${clockTime(x.a)}–${x.e.end == null ? 'now' : clockTime(x.b)} · ${hm(x.b - x.a)}</span></li>`).join('')}</ul></details>` : ''}`;
   const lb = $('logbox'); if (lb) lb.addEventListener('toggle', () => { logOpen = lb.open; });
 }
 function renderNight() {
@@ -784,7 +1001,11 @@ function setTint() {
   st.setProperty('--glow', c);
   document.body.classList.toggle('glow-on', (mo === 'glow' || mo === 'both') && !!k);
 }
-function renderAll() { setTint(); renderHero(); renderDetail(); renderPicker(); renderToday(); renderNight(); $('colour').value = S.settings.colour || 'off'; }
+function renderAll() {
+  setTint(); renderHero(); renderDetail(); renderPicker(); renderToday(); renderNight(); $('colour').value = S.settings.colour || 'off';
+  $('forget').value = forgetMode(); const fm = $('forgetMin'); fm.value = String(forgetMin()); if (fm.value !== String(forgetMin())) fm.value = '10';
+  $('forget').disabled = !TBD; fm.disabled = !TBD || forgetMode() === 'BC';
+}
 // After every user action: save, then redraw (with the peel-off for "next")
 function commit(o = {}) {
   save();
@@ -804,14 +1025,16 @@ function peelOff(then) {
 }
 function toast(msg, bad) { const t = $('toast'); t.textContent = msg; t.className = 'toast' + (bad ? ' bad' : ''); t.hidden = false; clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, bad ? 6000 : 3200); }
 
-let lastMinute = -1;
+let lastMinute = -1, lastOver = '';
 setInterval(() => {
   if (!started) return;                              // waiting for the first sync (max 5 s, 04f)
   const t = now();
   if (advance(t)) { renderAll(); return; }
+  const ov = overNow(t), ok = ov ? ov.r.id : '';       // 04j: a tile just went over its plan → show it
+  if (ok !== lastOver) { lastOver = ok; renderAll(); return; }
   live();
   const m = Math.floor(t / 60000);
-  if (m !== lastMinute) { lastMinute = m; renderToday(); }
+  if (m !== lastMinute) { lastMinute = m; renderToday(); if (ov && !panel) renderDetail(); }
 }, 1000);
 document.addEventListener('visibilitychange', () => { if (started && !document.hidden && advance(now())) renderAll(); });
 
@@ -894,12 +1117,47 @@ document.addEventListener('click', ev => {
     propose(k, null, t, planIdxFor(k)); showAll = false; commit(); return;
   }
   if ((b = q('[data-detail]'))) { setDetail(b.dataset.detail, t); commit(); return; }
+  // 04j missed tap
+  if ((b = q('[data-fix]'))) { panel = panel === 'fix' ? null : 'fix'; renderDetail(); renderPicker(); return; }
+  if ((b = q('[data-fixclose]')) || (b = q('[data-splitx]'))) { panel = null; renderDetail(); renderPicker(); return; }
+  if ((b = q('[data-fixreset]'))) { resetRunning(); panel = null; commit({ play: true }); return; }
+  if ((b = q('[data-fixsave]'))) { const tp = b.dataset.fixsave, msg = moveTapStart(tp, fixPending[tp], t); delete fixPending[tp]; if (msg) toast(msg); commit(); return; }
+  if ((b = q('[data-ot]'))) {
+    const k = b.dataset.ot;
+    if (k === 'revert') { revertPlan(t); panel = null; commit({ play: true }); return; }
+    if (k === 'split') { splitStart(t); renderDetail(); return; }
+    const r = running(); if (r) { tapFirst(r).okOver = true; rewardMsg = 'Continue: ' + TITLE[r.tile] + ' keeps running, no more overtime notes for it.'; }
+    panel = null; commit(); return;
+  }
+  if ((b = q('[data-auto]'))) {
+    const r = running(); if (!r) return;
+    if (b.dataset.auto === 'undo') { undoAuto(); commit({ play: true }); return; }
+    tapFirst(r).autoOk = true; rewardMsg = 'Noted. ' + TITLE[r.tile] + ' keeps running.'; commit(); return;
+  }
+  if ((b = q('[data-splitadd]'))) { const o = overInfo(t), used = splitRows.slice(0, -1).reduce((s, x) => s + (x.min || 0), 0), rest = overMin(t) - used; splitRows.splice(splitRows.length - 1, 0, { tile: o ? o.r.tile : 'a09', min: Math.max(1, Math.floor(rest / 2)) }); renderDetail(); return; }
+  if ((b = q('[data-splitdel]'))) { splitRows.splice(+b.dataset.splitdel, 1); renderDetail(); return; }
+  if ((b = q('[data-splitgo]'))) { const err = applySplit(t); if (err) { toast(err, true); return; } commit({ play: true }); return; }
   if ((b = q('#export'))) { exportData(); return; }
   if ((b = q('#importBtn'))) { $('importFile').click(); return; }
 });
 document.addEventListener('change', ev => {
   if (ev.target.id === 'mqFrom' || ev.target.id === 'mqTo') { readTimes(); save(); }
+  const ds = ev.target.dataset || {};
+  if (ds.fixtile) { setTapTile(ds.fixtile, ev.target.value); commit(); return; }
+  if (ds.fixstart) { fixPending[ds.fixstart] = ev.target.value; const sv = document.querySelector(`[data-fixsave="${CSS.escape(ds.fixstart)}"]`); if (sv) sv.hidden = false; return; }
+  if (ds.splittile) { splitRows[+ds.splittile].tile = ev.target.value; return; }
 });
+document.addEventListener('input', ev => {
+  const ds = ev.target.dataset || {};
+  if (ds.splitmin == null) return;
+  splitRows[+ds.splitmin].min = parseInt(ev.target.value, 10) || 0;
+  const rest = overMin(now()) - splitRows.slice(0, -1).reduce((s, x) => s + (x.min || 0), 0), el = $('splitRest');
+  if (el) el.textContent = (rest >= 1 ? 'the rest: ' + hm(rest * 60000) : 'the rest: – (parts too long)') + ' · runs now';
+});
+['forget', 'forgetMin'].forEach(id => $(id).addEventListener('change', e => {
+  if (!TBD) { toast('Settings need data/store.js (missing here).', true); return; }
+  TBD.setSetting(id === 'forget' ? 'forget' : 'forget_min', e.target.value); renderAll();
+}));
 $('colour').addEventListener('change', e => { S.settings.colour = e.target.value; save(); setTint(); });
 
 function exportData() {
@@ -919,7 +1177,7 @@ $('importFile').addEventListener('change', e => {
   }).catch(err => toast('Import failed: ' + err.message, true)).finally(() => { e.target.value = ''; });
 });
 // Another tab of this page changed the data: reload it here too
-window.addEventListener('storage', e => { if (e.key === KEY) { load(); renderAll(); } });
+window.addEventListener('storage', e => { if (e.key === KEY) { load(); renderAll(); } else if (e.key === 'sam10.timeBudget.records') renderAll(); });   // 04j: settings changed elsewhere
 
 if (FAST || SHIFT_MS) { const tb = $('testbar'); tb.hidden = false; tb.textContent = 'TEST MODE' + (FAST ? ' · all bars 10 s' : '') + (SHIFT_MS ? ' · clock shifted ' + (SHIFT_MS / 60000) + ' min' : '') + ' · uses the real data'; }
 load();

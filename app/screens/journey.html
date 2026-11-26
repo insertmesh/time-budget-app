@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Budget – Journey</title>
+<script src="../data/store.js"></script>
+<script src="../data/defaults.js"></script>
+<script src="journey.logic.js"></script>
+<!--
+  v3 (2026-11-24, Samuel's 2nd feedback): new question 'Getting around' (commute is general: work, pick-ups, therapy, visits), trips = name + weekdays + typeable travel minutes + OPTIONAL typeable start time (12:40), six questions, Step 3 explains what a template is and that taps are mixed in later.
+  Journey mockup v2 (step 07_journey_design, 2026-11-24, after Samuel's v1 feedback).
+  Changes: intro page first · order = Questions → "Your week" (filled in automatically from the answers) → Template ·
+  no numbers to calculate (chips with "about" values, fine-tune ± optional) · generic tag presets + own tags (Hobby / Chill switch),
+  every new subcategory can be unticked or removed · "Family" and "Friends" separate, "none" is a valid answer ·
+  regular trips = name + weekdays + travel time + optional start (become calendar dates) · "Start early" → "Open now" (explained on the intro).
+  Mockup only: nothing is saved. Earlier files: archive\journey_v0_placeholder.html, archive\journey_v1.html
+-->
+<style>
+:root { --bg:#F4F6F3; --surface:#FFFFFF; --ink:#1D2927; --muted:#5E6D68; --line:#DCE3DF; --accent:#3D6B5E; --accent-soft:#DDEAE4; --warn:#9A4F36; --warn-soft:#F5E4DC; --under:#3F78A8; --under-soft:#E0EBF4; --font-ui:"Figtree",system-ui,"Segoe UI",sans-serif; --font-head:"Literata",Georgia,serif; color-scheme:light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#131A18; --surface:#1A2320; --ink:#E3EBE7; --muted:#9DABA5; --line:#2A3632; --accent:#8FC4B3; --accent-soft:#213430; --warn:#E3A38A; --warn-soft:#3A2822; --under:#8DB8DE; --under-soft:#1E2C38; color-scheme:dark; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 var(--font-ui); padding:0 16px 64px; }
+button { font:inherit; color:inherit; cursor:pointer; }
+input[type=text] { font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:6px 10px; width:100%; }
+select { font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:4px 6px; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:10px; }
+[hidden] { display:none !important; }
+.muted { color:var(--muted); } .small { font-size:13px; }
+h1,h2 { font-family:var(--font-head); margin:0; line-height:1.25; } h1 { font-size:24px; } h2 { font-size:19px; }
+p { margin:0; }
+.controls { max-width:920px; margin:14px auto 16px; padding:10px 12px; border:1px dashed var(--line); border-radius:12px; background:var(--surface); display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; font-size:14px; }
+.controls .tag { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); width:100%; }
+.controls label { display:inline-flex; gap:6px; align-items:center; }
+.ver { max-width:920px; margin:0 auto 10px; font-size:12px; color:var(--muted); }
+.notes { max-width:920px; margin:22px auto 0; border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:4px 14px; font-size:14px; }
+.notes summary { cursor:pointer; font-weight:700; padding:8px 0; }
+.notes table { border-collapse:collapse; width:100%; margin:6px 0 10px; font-size:13px; }
+.notes th,.notes td { text-align:left; vertical-align:top; padding:5px 8px; border-top:1px solid var(--line); }
+.phone { max-width:420px; margin:0 auto; background:var(--surface); border:1px solid var(--line); border-radius:28px; padding:18px 18px 22px; min-height:620px; display:flex; flex-direction:column; gap:14px; }
+.top { display:flex; align-items:center; gap:8px; }
+.back { border:0; background:none; color:var(--accent); font-weight:700; padding:6px 4px; }
+.top .ttl { font-family:var(--font-head); font-size:18px; flex:1; }
+.btn { border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:9px 16px; font-weight:700; }
+.btn.primary { background:var(--accent); color:var(--surface); border-color:var(--accent); }
+.btn.warn { color:var(--warn); border-color:var(--warn); }
+.btn.sm { padding:5px 12px; font-size:13px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.grow { flex:1; }
+.card { border:1px solid var(--line); border-radius:16px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+.card.open { border-color:var(--accent); background:var(--accent-soft); }
+.card.locked { opacity:.85; }
+.card.warn { border-color:var(--warn); background:var(--warn-soft); }
+.card.info { background:var(--under-soft); border-color:transparent; }
+.pill { font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; }
+.pill.grey { background:var(--bg); color:var(--muted); } .pill.done { background:var(--accent); color:var(--surface); }
+.dots { display:grid; grid-template-columns:repeat(30,1fr); gap:2px; }
+.dots i { height:8px; border-radius:3px; background:var(--line); } .dots i.past { background:var(--accent); } .dots i.now { background:var(--warn); }
+.chips { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.chip { border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:8px 14px; font-weight:600; }
+.chip[aria-pressed=true] { background:var(--accent); color:var(--surface); border-color:var(--accent); }
+.chip.dash { border-style:dashed; color:var(--muted); }
+.chip.own { display:inline-flex; gap:8px; align-items:center; }
+.chip.own b { font-weight:800; opacity:.8; padding:0 2px; }
+.q { display:flex; flex-direction:column; gap:8px; }
+.q .lab { font-weight:700; }
+.step { display:flex; align-items:center; gap:10px; }
+.step button { width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--surface); font-size:20px; font-weight:700; line-height:1; }
+.step output { min-width:84px; text-align:center; font-weight:800; font-size:17px; }
+.prog { display:flex; gap:6px; } .prog i { flex:1; height:6px; border-radius:3px; background:var(--line); } .prog i.on { background:var(--accent); } .prog i.cur { background:var(--warn); }
+.cat { display:grid; grid-template-columns:12px 1fr auto; gap:2px 10px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+.cat .sw { width:12px; height:34px; border-radius:4px; grid-row:1 / 3; }
+.cat .src { font-size:12px; color:var(--muted); }
+.daybar { display:flex; height:22px; border-radius:8px; overflow:hidden; border:1px solid var(--line); } .daybar span { min-width:1px; }
+.blk { display:grid; grid-template-columns:10px 1fr auto; gap:8px; align-items:center; padding:4px 0; font-size:14px; } .blk i { width:10px; height:18px; border-radius:3px; }
+.seg { display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; }
+.seg button { flex:1; border:0; background:none; padding:8px; font-weight:700; } .seg button[aria-pressed=true] { background:var(--accent); color:var(--surface); }
+.check { display:flex; gap:10px; align-items:flex-start; padding:5px 0; }
+.check input { width:20px; height:20px; margin-top:2px; accent-color:var(--accent); flex:none; }
+.fx { border:1px solid var(--line); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+.toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:12px; font-size:14px; max-width:92vw; z-index:9; display:flex; gap:12px; align-items:center; }
+.toast button { background:none; border:0; color:inherit; text-decoration:underline; font-weight:700; }
+.ol { margin:0; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:10px; }
+.ol li { display:grid; grid-template-columns:30px 1fr; gap:10px; align-items:start; }
+.ol li > b { width:30px; height:30px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; }
+/* 04h: real screen inside the app frame */
+body { padding: 0; }
+.phone { max-width: none; margin: 0; border: 0; border-radius: 0; min-height: 100vh; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var $ = function (s) { return document.querySelector(s); };
+var CATS = [
+  { id:'a09', n:'Work', c:'#7E9BB6' }, { id:'a08', n:'Commute', c:'#4FA3A0' }, { id:'a05', n:'Chores', c:'#C9A98A' }, { id:'a06', n:'Food', c:'#E0A25A' },
+  { id:'a01', n:'Family', c:'#C77FA3' }, { id:'a02', n:'Friends', c:'#D88A72' }, { id:'a04', n:'Hobby', c:'#9C88CC' }, { id:'a03', n:'Self Care', c:'#E0B45F' } ];
+var COL = {}, TITLE = {}; CATS.forEach(function (c) { COL[c.id] = c.c; TITLE[c.id] = c.n; });
+var AWAKE_WEEK = 112;
+var QN = ['Work', 'Getting around', 'Family & friends', 'Free time', 'Stuck time', 'Chores & admin'];
+var EXISTING = ['Client work','Production','Emails & calls','Problem solving','Picking up kids','Drive to friends','Drive to family','Appointments','Cleaning, dishes','Laundry','Admin & paperwork','Shopping','Repairs','Coffee / breakfast','Lunch break','Dinner','Cooking','Watching TV','Kids','Partner','Outing','Meeting','Call','Helping out','Party','Making music','Synths','TV','Games','Sofa','Walk'];
+var PRE = {
+  fam: ['Partner','Kids','Parents','Siblings','Pets'], frd: ['Meeting','Call','Party'],
+  hobby: ['Creative','Music','Sport','Learning','Outdoors','Crafts'], chill: ['TV','Games','Reading','Walk','Scrolling'],
+  chores: ['Cleaning, dishes','Laundry','Shopping','Admin & paperwork','Repairs'] };
+var WORK_H = [['Part-time · about 20 h',20],['Full-time · about 40 h',40],['It varies · about 30 h',30],['No regular work',0]];
+var WORK_D = [['Mon–Fri',5],['4 days',4],['3 days',3],['It varies',5]];
+var COMMUTE = [['None (I work from home)',0],['about 15 min',15],['about 30 min',30],['about 45 min',45],['60 min or more',60]];
+var TRIP_IDEAS = ['Pick up kids','Therapy','Visit friends','Shopping','Appointment'];
+var FAM_H = [['None',0],['A little · about 5 h',5],['Some · about 12 h',12],['A lot · about 25 h',25]];
+var FRD_H = [['None',0],['A little · about 2 h',2],['Some · about 6 h',6],['A lot · about 12 h',12]];
+var HOB_H = [['None',0],['A little · about 3 h',3],['Some · about 8 h',8],['A lot · about 16 h',16]];
+var CHO_H = [['A little · about 4 h',4],['Some · about 8 h',8],['A lot · about 15 h',15]];
+var STUCK_F = [['Rarely',1],['A few times a week',3],['Most days',6]];
+var STUCK_M = [['about 15 min',15],['about 30 min',30],['about 1 h',60],['1½ h or more',90]];
+var DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var TYPICAL = { a09:35, a08:3, a05:8, a06:10, a01:12, a02:4, a04:6 };
+
+var S;
+function fresh() {
+  S = { day:4, view:'intro', introSeen:false, q:0, qDone:[false,false,false,false,false,false], weekDone:false, early:{}, over:{}, tmp:{}, extra:{}, subOff:{},
+    mode:'add', pickDay:'work', ticks:{ work:true, weekend:true, goals:true, fixed:true },
+    ans:{ work:{ days:5, hours:40 }, travel:{ work:0, trips:[] },
+          people:{ fam:12, frd:6, famTags:[], frdTags:[] },
+          fun:{ hob:8, hobbyTags:[], chillTags:[] },
+          stuck:{ freq:3, mins:30, trig:[] },
+          chores:{ hours:8, tags:[] } },
+    applied:null, planDone:false, decision:null };
+}
+fresh();
+var GATE = { quest:4, week:7, tpl:14, decide:28 };
+function open(k) { if (k === 'week') return S.day >= GATE.week || S.early.week || S.qDone.some(Boolean); return S.day >= GATE[k] || !!S.early[k]; }
+function A(g, k) { return S.ans[g][k]; }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+function enc(s) { return encodeURIComponent(s); }
+function fmt(m) { var h = Math.floor(m / 60), r = m % 60; return h ? h + ' h' + (r ? ' ' + r + ' min' : '') : r + ' min'; }
+function hm(m) { return Math.floor(m / 60) + ':' + ('0' + m % 60).slice(-2); }
+function nh(h) { return (Math.round(h * 2) / 2) + ' h'; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function allTags(list, group) { return list.concat(S.extra[group] || []); }
+function tagOK(name) { return EXISTING.map(function (x) { return x.toLowerCase(); }).indexOf(name.toLowerCase()) >= 0 || !S.subOff[name]; }
+
+// ---------- trips ----------
+function tripMin() { return A('travel','trips').reduce(function (s, t) { return s + t.len * t.days.length; }, 0); } // minutes per week
+function tripAvg(isW) { // minutes per day of flexible trips (no fixed start) for Mon-Fri (workday) or Sat-Sun (weekend)
+  var days = isW ? [0,1,2,3,4] : [5,6], tot = 0;
+  A('travel','trips').forEach(function (t) { if (t.start == null) t.days.forEach(function (d) { if (days.indexOf(d) >= 0) tot += t.len; }); });
+  return tot / days.length;
+}
+function tripDates() { return A('travel','trips').filter(function (t) { return t.start != null && t.name.trim() && t.days.length; }); }
+// ---------- week (from answers) ----------
+function weekLines() { // returns [{id, h, src}]
+  var days = A('work','days'), wh = S.qDone[0] ? A('work','hours') : TYPICAL.a09;
+  var com = S.qDone[1] ? Math.round((A('travel','work') * 2 * (wh > 0 ? days : 0) / 60 + tripMin() / 60) * 2) / 2 : TYPICAL.a08;
+  var L = {
+    a09:[wh, S.qDone[0]], a08:[com, S.qDone[1]], a05:[S.qDone[5] ? A('chores','hours') : TYPICAL.a05, S.qDone[5]], a06:[TYPICAL.a06, false],
+    a01:[S.qDone[2] ? A('people','fam') : TYPICAL.a01, S.qDone[2]], a02:[S.qDone[2] ? A('people','frd') : TYPICAL.a02, S.qDone[2]],
+    a04:[S.qDone[3] ? A('fun','hob') : TYPICAL.a04, S.qDone[3]] };
+  var out = [], sum = 0;
+  ['a09','a08','a05','a06','a01','a02','a04'].forEach(function (id) { var h = S.over[id] != null ? S.over[id] : L[id][0]; sum += h; out.push({ id:id, h:h, src:S.over[id] != null ? 'edited' : L[id][1] ? 'from your answers' : 'typical value' }); });
+  var rest = Math.max(0, AWAKE_WEEK - sum), chill = S.over.a03 != null ? S.over.a03 : rest;
+  out.push({ id:'a03', h:chill, src:S.over.a03 != null ? 'edited' : 'what is left' });
+  return out;
+}
+function G() { var o = {}; weekLines().forEach(function (l) { o[l.id] = l.h; }); return o; }
+
+// ---------- template generator ----------
+function build(kind) {
+  var g = G(), wd = Math.max(1, A('work','days')), isW = kind === 'work', noWork = g.a09 <= 0;
+  var wake = isW ? 420 : 480, bed = isW ? 1350 : 1380, awake = bed - wake;
+  var B = [], b = function (k, d, dur, f) { var o = { k:k, d:d || null, dur:Math.max(5, Math.round(dur / 5) * 5), pin:null }; if (f) for (var i in f) o[i] = f[i]; B.push(o); return o; };
+  var share = function (w, s) { return isW ? w * 60 * s / wd : w * 60 * (1 - s) / (7 - wd > 0 ? 7 - wd : 2); };
+  var hasWork = isW && !noWork, workD = hasWork ? g.a09 * 60 / wd : 0, com = S.qDone[1] ? A('travel','work') : 0;
+  var ok = function (arr) { return arr.filter(tagOK); };
+  if (isW) {
+    b('a06','Coffee / breakfast',30,{ess:1});
+    if (hasWork && com >= 5) b('a08','Drive to work',com);
+    if (hasWork) { b('a09','Client work',workD * .55); b('a06','Lunch break',45,{ess:1}); b('a09','Emails & calls',workD * .45); } else b('a06','Lunch break',45,{ess:1});
+    if (hasWork && com >= 5) b('a08','Drive home',com);
+    b('a05','Cleaning, dishes',45,{ess:1});
+  } else { b('a06','Coffee / breakfast',45,{ess:1}); b('a06','Lunch break',60,{ess:1}); b('a05','Cleaning, dishes',45,{ess:1}); }
+  var ct = ok(A('chores','tags')).filter(function (t) { return t !== 'Cleaning, dishes'; });
+  var ch = share(g.a05, .45); if (ch >= 10) b('a05', ct[0] || 'Laundry', ch);
+  var ft = ok(A('people','famTags')), fam = share(g.a01, .55); if (fam >= 10) b('a01', ft[0], fam);
+  var rt = ok(A('people','frdTags')), fr = share(g.a02, .25); if (fr >= 10) b('a02', rt[0] || 'Meeting', fr);
+  var ht = ok(A('fun','hobbyTags')).slice(0, 2), hob = share(g.a04, .4);
+  if (hob >= 10) { if (ht.length === 2) { b('a04', ht[0], hob / 2); b('a04', ht[1], hob / 2); } else b('a04', ht[0], hob); }
+  b('a06','Dinner', isW ? 45 : 60, {ess:1});
+  var tav = tripAvg(isW); if (tav >= 10) b('a08','Trips',tav);
+  var stuckMin = S.qDone[4] ? Math.round(A('stuck','freq') * A('stuck','mins') / 7 / 5) * 5 : 0;
+  if (stuckMin >= 10) b('a03','Sofa',stuckMin,{buffer:1});
+  var sum = B.reduce(function (s, x) { return s + x.dur; }, 0), over = 0;
+  if (sum > awake) { var flex = B.filter(function (x) { return !x.ess && x.pin == null; }), fs = flex.reduce(function (s, x) { return s + x.dur; }, 0), f = Math.max(.2, (fs - (sum - awake)) / fs);
+    flex.forEach(function (x) { x.dur = Math.max(5, Math.round(x.dur * f / 5) * 5); }); sum = B.reduce(function (s, x) { return s + x.dur; }, 0); over = 1; }
+  var ctl = ok(A('fun','chillTags'));
+  if (sum < awake) b('a03', ctl[0] || 'TV', awake - sum, {fill:1});
+  return { name:isW ? 'Journey Workday' : 'Journey Weekend', wake:wake, bed:bed, blocks:B, over:over };
+}
+function newSubs() { // [catId, name] not existing yet
+  var out = [], add = function (cat, list) { list.forEach(function (n) { if (EXISTING.map(function (x) { return x.toLowerCase(); }).indexOf(n.toLowerCase()) < 0 && !out.some(function (o) { return o[1] === n; })) out.push([cat, n]); }); };
+  if (S.qDone[2]) { add('a01', A('people','famTags')); add('a02', A('people','frdTags')); }
+  if (S.qDone[3]) { add('a04', A('fun','hobbyTags')); add('a03', A('fun','chillTags')); }
+  if (S.qDone[5]) add('a05', A('chores','tags'));
+  return out;
+}
+var NOW = { work:[['a06',30],['a09',270],['a06',45],['a05',45],['a09',180],['a08',30],['a06',45],['a01',90],['a04',60],['a03',135]],
+  weekend:[['a06',45],['a01',180],['a06',60],['a05',45],['a05',45],['a08',45],['a02',150],['a06',60],['a03',270]] };
+
+// ---------- ui pieces ----------
+function top(title, back) { return '<div class="top">' + (back ? '<button class="back" data-go="' + back + '">‹ Journey</button>' : '') + '<span class="ttl">' + title + '</span></div>'; }
+function valChips(group, key, list) { // exact-value chips
+  var cur = A(group, key);
+  return '<div class="chips">' + list.map(function (o) { return '<button class="chip" aria-pressed="' + (cur === o[1]) + '" data-val="' + group + '|' + key + '|' + o[1] + '">' + o[0] + '</button>'; }).join('') + '</div>';
+}
+function fine(group, key, unit, lo, hi, st) {
+  return '<div class="step" style="gap:6px"><span class="small muted">Fine-tune:</span><button data-sv="' + group + '|' + key + '|-' + st + '|' + lo + '|' + hi + '" aria-label="less">−</button><output>' + A(group, key) + ' ' + unit + '</output><button data-sv="' + group + '|' + key + '|' + st + '|' + lo + '|' + hi + '" aria-label="more">+</button></div>';
+}
+function tagBox(group, key, list, extraKey, opts) { // preset tags + own tags; opts.types = show Hobby/Chill add buttons
+  var sel = A(group, key), ex = S.extra[extraKey] || [], id = extraKey;
+  var h = '<div class="chips">' + list.map(function (t) { return '<button class="chip" aria-pressed="' + (sel.indexOf(t) >= 0) + '" data-tag="' + group + '|' + key + '|' + enc(t) + '">' + esc(t) + '</button>'; }).join('');
+  h += ex.map(function (t) { return '<span class="chip own" aria-pressed="' + (sel.indexOf(t) >= 0) + '"><span data-tag="' + group + '|' + key + '|' + enc(t) + '" role="button" tabindex="0">' + esc(t) + '</span><b data-delown="' + group + '|' + key + '|' + extraKey + '|' + enc(t) + '" role="button" aria-label="Remove ' + esc(t) + '" tabindex="0">×</b></span>'; }).join('');
+  h += '</div><div class="row"><input type="text" style="flex:1;min-width:120px" id="own_' + id + '" placeholder="+ add my own (e.g. Fishing)" value="' + esc(S.tmp[id] || '') + '" data-tmp="' + id + '"><button class="btn sm" data-addown="' + group + '|' + key + '|' + extraKey + '">Add</button></div>';
+  return h;
+}
+function skipNote() { return '<p class="small muted">Not sure? Skip. Journey uses a typical value and marks it as typical.</p>'; }
+
+// ---------- views ----------
+function intro() {
+  return top('Journey', null) + '<h1>Your week, shaped step by step</h1>' +
+    '<p>Journey turns a rough idea of your week into plans you can use. You do not need exact numbers.</p>' +
+    '<ol class="ol"><li><b>1</b><div><b>Six short questions</b><br><span class="small muted">Tap chips. Skip anything. "None" is a fine answer.</span></div></li>' +
+    '<li><b>2</b><div><b>Your week, filled in for you</b><br><span class="small muted">Journey guesses the hours from your answers. A guess is fine: your taps will show the real numbers later.</span></div></li>' +
+    '<li><b>3</b><div><b>A template for a Workday and a Weekend</b><br><span class="small muted">A template is a typical day that Plans uses to fill your days. Today it is built from your answers. Later it mixes in what you really tapped. You see it first, and you can undo it.</span></div></li></ol>' +
+    '<div class="card info"><b>Why does it take about a month?</b><p class="small">Each step opens after some days of tapping, so your real taps can help. In a hurry? Every locked step has an <b>Open now</b> button. There is no deadline and no wrong order.</p></div>' +
+    '<div class="row"><button class="btn primary grow" data-intro="1">Got it, show me</button><button class="btn" data-notnow="1">Not now</button></div>';
+}
+function stageCard(key, no, name, text, doneFlag, label, go, lockedHint) {
+  var isOpen = open(key), early = S.day < GATE[key] && S.early[key];
+  var pill = doneFlag ? '<span class="pill done">Done</span>' : isOpen ? '<span class="pill">' + (early ? 'Opened early' : 'Ready') + '</span>' : '<span class="pill grey">Opens day ' + GATE[key] + '</span>';
+  var btn = isOpen ? '<button class="btn primary" data-go="' + go + '">' + (doneFlag ? 'Open again' : label) + '</button>' : '<button class="btn" data-early="' + key + '" data-go="' + go + '">Open now</button>';
+  return '<div class="card ' + (isOpen && !doneFlag ? 'open' : isOpen ? '' : 'locked') + '"><div class="row"><b class="grow">' + no + ' · ' + name + '</b>' + pill + '</div><p class="small muted">' + text + '</p>' + (!isOpen && lockedHint ? '<p class="small muted">' + lockedHint + '</p>' : '') + '<div class="row">' + btn + '</div></div>';
+}
+function home() {
+  var d = S.day, dots = ''; for (var i = 1; i <= 30; i++) dots += '<i class="' + (i < d ? 'past' : i === d ? 'now' : '') + '"></i>';
+  var qd = S.qDone.filter(Boolean).length;
+  var h = top('Journey', null) + '<div><div class="row"><b>Day ' + d + ' of about 30</b><span class="grow"></span><button class="btn sm" data-go="intro">What is Journey?</button></div><div class="dots" style="margin-top:6px">' + dots + '</div><p class="small muted" style="margin-top:6px">A few days of tapping first, then a few short steps. You can open any step early.</p></div>';
+  if (d <= 3 && !S.early.quest) h += '<div class="card info"><b>Days 1–3: just tap.</b><p class="small">Nothing else is needed yet.</p></div>';
+  h += stageCard('quest','Step 1','Six questions','Work · Getting around · Family & friends · Free time · Stuck time · Chores. About 5 minutes, any time you like. ' + (qd ? qd + ' of 6 answered.' : ''), qd === 6, qd ? 'Continue (' + qd + ' of 5)' : 'Start the questions', 'q');
+  h += stageCard('week','Step 2','Your week','Journey fills in your week from the answers. You only correct what looks off.', S.weekDone, 'See my week', 'week', 'Unlocks after your first answers or on day ' + GATE.week + '.');
+  h += stageCard('tpl','Step 3','Your template','A typical Workday and Weekend that Plans uses to fill your days. Built from your answers now, from your real taps too when you run it again later.', !!S.applied, 'See my template', 'preview');
+  if (S.applied) h += '<div class="card"><div class="row"><b class="grow">Journey result ' + (S.planDone ? 'is in your plan' : 'waits in Plans as a draft') + '</b><span class="pill ' + (S.planDone ? 'done' : '') + '">' + (S.planDone ? 'Saved' : 'Draft') + '</span></div><button class="btn warn" data-undo="1">Undo Journey</button></div>';
+  if (open('decide')) h += '<div class="card warn"><b>Decision time (day 28+)</b><p class="small muted">Your choice, no verdict. What do you want to do with the tracking?</p><div class="chips">' + ['Keep going','Shrink it','Pause it'].map(function (x) { return '<button class="chip" aria-pressed="' + (S.decision === x) + '" data-dec="' + x + '">' + x + '</button>'; }).join('') + '</div>' + (S.decision ? '<p class="small">Saved as data: "' + S.decision + '". You can change it any time.</p>' : '') + '</div>';
+  return h + '<p class="small muted">Journey only suggests. It never changes what you tapped.</p>';
+}
+function tripList() {
+  var T = A('travel','trips'), h = '';
+  h += '<div class="chips">' + TRIP_IDEAS.map(function (n) { return '<button class="chip dash" data-tripidea="' + enc(n) + '">+ ' + n + '</button>'; }).join('') + '<button class="chip dash" data-fadd="1">+ Something else</button></div>';
+  T.forEach(function (f, i) {
+    h += '<div class="fx"><div class="row"><input type="text" style="flex:1" placeholder="Where to? (e.g. Therapy)" value="' + esc(f.name) + '" data-fname="' + i + '" aria-label="Name"><button class="btn sm warn" data-fdel="' + i + '">Remove</button></div>' +
+      '<div class="chips">' + DAYS.map(function (dn, di) { return '<button class="chip" style="padding:6px 10px" aria-pressed="' + (f.days.indexOf(di) >= 0) + '" data-fday="' + i + '|' + di + '">' + dn + '</button>'; }).join('') + '</div>' +
+      '<div class="q"><span class="small"><b>Travel time</b>, there and back</span><div class="row"><span class="step"><button data-fstep="' + i + '|len|-15" aria-label="shorter">−</button><input type="number" min="5" max="480" step="5" value="' + f.len + '" data-flen="' + i + '" aria-label="Minutes" style="width:76px;text-align:center;font:inherit;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)"><button data-fstep="' + i + '|len|15" aria-label="longer">+</button></span><span class="small muted">min · type it or use ± (15 min)</span></div></div>' +
+      '<div class="q"><span class="small"><b>Start time</b> (optional)</span>' + (f.start == null ?
+        '<div class="row"><span class="small muted grow">No fixed start. Only the travel time counts.</span><button class="btn sm" data-fstart="' + i + '|set">Set a start time</button></div>' :
+        '<div class="row"><span class="step"><button data-fstep="' + i + '|start|-15" aria-label="earlier">−</button><input type="time" value="' + ('0' + hm(f.start)).slice(-5) + '" data-fclock="' + i + '" aria-label="Start time" style="font:inherit;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)"><button data-fstep="' + i + '|start|15" aria-label="later">+</button></span><button class="btn sm" data-fstart="' + i + '|clear">No fixed start</button></div>') + '</div></div>';
+  });
+  return h;
+}
+function questions() {
+  var n = S.q, h = top('Step 1 · ' + QN[n], 'home');
+  h += '<div class="prog">' + QN.map(function (_, i) { return '<i class="' + (i === n ? 'cur' : S.qDone[i] ? 'on' : '') + '"></i>'; }).join('') + '</div><p class="small muted">Question ' + (n + 1) + ' of 6 · ' + (n === 0 ? 'rough is fine, you can skip any question' : 'tap what fits, skip what does not') + '</p>';
+  if (n === 0) h += '<div class="q"><span class="lab">How much do you work?</span>' + valChips('work','hours',WORK_H) + (A('work','hours') ? fine('work','hours','h / week',0,80,1) : '') + '</div>' +
+    (A('work','hours') ? '<div class="q"><span class="lab">Which days?</span>' + valChips('work','days',WORK_D) + '</div>' : '');
+  if (n === 1) h += '<p class="small muted">Trips count as Commute. Think of everything where you have to get somewhere: work, school runs, appointments, visiting.</p>' +
+    (A('work','hours') ? '<div class="q"><span class="lab">Do you travel to work? How long one way?</span>' + valChips('travel','work',COMMUTE) + '</div>' : '') +
+    '<div class="q"><span class="lab">Regular trips each week?</span><p class="small muted">Tap an idea or add your own. Pick the days and the travel time. A start time is optional. Skip if there is none.</p>' + tripList() + '</div>';
+  if (n === 2) h += '<div class="q"><span class="lab">Time with family, per week?</span>' + valChips('people','fam',FAM_H) + (A('people','fam') ? '<span class="small muted">Who? (optional, pick any)</span>' + tagBox('people','famTags',PRE.fam,'fam') : '') + '</div>' +
+    '<div class="q"><span class="lab">Time with friends, per week?</span>' + valChips('people','frd',FRD_H) + (A('people','frd') ? '<span class="small muted">How? (optional, pick any)</span>' + tagBox('people','frdTags',PRE.frd,'frd') : '') + '</div>';
+  if (n === 3) h += '<p class="small muted">Free time has two kinds: <b>Hobby</b> (things you work on, learn or practise) and <b>Chill</b> (switching off). Pick only what is true for you, or add your own.</p>' +
+    '<div class="q"><span class="lab">Hobby time, per week?</span>' + valChips('fun','hob',HOB_H) + (A('fun','hob') ? '<span class="small muted">What kind? (pick any)</span>' + tagBox('fun','hobbyTags',PRE.hobby,'hobby') : '') + '</div>' +
+    '<div class="q"><span class="lab">How do you chill?</span><span class="small muted">The rest of your free time is Chill. Pick any, or none.</span>' + tagBox('fun','chillTags',PRE.chill,'chill') + '</div>';
+  if (n === 4) h += '<p class="small" style="background:var(--under-soft);padding:8px 12px;border-radius:12px">Stuck or low time is a real part of a week, not a failure. Journey plans a buffer so it stops being a surprise.</p>' +
+    '<div class="q"><span class="lab">How often are you stuck or low?</span>' + valChips('stuck','freq',STUCK_F) + '</div>' +
+    '<div class="q"><span class="lab">How long does it usually last?</span>' + valChips('stuck','mins',STUCK_M) + '</div>' +
+    '<div class="q"><span class="lab">What sets it off? (optional, pick any)</span><div class="chips">' + ['Too many choices','After meetings','Phone / scrolling','Bad sleep','No idea'].map(function (t) { return '<button class="chip" aria-pressed="' + (A('stuck','trig').indexOf(t) >= 0) + '" data-tag="stuck|trig|' + enc(t) + '">' + t + '</button>'; }).join('') + '</div></div>';
+  if (n === 5) h += '<div class="q"><span class="lab">Chores and admin, per week?</span>' + valChips('chores','hours',CHO_H) + '</div>' +
+    '<div class="q"><span class="lab">Which come back every week? (optional, pick any)</span>' + tagBox('chores','tags',PRE.chores,'chores') + '</div>';
+  h += '<div class="row" style="margin-top:6px"><button class="btn" data-qskip="1">Skip</button><span class="grow"></span>' + (n > 0 ? '<button class="btn" data-qprev="1">Back</button>' : '') + '<button class="btn primary" data-qnext="1">' + (n === 5 ? 'Finish' : 'Next') + '</button></div>';
+  return h;
+}
+function week() {
+  var L = weekLines(), tot = L.reduce(function (s, l) { return s + l.h; }, 0);
+  var h = top('Step 2 · Your week', 'home') + '<div class="card info"><b>Here is your week as Journey understood it.</b><p class="small">A guess is fine. Your taps will show the real numbers in a few days, and you can change everything in Plans at any time. Only fix what looks clearly wrong.</p></div>';
+  L.forEach(function (l) {
+    h += '<div class="cat"><span class="sw" style="background:' + COL[l.id] + '"></span><b>' + TITLE[l.id] + (l.id === 'a03' ? ' <span class="small muted">(incl. stuck buffer)</span>' : '') + '</b><span class="step"><button data-w="' + l.id + '|-1" aria-label="less ' + TITLE[l.id] + '">−</button><output style="min-width:64px">' + nh(l.h) + '</output><button data-w="' + l.id + '|1" aria-label="more ' + TITLE[l.id] + '">+</button></span><span class="src">' + l.src + '</span></div>';
+  });
+  h += '<div class="daybar">' + L.map(function (l) { return '<span title="' + TITLE[l.id] + '" style="flex:' + Math.max(l.h, .2) + ';background:' + COL[l.id] + '"></span>'; }).join('') + '</div>';
+  h += '<p class="small muted">' + nh(tot) + ' of ' + AWAKE_WEEK + ' h awake. Chill takes what is left unless you set it yourself.</p>';
+  h += '<div class="row"><button class="btn" data-weekreset="1">Reset to my answers</button><span class="grow"></span><button class="btn primary" data-weekok="1">Looks about right</button></div>';
+  return h;
+}
+function daybar(arr) { return '<div class="daybar">' + arr.map(function (x) { return '<span title="' + TITLE[x[0]] + '" style="flex:' + x[1] + ';background:' + COL[x[0]] + '"></span>'; }).join('') + '</div>'; }
+function fixedDates() { return tripDates(); }
+function preview() {
+  var T = { work:build('work'), weekend:build('weekend') }, t = T[S.pickDay], subs = newSubs(), F = fixedDates();
+  var h = top('Step 3 · Your template', 'home');
+  var from = ['your answers'].concat(S.over && Object.keys(S.over).length ? ['your edits'] : []); if (!S.qDone.some(Boolean)) from = ['typical values'];
+  var tapDays = Math.max(0, S.day - 1);
+  h += '<div class="card info"><b>What is a template?</b><p class="small">A template is a typical day made of blocks (a category or subcategory + a length). Plans uses it to fill your days, so you do not plan every hour.</p>' +
+    '<p class="small"><b>Where this one comes from:</b> today, from ' + from.join(' and ') + (S.qDone.every(Boolean) ? '' : ' (skipped questions use typical values)') + '. ' + (tapDays ? 'You have tapped for ' + tapDays + ' day' + (tapDays === 1 ? '' : 's') + ' so far.' : 'You have not tapped yet.') + '</p>' +
+    '<p class="small"><b>Later:</b> run Journey again after a few weeks. Your real tapped times are then mixed in with what you planned here, with more detail and more subcategories. Your answers are the starting guess; your taps make it true.</p></div>';
+  h += '<div class="seg" role="group"><button data-pday="work" aria-pressed="' + (S.pickDay === 'work') + '">Workday</button><button data-pday="weekend" aria-pressed="' + (S.pickDay === 'weekend') + '">Weekend</button></div>';
+  h += '<div class="small muted">Now in Plans</div>' + daybar(NOW[S.pickDay]) + '<div class="small muted">Suggested · ' + fmt(t.bed - t.wake) + ' awake (' + hm(t.wake) + '–' + hm(t.bed) + ')</div>' + daybar(t.blocks.map(function (x) { return [x.k, x.dur]; }));
+  h += '<div>' + t.blocks.map(function (x) { return '<div class="blk"><i style="background:' + COL[x.k] + '"></i><span>' + esc(x.d || TITLE[x.k]) + (x.buffer ? ' <span class="muted small">· stuck buffer</span>' : '') + (x.fill ? ' <span class="muted small">· fills the rest</span>' : '') + '</span><b>' + fmt(x.dur) + '</b></div>'; }).join('') + '</div>';
+  if (t.over) h += '<p class="small muted">Your hours were more than the day holds, so flexible blocks were shortened (like Plans does). Essentials stayed.</p>';
+  var gl = G();
+  h += '<div class="card"><b>What should go into Plans?</b>' +
+    '<label class="check"><input type="checkbox" data-tick="work" ' + (S.ticks.work ? 'checked' : '') + '><span>Workday template</span></label>' +
+    '<label class="check"><input type="checkbox" data-tick="weekend" ' + (S.ticks.weekend ? 'checked' : '') + '><span>Weekend template</span></label>' +
+    '<label class="check"><input type="checkbox" data-tick="goals" ' + (S.ticks.goals ? 'checked' : '') + '><span>Weekly goals per category<br><span class="small muted">' + CATS.map(function (c) { return c.n + ' ' + nh(gl[c.id]); }).join(' · ') + '</span></span></label>' +
+    (F.length ? '<label class="check"><input type="checkbox" data-tick="fixed" ' + (S.ticks.fixed ? 'checked' : '') + '><span>Trips with a start time as calendar dates (next 4 weeks)<br><span class="small muted">' + F.map(function (f) { return esc(f.name) + ' ' + f.days.map(function (d) { return DAYS[d]; }).join('/') + ' ' + hm(f.start) + ' · ' + f.len + ' min'; }).join(' · ') + '</span></span></label>' : '') + '</div>';
+  if (subs.length) h += '<div class="card"><b>New subcategories (tiles)</b><p class="small muted">Only ticked ones are added. You can delete any later in Categories.</p>' + subs.map(function (s) { return '<label class="check"><input type="checkbox" data-subtick="' + enc(s[1]) + '" ' + (S.subOff[s[1]] ? '' : 'checked') + '><span>' + esc(s[1]) + ' <span class="small muted">in ' + TITLE[s[0]] + '</span></span></label>'; }).join('') + '</div>';
+  h += '<div class="card"><b>How</b><div class="seg"><button data-mode="add" aria-pressed="' + (S.mode === 'add') + '">Add as new</button><button data-mode="replace" aria-pressed="' + (S.mode === 'replace') + '">Replace mine</button></div><p class="small muted">' + (S.mode === 'add' ? 'Creates "Journey Workday" and "Journey Weekend". Your own templates stay untouched.' : 'Overwrites the blocks of your Workday and Weekend. "Undo Journey" brings them back.') + '</p></div>';
+  h += '<button class="btn primary" data-apply="1">Put it into my plan</button><p class="small muted">Saved at once, like "Plan done". "Undo Journey" brings back everything it changed, any time.</p>';
+  return h;
+}
+function applied() {
+  var n = (S.ticks.work ? 1 : 0) + (S.ticks.weekend ? 1 : 0), subs = newSubs().filter(function (s) { return !S.subOff[s[1]]; }).length, F = fixedDates();
+  var h = top('Journey', null) + '<div class="card open"><h2>' + (S.planDone ? 'Saved in your plan' : 'Waiting in Plans as a draft') + '</h2><ul style="margin:0;padding-left:20px"><li>' + n + ' template' + (n === 1 ? '' : 's') + ' (' + (S.mode === 'add' ? 'added as new' : 'replaced') + ')</li>' + (S.ticks.goals ? '<li>Weekly goals for 8 categories</li>' : '') + (S.ticks.fixed && F.length ? '<li>' + F.reduce(function (s, f) { return s + f.days.length * 4; }, 0) + ' fixed dates in the calendar</li>' : '') + (subs ? '<li>' + subs + ' new subcategor' + (subs === 1 ? 'y' : 'ies') + '</li>' : '') + '</ul>' +
+    '<p class="small">' + (S.planDone ? 'It is part of your plan now. "Undo Journey" restores what it replaced and removes what it added.' : 'Nothing is saved yet. Open Plans and press "Plan done" to keep it, or "Undo Journey" to discard it.') + '</p></div>';
+  return h + '<div class="row">' + '<button class="btn primary" data-openplans="1">Open Plans</button>' + '<button class="btn warn" data-undo="1">Undo Journey</button><button class="btn" data-go="home">Back to Journey</button></div>';
+}
+function render() {
+  var v = S.view, html = v === 'intro' ? intro() : v === 'home' ? home() : v === 'q' ? questions() : v === 'week' ? week() : v === 'preview' ? preview() : applied();
+  $('#phone').innerHTML = html;
+  save();
+}
+
+// ---------- 04h: real data = the `journey` record (id 'journey', fields: 07_journey\JOURNEY_DATA.md) ----------
+var busy = false, last = '';
+function daysSince(day) { return Math.max(0, Math.round((new Date(TBDefaults.dayKey() + 'T12:00') - new Date(day + 'T12:00')) / 864e5)); }
+function load(keepView) {
+  TBDefaults.ensure(TBData);
+  EXISTING = TBData.list('subcategory').map(function (x) { return x.name; });
+  var view = S && S.view, q = S && S.q, r = TBData.get('journey', 'journey');
+  fresh();
+  if (r) {
+    S.introSeen = !!r.introSeen; S.startedOn = r.startedOn || null;
+    if (r.answers) Object.keys(S.ans).forEach(function (g) { if (r.answers[g]) S.ans[g] = Object.assign(S.ans[g], r.answers[g]); });
+    if (Array.isArray(r.answered)) S.qDone = S.qDone.map(function (x, i) { return !!r.answered[i]; });
+    S.over = r.weekOverride || {}; S.extra = r.extraTags || {}; S.subOff = {};
+    (r.subOff || []).forEach(function (n) { S.subOff[n] = true; });
+    S.weekDone = !!r.weekDone; S.early = r.early || {}; S.mode = r.mode || 'add';
+    if (r.ticks) S.ticks = Object.assign(S.ticks, r.ticks);
+    S.applied = r.applied || null; S.undo = r.undo || null; S.planDone = !!(r.applied && r.applied.planDone); S.decision = r.decision || null;
+  }
+  S.day = S.startedOn ? daysSince(S.startedOn) + 1 : 1;
+  S.view = keepView && view ? view : (S.introSeen ? 'home' : 'intro');
+  if (keepView && q != null) S.q = q;
+}
+function stage() { return S.applied ? 'applied' : S.weekDone ? 'week' : S.qDone.some(Boolean) ? 'questions' : S.introSeen ? 'started' : 'intro'; }
+function save() {
+  if (S.introSeen && !S.startedOn) { S.startedOn = TBDefaults.dayKey(); S.day = 1; }
+  if (!S.introSeen) return;          // nothing to keep before the intro was seen
+  var rec = { id: 'journey', startedOn: S.startedOn, introSeen: true, stage: stage(), decision: S.decision, answered: S.qDone.slice(), answers: S.ans,
+    weekOverride: S.over, subOff: Object.keys(S.subOff), extraTags: S.extra, weekDone: S.weekDone, early: S.early, mode: S.mode, ticks: S.ticks,
+    applied: S.applied || null, undo: S.undo || null };
+  var j = JSON.stringify(rec); if (j === last) return;
+  busy = true; try { TBData.put('journey', rec); } finally { busy = false; }
+  last = j;
+}
+function applyNow() {
+  if (S.applied && S.undo) undoNow();            // one snapshot only: a new apply first takes the old one back
+  var plan = { mode: S.mode, templates: { work: S.ticks.work ? build('work') : null, weekend: S.ticks.weekend ? build('weekend') : null },
+    goals: S.ticks.goals ? G() : null, subs: newSubs().filter(function (x) { return !S.subOff[x[1]]; }), trips: S.ticks.fixed ? tripDates() : [] };
+  busy = true;
+  try { var r = TBJourney.apply(TBData, plan); S.applied = r.applied; S.undo = r.undo; S.planDone = true; } finally { busy = false; }
+}
+function undoNow() {
+  busy = true; try { TBJourney.undo(TBData, S.undo); } finally { busy = false; }
+  S.applied = null; S.undo = null; S.planDone = false;
+  EXISTING = TBData.list('subcategory').map(function (x) { return x.name; });
+}
+
+// ---------- events ----------
+var toastT;
+function toast(msg, undoFn) {
+  var old = document.querySelector('.toast'); if (old) old.remove();
+  var t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  if (undoFn) { var b = document.createElement('button'); b.textContent = 'Undo'; b.onclick = function () { undoFn(); t.remove(); }; t.appendChild(b); }
+  document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(function () { t.remove(); }, 7000);
+}
+function toggle(arr, v) { var i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
+document.addEventListener('click', function (e) {
+  var el;
+  if ((el = e.target.closest('[data-delown]'))) { var p = el.dataset.delown.split('|'), nm = decodeURIComponent(p[3]); S.extra[p[2]] = (S.extra[p[2]] || []).filter(function (x) { return x !== nm; }); var a = S.ans[p[0]][p[1]], ix = a.indexOf(nm); if (ix >= 0) a.splice(ix, 1); render(); return; }
+  if ((el = e.target.closest('[data-tag]'))) { var q = el.dataset.tag.split('|'); toggle(S.ans[q[0]][q[1]], decodeURIComponent(q[2])); render(); return; }
+  if ((el = e.target.closest('[data-addown]'))) {
+    var r = el.dataset.addown.split('|'), inp = $('#own_' + r[2]), name = (inp.value || '').trim();
+    if (name) { S.extra[r[2]] = S.extra[r[2]] || []; if (S.extra[r[2]].indexOf(name) < 0) S.extra[r[2]].push(name); if (S.ans[r[0]][r[1]].indexOf(name) < 0) S.ans[r[0]][r[1]].push(name); S.tmp[r[2]] = ''; }
+    render(); return;
+  }
+  if ((el = e.target.closest('[data-val]'))) { var v = el.dataset.val.split('|'); S.ans[v[0]][v[1]] = +v[2]; render(); return; }
+  if ((el = e.target.closest('[data-sv]'))) { var s = el.dataset.sv.split('|'); S.ans[s[0]][s[1]] = clamp(S.ans[s[0]][s[1]] + (+s[2]), +s[3], +s[4]); render(); return; }
+  if (e.target.closest('[data-fadd]')) { A('travel','trips').push({ name:'', days:[], start:null, len:30 }); render(); return; }
+  if ((el = e.target.closest('[data-tripidea]'))) { A('travel','trips').push({ name:decodeURIComponent(el.dataset.tripidea), days:[], start:null, len:30 }); render(); return; }
+  if ((el = e.target.closest('[data-fstart]'))) { var fq = el.dataset.fstart.split('|'), ti = A('travel','trips')[+fq[0]]; ti.start = fq[1] === 'set' ? 720 : null; render(); return; }
+  if ((el = e.target.closest('[data-fdel]'))) { A('travel','trips').splice(+el.dataset.fdel, 1); render(); return; }
+  if ((el = e.target.closest('[data-fday]'))) { var f = el.dataset.fday.split('|'); toggle(A('travel','trips')[+f[0]].days, +f[1]); render(); return; }
+  if ((el = e.target.closest('[data-fstep]'))) { var fs = el.dataset.fstep.split('|'), it = A('travel','trips')[+fs[0]]; it[fs[1]] = fs[1] === 'start' ? clamp(it.start + (+fs[2]), 300, 1380) : clamp(it.len + (+fs[2]), 5, 480); render(); return; }
+  if (e.target.closest('[data-intro]')) { S.introSeen = true; S.view = 'home'; render(); return; }
+  if ((el = e.target.closest('[data-early]'))) S.early[el.dataset.early] = true;
+  if ((el = e.target.closest('[data-go]'))) { var go = el.dataset.go; S.view = go; if (go === 'q') { var nx = S.qDone.indexOf(false); S.q = nx < 0 ? 0 : nx; } render(); return; }
+  if ((el = e.target.closest('[data-toast]'))) { toast(el.dataset.toast); return; }
+  if ((el = e.target.closest('[data-w]'))) { var w = el.dataset.w.split('|'), cur = weekLines().filter(function (l) { return l.id === w[0]; })[0].h; S.over[w[0]] = clamp(cur + (+w[1]), 0, 112); render(); return; }
+  if (e.target.closest('[data-weekreset]')) { S.over = {}; render(); return; }
+  if (e.target.closest('[data-weekok]')) { S.weekDone = true; S.view = 'home'; render(); toast('Your week is saved as a guess. Nothing else changed.'); return; }
+  if (e.target.closest('[data-qskip]')) { if (S.q < 5) S.q++; else S.view = 'home'; render(); return; }
+  if (e.target.closest('[data-qprev]')) { S.q--; render(); return; }
+  if (e.target.closest('[data-qnext]')) { S.qDone[S.q] = true; if (S.q < 5) { S.q++; render(); } else { S.view = 'home'; render(); toast('Questions saved. You can change any answer later.'); } return; }
+  if ((el = e.target.closest('[data-pday]'))) { S.pickDay = el.dataset.pday; render(); return; }
+  if ((el = e.target.closest('[data-mode]'))) { S.mode = el.dataset.mode; render(); return; }
+  if ((el = e.target.closest('[data-dec]'))) { S.decision = el.dataset.dec; render(); return; }
+  if (e.target.closest('[data-apply]')) { applyNow(); S.view = 'applied'; render(); toast('Saved in your plan.', function () { undoNow(); S.view = 'preview'; render(); }); return; }
+  if (e.target.closest('[data-undo]')) { undoNow(); S.view = 'home'; render(); toast('Journey undone: templates, goals, dates and subcategories are back as before.'); return; }
+  if (e.target.closest('[data-openplans]')) { TBDefaults.go('plans'); return; }
+  if (e.target.closest('[data-notnow]')) { S.introSeen = true; S.view = 'home'; render(); TBDefaults.go('tap'); return; }
+});
+document.addEventListener('change', function (e) {
+  var el;
+  if ((el = e.target.closest('[data-tick]'))) S.ticks[el.dataset.tick] = el.checked;
+  if ((el = e.target.closest('[data-subtick]'))) { var n = decodeURIComponent(el.dataset.subtick); if (el.checked) delete S.subOff[n]; else S.subOff[n] = true; }
+  if ((el = e.target.closest('[data-flen]'))) { A('travel','trips')[+el.dataset.flen].len = clamp(parseInt(el.value, 10) || 30, 5, 480); render(); }
+  if ((el = e.target.closest('[data-fclock]'))) { var pr = (el.value || '').split(':'); if (pr.length === 2) { A('travel','trips')[+el.dataset.fclock].start = (+pr[0]) * 60 + (+pr[1]); render(); } }
+});
+document.addEventListener('input', function (e) {
+  var el;
+  if ((el = e.target.closest('[data-tmp]'))) S.tmp[el.dataset.tmp] = el.value;
+  if ((el = e.target.closest('[data-fname]'))) A('travel','trips')[+el.dataset.fname].name = el.value;
+});
+document.addEventListener('keydown', function (e) {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role=button][data-tag],[role=button][data-delown]')) { e.preventDefault(); e.target.click(); }
+  if (e.key === 'Enter' && e.target.matches('[data-tmp]')) { var b = e.target.parentNode.querySelector('[data-addown]'); if (b) b.click(); }
+});
+load();
+render();
+TBData.onChange(function () { if (!busy) { load(); render(); } });
+})();
+</script>
+</body>
+</html>
