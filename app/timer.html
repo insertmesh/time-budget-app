@@ -550,6 +550,8 @@ const reviewTxt = k => k === 'auto' ? 'Auto-adjusted. Your plan has no times yet
 // Defaults that happen when a bar runs out, and the day edges (bedtime, new morning). Also catches up after the app was closed.
 function advance(t) {
   const F = S.flow; let changed = false;
+  // fix 2026-11-24: a "staying up" left over from the old "next = Sleep" bug (started long before bedtime) is dropped
+  if (F.up && F.up.at < bedAt(t) - NEXT_SLEEP_FROM * 60000) { F.up = null; changed = true; }
   for (let i = 0; i < 12; i++) {
     let fired = true;
     if (F.day !== ldKey(t)) startMorning(t);
@@ -604,7 +606,7 @@ function renderHero() {
   else if (m === 'pending') { key = p.key; lab = p.auto ? 'First on your day · tap to start' : 'Proposed · tap the tile to start'; name = label(p.key, p.sub); grey = true; clk = 'off'; pend = barHtml(); }
   else if (m === 'run') {
     key = r.tile; name = r.tile === 'stuck' ? label('stuck', r.detail) : TITLE[r.tile];
-    lab = r.tile === 'sleep' ? 'Now · Sleep' : F.up ? 'Now · past bedtime' : 'Now';
+    lab = r.tile === 'sleep' ? 'Now · Sleep' : F.up ? (now() >= bedAt(now()) ? 'Now · past bedtime' : 'Now · staying up') : 'Now';
     if (r.tile === 'sleep') { cls = 'bed'; pend = `<div class="cap" id="cap">Sleep runs until your first tap of the day</div>`; }
     else if (F.up) pend = `<div class="cap late" id="cap"></div>`;
   }
@@ -656,7 +658,7 @@ function live() {
   if (cap) {
     if (m === 'sleepq') cap.textContent = 'Nothing tapped since ' + clockTime(F.morning.since) + (F.morning.since < dayStart(t) - 86400000 ? ' (' + new Date(F.morning.since).toLocaleDateString() + ')' : '');
     else if (m.startsWith('bed')) cap.textContent = (r ? TITLE[r.tile] + ' still runs · ' : '') + 'do nothing = Sleep starts';
-    else if (m === 'run' && F.up && r.tile !== 'sleep') cap.textContent = TITLE[r.tile] + ' · +' + fmt(t - F.up.at) + ' past bedtime (' + BEDTIME + ')';
+    else if (m === 'run' && F.up && r.tile !== 'sleep') cap.textContent = TITLE[r.tile] + (t >= bedAt(t) ? ' · +' + fmt(t - Math.max(F.up.at, bedAt(t))) + ' past bedtime (' + BEDTIME + ')' : ' · staying up · bedtime ' + BEDTIME);   // fix 2026-11-24: counts from bedtime, not from when Sleep was suggested
   }
   const sg = $('segs');
   if (sg && m === 'run' && r.tile !== 'sleep') {

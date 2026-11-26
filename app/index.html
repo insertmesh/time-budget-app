@@ -96,6 +96,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </div>
 <p class="note">Tap = the real tap timer (saves in this browser). Plans, Overviews, Rewards and More show the approved designs; they don't work yet. <a href="../mockup/02k_navigation/navigation.html">How the navigation works</a></p>
 
+<!-- sync (step 04f): merge rules, Google sign-in + Drive storage, engine. Loaded before the timer frame so the timer can wait for the first sync. -->
+<script src="sync/merge.js"></script>
+<script src="sync/google.js"></script>
+<script src="sync/engine.js"></script>
 <script>
 (function () {
 const $ = id => document.getElementById(id);
@@ -146,11 +150,14 @@ const PAGE = {
   tap: 'timer.html', plans: M + '02a_plans/plans.html', overviews: M + '02c_overviews/overviews.html', rewards: M + '02d_rewards/rewards.html',
   categories: M + '02b_categories/categories.html', goals: M + '02b_categories/categories.html#cat=a04', settings: M + '02e_settings/settings.html',
   rules: M + '02f_content/content.html#tbshow=rules', tour: M + '02f_content/content.html#tbshow=onb',
-  checkin: M + '06_checkin/checkin.html', journey: M + '07_journey/journey.html', yes: M + '08_yes_check/yes_check.html', more: null
+  checkin: M + '06_checkin/checkin.html', journey: M + '07_journey/journey.html', yes: M + '08_yes_check/yes_check.html', more: null,
+  sync: 'sync.html',                               // REAL screen (04f): Google Drive sync; moves into Settings when Settings is built
+  feedback: '../feedback/index.html'               // REAL (04i): feedback page with the Google Form; gets ?from=app&screen=<last screen>
 };
+const REAL = { tap: 1, more: 1, sync: 1, feedback: 1 };         // screens that work for real (no "Preview" label)
 const TITLE = { tap: 'Tap', plans: 'Plans', overviews: 'Overviews', rewards: 'Rewards', more: 'More', categories: 'Categories', goals: 'Goals',
-  settings: 'Settings', rules: 'Rules', tour: 'Tour', checkin: 'Check-in', journey: 'Journey', yes: 'Yes-check' };
-const MORE = [['categories','▤','Categories'],['goals','◎','Goals'],['settings','⚙','Settings'],['rules','?','Rules'],['tour','▶','Tour (onboarding)'],
+  settings: 'Settings', rules: 'Rules', tour: 'Tour', checkin: 'Check-in', journey: 'Journey', yes: 'Yes-check', sync: 'Sync', feedback: 'Feedback' };
+const MORE = [['sync','⟳','Sync · Google Drive'],['categories','▤','Categories'],['goals','◎','Goals'],['settings','⚙','Settings'],['rules','?','Rules'],['tour','▶','Tour (onboarding)'],['feedback','✎','Feedback & bugs'],
   ['checkin','☾','Check-in · coming (06)'],['journey','➶','Journey · coming (07)'],['yes','✓','Yes-check · coming (08)']];
 const pathOf = u => decodeURIComponent(new URL(u, location.href).pathname);
 function keyOf(href) {         // which screen is this URL? (mockup links point to ../02g_tap/tap.html for the tap screen)
@@ -183,12 +190,19 @@ function moreDoc() {   // the More list
   p{font-size:12px;color:${v('--muted')}}</style></head><body><h1>More</h1>
   ${MORE.map(([k, i, l]) => `<button class="${/coming/.test(l) ? 'soon' : ''}" onclick="parent.postMessage({tbPush:'${k}'},'*')"><i>${i}</i>${l}<b>›</b></button>`).join('')}
   <p>Export / import of your tapped data: on the Tap screen, below the timer.</p>
-  <p>Storage on this device: ${STORE}</p></body></html>`;
+  <p>Storage on this device: ${STORE}</p>
+  <p>Sync: ${syncLine()}</p></body></html>`;
+}
+function syncLine() {
+  const i = window.TBSync ? TBSync.info() : null;
+  if (!i || !i.on) return 'off (data on this device only)';
+  return { ok: 'on, synced', syncing: 'on, syncing…', paused: 'paused: open Sync to resume', offline: 'on, offline (catches up later)', error: 'problem, see Sync' }[i.status] || i.status;
 }
 
 /* ---------- messages from the screens ---------- */
 window.addEventListener('message', e => {
   const m = e.data || {};
+  if (m.tbPush === 'feedback') return push('feedback', PAGE.feedback + '?from=app&screen=' + (S.last || 'tap'));   // 04i: preselect the last screen seen
   if (m.tbPush && PAGE[m.tbPush]) return push(m.tbPush);
   if (m.tbRun) {
     S.run = m.tbRun.name ? m.tbRun : null;
@@ -230,13 +244,15 @@ function back() {
 /* ---------- draw ---------- */
 function show() {
   const e = cur();
+  if (e.id !== 'more' && e.id !== 'feedback') S.last = e.id;   // 04i: the screen a feedback is most likely about
   if (!e.frame) makeFrame(e);
   [...$('frames').children].forEach(f => f.classList.toggle('off', f !== e.frame));
   const st = S.stacks[S.tab], sh = $('subhead');
   sh.hidden = st.length < 2;
   if (!sh.hidden) sh.innerHTML = `<button class="backbtn" id="subBack"><span class="chev">‹</span>${TITLE[st[st.length - 2].id]}</button><b>${TITLE[e.id]}</b>`;
   if (S.tab !== 'tap') S.covered = false;
-  $('preview').hidden = e.id === 'tap' || e.id === 'more';   // label every design-only screen (04d)
+  $('preview').hidden = !!REAL[e.id];                         // label every design-only screen (04d)
+  if (e.id === 'more' && e.frame) e.frame.srcdoc = moreDoc();  // fresh sync line
   S.sig = ''; drawBar();
 }
 function drawBar() {

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sync · Time Budget</title>
+<!-- Real screen (step 04f_sync): More → Sync. Talks to the sync engine in the app frame (parent.TBSync, app/sync/engine.js).
+     Lives here until the real Settings page is built; then it moves into Settings → "Data & calendar". -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600&display=swap" media="print" onload="this.media='all'"><!-- fonts never block the screen (offline) -->
+<style>
+:root { --bg: #F4F6F3; --surface: #FFFFFF; --ink: #1D2927; --muted: #5E6D68; --line: #DCE3DF; --accent: #3D6B5E; --accent-soft: #DDEAE4; --warn: #9A5B12; --bad: #B0412A; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg: #131A18; --surface: #1A2320; --ink: #E3EBE7; --muted: #9DABA5; --line: #2A3632; --accent: #8FC4B3; --accent-soft: #213430; --warn: #E2A75C; --bad: #E8866C; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 14px 16px 24px; background: var(--surface); color: var(--ink); font: 15px/1.5 "Figtree", system-ui, sans-serif; }
+h1 { font: 600 22px/1.2 "Literata", Georgia, serif; margin: 0 0 6px; }
+p { margin: 8px 0; }
+.small { font-size: 13px; color: var(--muted); }
+.card { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 12px 0; background: var(--bg); }
+.status { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ok { background: #3F9B6E; } .dot.warn { background: #D99A3A; } .dot.bad { background: var(--bad); } .dot.busy { background: var(--accent); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+button { font: inherit; cursor: pointer; border-radius: 12px; padding: 11px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; width: 100%; margin: 6px 0; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+@media (prefers-color-scheme: dark) { button.primary { color: #10201B; } }
+button.link { border: 0; background: none; color: var(--accent); width: auto; padding: 4px 0; font-weight: 600; }
+label { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin: 10px 0 4px; }
+label input { margin-top: 4px; width: 18px; height: 18px; flex: none; }
+.err { color: var(--bad); font-size: 13px; }
+dialog { border: 1px solid var(--line); border-radius: 16px; padding: 16px; max-width: 360px; background: var(--surface); color: var(--ink); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<h1>Sync</h1>
+<p class="small">Keeps your taps the same on your phone, PC and the web app. Your data goes into a <b>hidden app folder in your own Google Drive</b>. Only this app can open that folder; it cannot see your other Drive files, and nobody else (also not the app maker) gets a copy.</p>
+
+<div class="card">
+  <div class="status"><span class="dot" id="dot"></span><span id="title">…</span></div>
+  <p class="small" id="detail"></p>
+  <p class="err" id="err" hidden></p>
+  <button class="primary" id="connect" hidden>Connect Google Drive</button>
+  <button class="primary" id="resume" hidden>Resume sync (sign in again)</button>
+  <button id="now" hidden>Sync now</button>
+</div>
+
+<div id="more" hidden>
+  <label><input type="checkbox" id="auto"> <span>Resume by itself at my next tap when Google's sign-in has run out (about once an hour). A Google window may flash for a second.</span></label>
+  <p class="small">Off = a "Resume" button here instead. Your taps are never lost while sync is paused: they wait on this device and catch up.</p>
+  <button id="disconnect">Disconnect this device</button>
+  <p class="small">Disconnect keeps your data on this device and in Drive; it only stops syncing here.</p>
+</div>
+
+<div class="card small" id="howto">
+  <b>Phone + PC:</b> connect on each device with the <b>same</b> Google account. A tap on any device counts as a switch: when two devices each run a tile, the later tap wins.<br>
+  <span id="backupLine" hidden>A copy of this device's data from before its first sync is kept here: <button class="link" id="backupDl">download it</button>.</span>
+</div>
+
+<dialog id="first">
+  <p><b>Both have data</b></p>
+  <p class="small" id="firstText"></p>
+  <button class="primary" data-c="merge">Merge both (recommended)</button>
+  <button data-c="drive">Use Drive's data, drop this device's</button>
+  <button data-c="cancel">Cancel</button>
+  <p class="small">Either way, this device's data is first saved as a backup (download link on this page).</p>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const S = window.parent && window.parent !== window && window.parent.TBSync;
+  if (!S) { $('title').textContent = 'Open this inside the app (app/index.html).'; return; }
+
+  const ago = t => { if (!t) return 'never'; const s = Math.round((Date.now() - t) / 1000);
+    return s < 10 ? 'just now' : s < 60 ? s + ' s ago' : s < 3600 ? Math.round(s / 60) + ' min ago' : new Date(t).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }); };
+  let I = null;
+  function draw(i) {
+    I = i;
+    const map = {
+      off: ['', 'Not connected', i.configured ? 'Your data stays on this device only.' : 'Sync is not set up in this version of the app yet (no Google client ID).'],
+      'signing in': ['busy', 'Signing in…', 'Finish in the Google window.'],
+      syncing: ['busy', 'Syncing…', ''],
+      ok: ['ok', 'Synced', ''],
+      paused: ['warn', 'Paused: Google sign-in ran out', 'Taps are saved on this device and catch up after you resume.'],
+      offline: ['warn', 'Offline', 'Taps are saved on this device and catch up when you are online.'],
+      error: ['bad', 'Sync problem', 'Taps are saved on this device. It tries again by itself.']
+    };
+    const [dot, title, text] = map[i.status] || ['', i.status, ''];
+    $('dot').className = 'dot ' + dot; $('title').textContent = title;
+    const who = i.email ? `Google account: ${i.email}. ` : '';
+    $('detail').textContent = (i.on ? who + 'Last synced: ' + ago(i.lastSync) + '. ' : '') + text + (i.demo ? ' (TEST MODE: fake drive in this browser)' : '');
+    $('err').hidden = !i.error || i.status === 'ok'; $('err').textContent = i.error;
+    $('connect').hidden = i.on || !i.configured || i.status === 'signing in';
+    $('resume').hidden = !(i.on && i.status === 'paused');
+    $('now').hidden = !(i.on && (i.status === 'ok' || i.status === 'error' || i.status === 'offline'));
+    $('more').hidden = !i.on;
+    $('auto').checked = i.autoResume;
+    $('backupLine').hidden = !i.hasBackup;
+  }
+  S.onChange(draw);
+  setInterval(() => I && draw(I), 15000);
+
+  S.setAskFirst(({ remote, local }) => new Promise(resolve => {
+    $('firstText').textContent = `Drive already has ${remote} entries (from another device). This device has ${local}. Merge = keep both: every tap from both devices, in one timeline.`;
+    const d = $('first');
+    d.onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; d.close(); resolve(b.dataset.c); };
+    d.oncancel = () => resolve('cancel');
+    d.showModal();
+  }));
+
+  window.addEventListener('pagehide', () => S.setAskFirst(null));   // screen closed: never wait for a dialog that is gone
+  const run = p => p.catch(() => { /* the status line shows the error */ });
+  $('connect').onclick = () => run(S.connect());
+  $('resume').onclick = () => run(S.resume());
+  $('now').onclick = () => run(S.syncNow());
+  $('auto').onchange = e => S.setAutoResume(e.target.checked);
+  $('disconnect').onclick = () => { if (confirm('Stop syncing on this device? Your data stays here and in Drive.')) S.disconnect(); };
+  $('backupDl').onclick = () => {
+    const b = S.backup(); if (!b) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(b.data, null, 1)], { type: 'application/json' }));
+    a.download = 'time-budget-backup-before-sync-' + new Date(b.at).toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+})();
+</script>
+</body>
+</html>
